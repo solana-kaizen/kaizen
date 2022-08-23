@@ -1,105 +1,85 @@
+use cfg_if::cfg_if;
 use std::sync::Arc;
-use async_std::sync::Mutex;
 use solana_program::pubkey::Pubkey;
 use crate::accounts::AccountDataReference;
 use crate::result::Result;
-// use crate::error::*;
-use caches::{Cache as CacheTrait, RawLRU, DefaultEvictCallback,PutResult};
-use ahash::RandomState;
+use workflow_log::log_trace;
 
-type CacheNode = (AccountDataReference, usize);
+#[cfg(target_arch = "wasm32")]
+use async_std::sync::Mutex;
 
-const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 512u64; // 512 megabytes
-
-#[derive(Debug)]
-pub struct CacheInner {
-    capacity : u64,
-    size : u64,
-    items : usize,
-    lru : RawLRU<Pubkey, CacheNode, DefaultEvictCallback, RandomState>,
-}
-
-#[derive(Clone)]
-pub struct Cache(Arc<Mutex<CacheInner>>);
-
-impl std::fmt::Debug for Cache {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let inner = self.0.try_lock();
-        match inner {
-            Some(inner) => {
-                write!(f, "Cache {{ size: {}, items: {}, capacity: {} }}", inner.size, inner.items, inner.capacity)?;
-            },
-            None => {
-                write!(f, "Catche {{ <Unable to acquire lock> }}")?;
-            }
-        }
-        Ok(())
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        use moka::unsync::Cache as MokaCache;
+    } else {
+        use moka::sync::Cache as MokaCache;
     }
 }
 
+const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
+
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        pub struct Cache {
+            cache_store : Arc<Mutex<MokaCache<Pubkey,Arc<AccountDataReference>>>>
+        }
+    } else {
+        pub struct Cache {
+            cache_store : MokaCache<Pubkey,Arc<AccountDataReference>>
+        }
+    }
+}
+    
 impl Cache {
-    pub fn try_new_with_default_capacity() -> Result<Self> {
-        Ok(Self::try_new_with_capacity(DEFAULT_CAPACITY)?)
-    }
 
-    pub fn try_new_with_capacity(capacity : u64) -> Result<Self> {
-        #[cfg(target_arch = "wasm32")]
-        let lru = RawLRU::with_hasher(1_000_000, RandomState::default())?;
-        #[cfg(not(target_arch = "wasm32"))]
-        // let lru = RawLRU::with_hasher(usize::MAX, RandomState::default())?;
-        let lru = RawLRU::with_hasher(usize::MAX, RandomState::default())?;
-        let inner = CacheInner {
-            capacity,
-            size : 0,
-            items : 0,
-            lru
-        };
-       Ok(Cache(Arc::new(Mutex::new(inner))))
-    }
+    pub fn new_with_capacity(capacity: u64) -> Cache {
+        log_trace!("init moka");
+        let cache_store = MokaCache::builder()
+        .weigher(|_key, reference: &Arc<AccountDataReference>| -> u32 {
+            reference.data_len as u32
+        })
+        .max_capacity(capacity)
+        .build();
+        log_trace!("init moka ok");
 
-    pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<AccountDataReference>> {
-        let mut cache = self.0.lock().await;
-        let result = {
-            // let mut lru = inner.lru.lock().await;
-            match cache.lru.get(pubkey) {
-                Some(node) => Some(node.0.clone()),
-                None => None,
-            }
-        };
-        Ok(result)
-    }
-
-    pub async fn store(&mut self, account_data : AccountDataReference) -> Result<()> {
-        let (key, size) = {
-            let inner = account_data.read().await;
-            (inner.key.clone(), inner.space)
-        };
-        let mut cache = self.0.lock().await;
-        cache.size += size as u64;
-        cache.items += 1;
-        let result = cache.lru.put(key, (account_data,size));
-        match result {
-            PutResult::Evicted { value, .. } => {
-                let (_, size) = value;
-                cache.size -= size as u64;
-                cache.items -= 1;
-            },
-            _ => { }
-        };
-
-        while cache.size > cache.capacity {
-            let node = cache.lru.remove_lru();
-            match node {
-                Some(node) => {
-                    let (_,(_,size)) = node;
-                    cache.size -= size as u64;
-                    cache.items -= 1;
-                },
-                None => break,
+        cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                Self { cache_store : Arc::new(Mutex::new(cache_store)) }
+            } else {
+                Self { cache_store }
             }
         }
+    }
 
-        Ok(())
+    pub fn new_with_default_capacity() -> Self {
+        Self::new_with_capacity(DEFAULT_CAPACITY)
+    }
+
+    cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+
+            #[inline(always)]
+            pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+                Ok(self.cache_store.lock().await.get(pubkey).cloned())
+            }
+            
+            #[inline(always)]
+            pub async fn store(&mut self, reference : &Arc<AccountDataReference>) -> Result<()> {
+                Ok(self.cache_store.lock().await.insert(*reference.key,reference.clone()))
+            }
+
+        } else {
+            
+            pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+                Ok(self.cache_store.get(pubkey))
+            }
+            
+            #[inline(always)]
+            pub async fn store(&mut self, reference : &Arc<AccountDataReference>) -> Result<()> {
+                Ok(self.cache_store.insert(*reference.key,reference.clone()))
+            }
+
+        }
     }
 
 }

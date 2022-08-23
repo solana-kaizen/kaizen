@@ -1,5 +1,5 @@
+// extern crate self as allocator;
 extern crate self as workflow_allocator;
-extern crate self as workflow;
 
 pub mod macros {
     pub use workflow_allocator_macros::*;
@@ -27,8 +27,8 @@ pub mod pgp;
 
 pub use utils::generate_random_pubkey;
 
-#[cfg(not(any(target_arch = "bpf", target_arch = "wasm32")))]
-pub mod fsio;
+// #[cfg(not(any(target_arch = "bpf", target_arch = "wasm32")))]
+// pub mod fsio;
 
 // #[cfg(not(target_arch = "bpf"))]
 // pub mod i18n;

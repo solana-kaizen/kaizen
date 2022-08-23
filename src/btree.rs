@@ -1360,14 +1360,17 @@ pub mod client {
                 // break;
             }
 
-            let account_data = match transport.clone().lookup(&key).await? { //.expect(&format!("missing account for key {}",key.to_string()));
-                Some(account_data) => account_data,
-                None => {
-                    return Err(error_code!(ErrorCode::BPTreeIndexDereference));
-                }
-            };
+            let reference = transport.clone().lookup(&key).await?
+                .ok_or(error_code!(ErrorCode::BPTreeIndexDereference))?;
+            
+            // { //.expect(&format!("missing account for key {}",key.to_string()));
+            //     Some(reference) => reference,
+            //     None => {
+            //         return Err(error_code!(ErrorCode::BPTreeIndexDereference));
+            //     }
+            // };
             // let mut account_data = account_data_ref_cell.borrow_mut();
-            let mut account_data = account_data.write().await;
+            let mut account_data = reference.account_data.write().await;
             let account_key = key.clone();
             let account_info = (&account_key, &mut *account_data).into_account_info();
 
@@ -1485,7 +1488,7 @@ pub mod client {
                 }
             };
 
-            let mut values_account_data = values_account_data.write().await;
+            let mut values_account_data = values_account_data.account_data.write().await;
 
             // let mut values_account_data = values_account_data_ref_cell.borrow_mut();
             let pubkey_ = pubkey.clone();
@@ -1568,14 +1571,16 @@ pub mod client {
             log_trace!("search by key {:?}", search_by_key);
             log_trace!("searching for pubkey {:?}",pubkey);
 
-            let values_account_data_ref_cell = match transport.clone().lookup(&pubkey).await? {
-                Some(ref_cell) => ref_cell,
-                None => {
-                    return Err(error_code!(ErrorCode::BPTreeValuesDereference));
-                }
-            };
+            let values_account_data_ref_cell = transport.clone().lookup(&pubkey).await?
+                .ok_or(error_code!(ErrorCode::BPTreeValuesDereference))?;
+            // {
+            //     Some(ref_cell) => ref_cell,
+            //     None => {
+            //         return Err(error_code!(ErrorCode::BPTreeValuesDereference));
+            //     }
+            // };
 
-            let mut values_account_data = values_account_data_ref_cell.write().await;
+            let mut values_account_data = values_account_data_ref_cell.account_data.write().await;
             let pubkey_ = pubkey.clone();
             let values_account_info = (&pubkey_, &mut *values_account_data).into_account_info();
             let values = BPTreeValues::<K,V>::try_load(&values_account_info)?;
@@ -1678,7 +1683,7 @@ mod tests {
 
     // smol::block_on(async {
 
-        let simulator = Simulator::try_new()?;
+        let simulator = Simulator::try_new_for_testing()?;
 
         let builder = simulator.new_instruction_builder()
             .with_account_templates(2)
@@ -1703,9 +1708,9 @@ mod tests {
             log_trace!("{} {}",style("~~~ inserting item ~~>").white().on_blue(), idx);
 
             // load test container
-            let mut test_container_account_data = simulator.store().lookup(&test_container_pubkey).await?
+            let mut test_container_account_data = simulator.store.lookup(&test_container_pubkey).await?
                 // .ok_or(error!("missing test_container"))?
-                .unwrap().read().await.clone();
+                .unwrap().account_data.read().await.clone();
             let test_container_account_info = (&test_container_pubkey, &mut test_container_account_data).into_account_info();
             let test_container = TestContainer::try_load(&test_container_account_info)?;
 
@@ -1768,12 +1773,12 @@ mod tests {
         }
     
         log_trace!("...");
-        simulator.store().list().await?;
+        simulator.store.list().await?;
 
 
-        let mut test_container_account_data = simulator.store().lookup(&test_container_pubkey).await?
+        let mut test_container_account_data = simulator.store.lookup(&test_container_pubkey).await?
         // .ok_or(error!("missing test_container"))?.read()?.clone();
-        .unwrap().read().await.clone();
+        .unwrap().account_data.read().await.clone();
         let test_container_account_info = (&test_container_pubkey, &mut test_container_account_data).into_account_info();
         let test_container = TestContainer::try_load(&test_container_account_info)?;
         

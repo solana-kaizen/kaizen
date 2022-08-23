@@ -1,66 +1,47 @@
 #![allow(unused_unsafe)]
 use std::*;
-// use std::collections::BTreeMap;
 use async_std::sync::RwLock;
-// use manual_future::ManualFuture;
 use std::time::Duration;
 use std::time::SystemTime;
 use std::sync::Arc;
 use async_std::path::Path;
 use async_trait::async_trait;
-use derivative::Derivative;
 use solana_program::pubkey::Pubkey;
 use solana_program::account_info::IntoAccountInfo;
-// use solana_program::instruction::Instruction;
-// use solana_program::instruction::AccountMeta;
-// use crate::program::registry::EntrypointDeclaration;
-// use crate::simulator;
 use crate::simulator::Simulator;
-// use crate::store::Store;
-// use crate::store::Disposition;
-// use workflow_log::*;
 use crate::accounts::*;
 use crate::error::*;
 use crate::result::Result;
-// use crate::macros::*;
 use crate::accounts::AccountData;
 use crate::transport::queue::TransactionQueue;
 use crate::error;
 use workflow_log::log_trace;
-// use workflow_allocator::store::Store;
 use workflow_allocator::cache::Cache;
 use solana_program::instruction::Instruction;
 use crate::transport::TransportConfig;
 use crate::transport::lookup::{LookupHandler,RequestType};
-// use core::convert::Into;
-// use core::convert::From;
 
 use solana_client::{
-    // client_error::ClientError, 
     rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig,
 };
 
 use solana_sdk::{
     commitment_config::{CommitmentConfig, CommitmentLevel},
-    // hash::Hash,
-    // message::Message,
-    // packet::PACKET_DATA_SIZE,
     signature::{read_keypair_file, Keypair, Signature},
     signer::Signer,
     transaction::Transaction,
-    // transaction_context::TransactionContext,
 };
 
 static mut TRANSPORT : Option<Arc<Transport>> = None;
 
 
-#[derive(Derivative)]
-#[derivative(Debug)]
+// #[derive(Derivative)]
+// #[derivative(Debug)]
 pub struct Transport {
 
     pub simulator : Option<Arc<Simulator>>,
     
-    #[derivative(Debug="ignore")]
+    // #[derivative(Debug="ignore")]
     pub client_ctx : Option<(RpcClient,Keypair,Pubkey)>,
 
     // #[derivative(Debug="ignore")]
@@ -72,12 +53,12 @@ pub struct Transport {
     pub config : Arc<RwLock<TransportConfig>>,
 
     // #[derivative(Debug="ignore")]
-    pub cache : Cache,
+    pub cache : Arc<Cache>,
 
     pub queue : Option<TransactionQueue>,
 
-    #[derivative(Debug="ignore")]
-    pub lookup_handler : LookupHandler<Pubkey,AccountDataReference>,
+    // #[derivative(Debug="ignore")]
+    pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
     // #[derivative(Debug="ignore")]
 }
 
@@ -110,14 +91,14 @@ impl Transport {
         // let timeout = Duration::from_secs(60u64);
         // let confirm_transaction_initial_timeout = Duration::from_secs(5u64);
         // let retries = 2usize;
+
+
+
         
         let (client_ctx, simulator) = match network {
             "simulator" | "simulation" => {
-                let simulator = Simulator::try_new()?;
-                // let simulator = match Simulator::try_new()? {
-                //     Ok(simulator) => Arc::new(simulator),
-                //     Err(err) => panic!("error creating simulator: {}", err)
-                // };
+                let simulator = Arc::new(Simulator::try_new_with_store()?);
+                // let simulator = Simulator::try_new_inproc()?;
                 (None, Some(simulator))
             },
 
@@ -184,9 +165,9 @@ impl Transport {
 
         // TODO implement transaction queue support
         let queue = None;
+        let cache = Arc::new(Cache::new_with_default_capacity());
 
         let config = Arc::new(RwLock::new(config));
-        let cache = Cache::try_new_with_default_capacity()?;
         let lookup_handler = LookupHandler::new();
 
         // let transport = Transport::new_with_inner( TransportInner {
@@ -232,9 +213,9 @@ impl Transport {
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
         match &self.simulator {
             Some(simulator) => {
-                match simulator.store().lookup(&simulator.authority()).await? {
+                match simulator.store.lookup(&simulator.authority()).await? {
                     Some(authority) => {
-                        Ok(authority.read().await.lamports)
+                        Ok(authority.lamports().await)
                     },
                     None => {
                         Err(error!("Transport: simulator dataset is missing authority account"))
@@ -345,11 +326,11 @@ impl Transport {
     }
     
 
-    async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
+    async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         match &self.simulator {
             Some(simulator) => {
-                Ok(simulator.store().lookup(pubkey).await?)
+                Ok(simulator.store.lookup(pubkey).await?)
             },
             None => {
                 let (client, _payer_kp, _payer_pk) = if let Some(client_ctx) = &self.client_ctx {
@@ -360,8 +341,8 @@ impl Transport {
 
                 let mut account = client.get_account(pubkey)?;
                 let account_info = (pubkey, &mut account).into_account_info();
-                let account_data = AccountData::from_account_info(&account_info, AccountDisposition::Storage);
-                Ok(Some(Arc::new(RwLock::new(account_data))))
+                let account_data = AccountData::clone_from_account_info(&account_info);
+                Ok(Some(Arc::new(AccountDataReference::new(account_data))))
             }
         }
     }
@@ -393,7 +374,7 @@ impl super::Interface for Transport {
 
     }
 
-    async fn execute(self : Arc<Self>, instruction : &Instruction) -> Result<()> { 
+    async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 
     // pub async fn execute_with_args(&self, program_id: &Pubkey, accounts: &[AccountMeta], data: &[u8]) -> Result<()> {
         log_trace!("execute with args");
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
@@ -410,7 +391,7 @@ impl super::Interface for Transport {
                     }
                 };
 
-                simulator.execute_entrypoint(
+                simulator.emulator.execute_entrypoint(
                     &instruction.program_id,
                     &instruction.accounts,
                     &instruction.data,
@@ -485,7 +466,7 @@ impl super::Interface for Transport {
     // Ok(self.execute_with_args(&instr.program_id, &instr.accounts, &instr.data).await?)
     }
  
-    async fn lookup(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
+    async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let account_data = self.clone().lookup_local(pubkey).await?;
 
         match account_data {
@@ -497,12 +478,12 @@ impl super::Interface for Transport {
 
     }
 
-    async fn lookup_local(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
+    async fn lookup_local(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         Ok(self.cache.lookup(pubkey).await?)
     }
 
     // async fn lookup_remote(self : Arc<Self>, pubkey:&Pubkey) -> ManualFuture<Result<Option<Arc<RwLock<AccountData>>>>> {
-    async fn lookup_remote(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
+    async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         let request_type = self.clone().lookup_handler.queue(pubkey);
         match request_type {

@@ -237,7 +237,7 @@ mod tests {
     async fn identity_init() -> Result<()> {
         workflow_allocator::container::registry::init()?;
 
-        let simulator = Simulator::try_new()?;
+        let simulator = Simulator::try_new_for_testing()?.with_mock_accounts().await?;
 
         let config = InstructionBuilderConfig::new(simulator.program_id())
             .with_authority(&simulator.authority())

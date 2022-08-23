@@ -12,7 +12,7 @@ use workflow_wasm::utils;
 use crate::transport::queue::TransactionQueue;
 use js_sys::*;
 use wasm_bindgen_futures::JsFuture;
-use derivative::Derivative;
+// use derivative::Derivative;
 use solana_program::instruction::Instruction;
 use crate::result::Result;
 // use crate::error::*;
@@ -20,7 +20,7 @@ use crate::error;
 use workflow_log::*;
 use async_trait::async_trait;
 use std::sync::Arc;
-use async_std::sync::RwLock;
+// use async_std::sync::RwLock;
 use workflow_allocator::cache::Cache;
 use std::convert::From;
 use crate::transport::TransportConfig;
@@ -127,8 +127,8 @@ mod wasm_bridge {
 
 // pub struct Transport
 
-#[derive(Derivative)]
-#[derivative(Debug)] // , Clone)]
+// #[derive(Derivative)]
+// #[derivative(Debug)] // , Clone)]
 pub struct Transport {
     pub simulator : Option<Arc<Simulator>>,
     // #[wasm_bindgen(skip)]
@@ -137,12 +137,12 @@ pub struct Transport {
     cache : Cache, //Arc<Store>,
     
     connection : JsValue,
-    wallet : JsValue,
+    // wallet : JsValue,
     // #[wasm_bindgen(skip)]
     // #[derivative(Debug="ignore")]
     // pub entrypoints : Arc<RwLock<HashMap<Pubkey,Arc<ProcessInstruction>>>>,
-    #[derivative(Debug="ignore")]
-    pub lookup_handler : LookupHandler<Pubkey,AccountDataReference>,
+    // #[derivative(Debug="ignore")]
+    pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
 
 }
 
@@ -201,9 +201,9 @@ impl Transport {
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
         match &self.simulator {
             Some(simulator) => {
-                match simulator.store().lookup(&simulator.authority()).await? {
+                match simulator.store.lookup(&simulator.authority()).await? {
                     Some(authority) => {
-                        Ok(authority.read().await.lamports)
+                        Ok(authority.lamports().await)
                     },
                     None => {
                         Err(error!("WASM::Transport: simulator dataset is missing authority account"))
@@ -214,20 +214,21 @@ impl Transport {
                 let pubkey: Pubkey = self.get_payer_pubkey()?;
                 let result = self.lookup_remote_impl(&pubkey).await?;
                 match result{
-                    Some(data_arc)=>{
-                        match Arc::try_unwrap(data_arc){
-                            Ok(data_rwlock)=>{
-                                let account_data = data_rwlock.read().await;
-                                log_trace!("account_data: {:#?}", account_data);
-                                return Ok(account_data.lamports);
-                            },
-                            Err(err)=>{
-                                return Err(error!("WASM::Transport::balance() account_data read error {:?}", err)); 
-                            }
-                        };
+                    Some(reference)=>{
+                        Ok(reference.lamports().await)
+                        // match Arc::try_unwrap(data_arc){
+                        //     Ok(data_rwlock)=>{
+                        //         let account_data = data_rwlock.read().await;
+                        //         log_trace!("account_data: {:#?}", account_data);
+                        //         return Ok(account_data.lamports);
+                        //     },
+                        //     Err(err)=>{
+                        //         return Err(error!("WASM::Transport::balance() account_data read error {:?}", err)); 
+                        //     }
+                        // };
                     },
                     None=>{
-                        return Err(error!("WASM::Transport::balance() account_data not found for {}", pubkey)); 
+                        return Err(error!("WASM::Transport::balance() unable to lookup account: {}", pubkey)); 
                     }
                 }
                 
@@ -253,7 +254,7 @@ impl Transport {
     pub fn try_new(network: &str, _config : TransportConfig) -> Result<Arc<Transport>> {
 
         // let transport = ;
-        log_trace!("Creating transport (rust)");
+        log_trace!("Creating transport (rust) for network {}", network);
         if let Some(_) = unsafe { (&TRANSPORT).as_ref() } {
             return Err(error!("Transport already initialized"));
             // log_trace!("Transport already initialized");
@@ -268,7 +269,7 @@ impl Transport {
         let solana = Self::solana()?;
         let (connection, simulator) = match network {
             "simulator" | "simulation" => {
-                (JsValue::NULL, Some(Simulator::try_new()?))
+                (JsValue::NULL, Some(Arc::new(Simulator::try_new_with_store()?)))
             },
             "mainnet-beta" | "testnet" | "devnet" => {
                 let cluster_api_url_fn = js_sys::Reflect::get(&solana,&JsValue::from("clusterApiUrl"))?;
@@ -297,21 +298,26 @@ impl Transport {
             }
         };
 
+        log_trace!("Transport interface creation ok...");
+        
         // let entrypoints = Arc::new(RwLock::new(HashMap::new()));
         let queue  = None;
-        let cache = Cache::try_new_with_default_capacity()?;
+        log_trace!("Creating caching store");
+        let cache = Cache::new_with_default_capacity();
+        log_trace!("Creating lookup handler");
         let lookup_handler = LookupHandler::new();
 
         let transport = Arc::new(Transport {
             simulator,
             connection,
-            wallet : JsValue::UNDEFINED,
+            // wallet : JsValue::UNDEFINED,
             queue,
             cache,
             lookup_handler,
         });
 
         unsafe { TRANSPORT = Some(transport.clone()); }
+        log_trace!("Transport init successful");
 
         Ok(transport)
     }
@@ -322,11 +328,11 @@ impl Transport {
         Ok(transport.clone())
     }
 
-    pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
+    pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         
         match &self.simulator {
             Some(simulator) => {
-                Ok(simulator.lookup(&pubkey).await?)
+                Ok(simulator.store.lookup(&pubkey).await?)
             },
             None => {
 
@@ -351,7 +357,7 @@ impl Transport {
                 let data = utils::try_get_vec_from_prop(&response,"data")?;
                 let _executable = utils::try_get_bool_from_prop(&response,"executable")?;
 
-                Ok(Some(Arc::new(RwLock::new(AccountData::new_static_for_storage(pubkey.clone(), owner, lamports, data, rent_epoch)))))
+                Ok(Some(Arc::new(AccountDataReference::new(AccountData::new_static_for_storage(pubkey.clone(), owner, lamports, data, rent_epoch)))))
             }
         }
     }
@@ -390,7 +396,7 @@ impl super::Interface for Transport {
 
     }
 
-    async fn execute(self: Arc<Self>, instruction : &Instruction) -> Result<()> { 
+    async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 
         log_trace!("transport execute");
         match &self.simulator {
             Some(simulator) => {
@@ -501,23 +507,23 @@ impl super::Interface for Transport {
     }
     
     
-    async fn lookup(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
-        let account_data = self.clone().lookup_local(pubkey).await?;
-        match account_data {
-            Some(account_data) => Ok(Some(account_data)),
+    async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+        let reference = self.clone().lookup_local(pubkey).await?;
+        match reference {
+            Some(reference) => Ok(Some(reference)),
             None => {
                 Ok(self.lookup_remote(pubkey).await?)
             }
         }
     }
 
-    async fn lookup_local(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
+    async fn lookup_local(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let pubkey = Arc::new(pubkey.clone());
         Ok(self.cache.lookup(&pubkey).await?)
     }
 
 
-    async fn lookup_remote(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
+    async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         let request_type = self.clone().lookup_handler.queue(pubkey);
         match request_type {

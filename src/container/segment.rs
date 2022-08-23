@@ -912,7 +912,7 @@ mod tests {
     fn allocator_segment_resize() -> Result<()> {
 
         // log_trace!("hello world");
-        let mut container = AccountDataInstance::new(128);
+        let mut container = MockAccountDataInstance::new(128);
         let _account = container.into_account_info();
 
         // FIXME implement allocator_segment_resize
@@ -954,7 +954,7 @@ mod tests {
         // return Ok(());
 
         // let aa = AccountContainer::new(128).into_account_info();
-        let mut container = AccountDataInstance::new(128);
+        let mut container = MockAccountDataInstance::new(128);
         let account = container.into_account_info();
         // let account = AccountContainer::new(128).into_account_info();
         // let account = AccountContainer::new(128).into_account_info();

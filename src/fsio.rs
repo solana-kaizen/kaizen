@@ -4,13 +4,13 @@ use std::borrow::Cow;
 use std::io::prelude::*;
 use std::path::Path;
 use crate::accounts::AccountData;
-use crate::store::Store;
+use crate::store::MemoryStore;
 use solana_program::account_info::{AccountInfo, IntoAccountInfo};
 use solana_program::pubkey::Pubkey;
 use workflow_log::*;
 use crate::result::Result;
 
-pub async fn store_accounts(path_str : &str, store : &Store) -> Result<()> {
+pub async fn store_accounts(path_str : &str, store : &MemoryStore) -> Result<()> {
     let mut path = String::from(path_str);
     if path.ends_with('/') { path.pop(); }
     fs::remove_dir_all(&path).ok();//.unwrap();

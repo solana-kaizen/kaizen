@@ -1,27 +1,32 @@
-#[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
-use solana_client::client_error::ClientErrorKind;
-#[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
-use solana_client::rpc_request;
-#[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
-use solana_client::rpc_response;
+use cfg_if::cfg_if;
+
+cfg_if! {
+    if #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))] {
+        use solana_client::client_error::ClientError;
+        use solana_client::client_error::ClientErrorKind;
+        use solana_client::rpc_request;
+        use solana_client::rpc_response;
+        use std::ffi::OsString;
+    }
+}
+
+cfg_if! {
+    if #[cfg(not(target_arch = "bpf"))] {
+        use std::sync::PoisonError;
+    }
+}
+
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::pubkey::ParsePubkeyError;
 use std::convert::From;
 use std::cell::{BorrowError,BorrowMutError};
-use std::sync::PoisonError;
+use workflow_log::log_trace;
 use std::io::Error as IoError;
 
 // #[cfg(not(target_arch = "bpf"))]
-// use thiserror::private::AsDynError;
-
-// #[cfg(not(target_arch = "bpf"))]
-use workflow_log::log_trace;
-
-#[cfg(not(target_arch = "bpf"))]
-use caches::lru::CacheError;
-#[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
-use solana_client::client_error::ClientError;
+// use caches::lru::CacheError;
+// #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
 
 // pub use crate::result::Result;
 
@@ -38,6 +43,7 @@ pub enum ErrorCode {
     BorrowError,
     BorrowMutError,
     IoError,
+    OsString,
     ReadOnlyAccess,
     EntryNotFound,
     AuthorityMustSign,
@@ -86,7 +92,7 @@ pub enum ErrorCode {
     BPTreeNoSuchRecord,
     ParsePubkeyWrongSize,
     ParsePubkeyInvalid,
-    CacheError,
+    // CacheError,
     LookupError,
 
     MissingClient,
@@ -116,10 +122,13 @@ pub enum Variant {
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
     ClientError(ClientError),
 
-    #[cfg(not(target_arch = "bpf"))]
-    CacheError(CacheError),
+    // #[cfg(not(target_arch = "bpf"))]
+    // CacheError(CacheError),
     
     IoError(IoError),
+
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+    OsString(OsString),
     
     // #[cfg(target_arch = "wasm32")]
     #[cfg(not(target_arch = "bpf"))]
@@ -155,9 +164,13 @@ impl Variant {
 
             // },
 
-            #[cfg(not(target_arch = "bpf"))]
-            Variant::CacheError(error) => {
-                format!("cache error: {:?}", error)
+            // #[cfg(not(target_arch = "bpf"))]
+            // Variant::CacheError(error) => {
+            //     format!("cache error: {:?}", error)
+            // },
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+            Variant::OsString(os_str) => {
+                format!("OsString error: {:?}", os_str)
             },
             Variant::IoError(error) => {
                 format!("I/O error: {:?}", error)
@@ -491,6 +504,7 @@ impl From<ProgramError> for Error {
     }
 }
 
+#[cfg(not(target_arch = "bpf"))]
 impl<T> From<PoisonError<T>> for Error {
     fn from(error: PoisonError<T>) -> Error {
         Error::new()
@@ -507,18 +521,27 @@ impl From<BorrowError> for Error {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
-impl From<CacheError> for Error {
-    fn from(error: CacheError) -> Error {
-        Error::new()
-            .with_variant(Variant::CacheError(error))
-    }
-}
+// #[cfg(not(target_arch = "bpf"))]
+// impl From<CacheError> for Error {
+//     fn from(error: CacheError) -> Error {
+//         Error::new()
+//             .with_variant(Variant::CacheError(error))
+//     }
+// }
 
+// #[cfg(not(target_arch = "bpf"))]
 impl From<IoError> for Error {
     fn from(error: IoError) -> Error {
         Error::new()
             .with_variant(Variant::IoError(error))
+    }
+}
+
+#[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+impl From<OsString> for Error {
+    fn from(os_str: OsString) -> Error {
+        Error::new()
+            .with_variant(Variant::OsString(os_str))
     }
 }
 
@@ -580,12 +603,21 @@ impl From<Error> for ProgramError {
                     //     // panic!("PoisonError should be converted to ProgramError");
                     //     ProgramError::Custom(ErrorCode::PoisonError as u32)
                     // },
-                    #[cfg(not(target_arch = "bpf"))]
-                    Variant::CacheError(_) => {
-                        panic!("converting CacheError to ProgramError is not supported")
+                    // #[cfg(not(target_arch = "bpf"))]
+                    // Variant::CacheError(_) => {
+                    //     panic!("converting CacheError to ProgramError is not supported")
+                    //     // ProgramError::Custom(0)
+                    //     // ProgramError::Custom(ErrorCode::BorrowError as u32)
+                    // },
+                    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+                    Variant::OsString(os_str) => {
+                        log_trace!("OsString error: {:?}",os_str);
+                        ProgramError::Custom(ErrorCode::OsString as u32)
+                        // panic!("converting IoError to ProgramError is not supported")
                         // ProgramError::Custom(0)
                         // ProgramError::Custom(ErrorCode::BorrowError as u32)
                     },
+                    // #[cfg(not(target_arch = "bpf"))]
                     Variant::IoError(error) => {
                         log_trace!("I/O error: {}",error);
                         ProgramError::Custom(ErrorCode::IoError as u32)
