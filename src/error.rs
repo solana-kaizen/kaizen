@@ -12,6 +12,7 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
+        use workflow_rpc::asynchronous::error::RpcResponseError;
         use std::sync::PoisonError;
     }
 }
@@ -23,6 +24,8 @@ use std::convert::From;
 use std::cell::{BorrowError,BorrowMutError};
 use workflow_log::log_trace;
 use std::io::Error as IoError;
+use borsh::{BorshSerialize,BorshDeserialize};
+use serde::{Serialize,Deserialize};
 
 // #[cfg(not(target_arch = "bpf"))]
 // use caches::lru::CacheError;
@@ -30,7 +33,7 @@ use std::io::Error as IoError;
 
 // pub use crate::result::Result;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum ErrorCode {
 
@@ -97,6 +100,9 @@ pub enum ErrorCode {
 
     MissingClient,
     ClientError,
+    RpcError,
+    ChannelSendError,
+    ChannelRecvError,
 
     // WebSocketEncoding,
     // WebSocketDataType,
@@ -130,10 +136,13 @@ pub enum Variant {
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
     OsString(OsString),
     
+    #[cfg(not(target_arch = "bpf"))]
+    RpcError(workflow_rpc::asynchronous::client::error::Error),
     // #[cfg(target_arch = "wasm32")]
     #[cfg(not(target_arch = "bpf"))]
     // #[cfg(not(target_arch = "bpf"))]
-    JsValue(wasm_bindgen::JsValue)
+    // JsValue(wasm_bindgen::JsValue)
+    JsValue(String)
 }
 
 impl Clone for Variant {
@@ -144,6 +153,7 @@ impl Clone for Variant {
             Variant::BorrowMutError(_) => { Variant::ErrorCode(ErrorCode::BorrowMutError) },
             #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
             Variant::ClientError(_) => { Variant::ErrorCode(ErrorCode::ClientError) },
+            // Variant::RpcError(e) => { Variant::ErrorCode(ErrorCode::ClientError) },
             v => v.clone()
         }
     }
@@ -186,6 +196,10 @@ impl Variant {
             #[cfg(not(target_arch = "bpf"))]
             Variant::JsValue(js_value) => {
                 format!("{:?}",js_value)
+            }
+            #[cfg(not(target_arch = "bpf"))]
+            Variant::RpcError(err) => {
+                format!("{:?}",err)
             }
             #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
             Variant::ClientError(client_error) => {
@@ -457,6 +471,13 @@ impl Error {
 //     ProgramError(ProgramError)
 // }
 
+#[cfg(not(target_arch = "bpf"))]
+impl From<Error> for RpcResponseError {
+    fn from(err: Error) -> Self {
+        RpcResponseError::Text(err.to_string())
+    }
+}
+
 impl From<String> for Error {
     fn from(string: String) -> Error {
         Error::new()
@@ -562,7 +583,7 @@ impl From<Error> for String {
 impl From<Error> for wasm_bindgen::JsValue {
     fn from(error: Error) -> wasm_bindgen::JsValue {
         match error.variant {
-            Some(Variant::JsValue(js_value)) => js_value,
+            Some(Variant::JsValue(js_value)) => wasm_bindgen::JsValue::from_str(&js_value),
             _ => {
                 wasm_bindgen::JsValue::from(format!("{:?}", error))
             }
@@ -574,8 +595,35 @@ impl From<Error> for wasm_bindgen::JsValue {
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(error: wasm_bindgen::JsValue) -> Error {
         Error::new()
-            .with_variant(Variant::JsValue(error))
+            .with_variant(Variant::JsValue(format!("{:?}", error)))
         // JsValue::from(format!("{:?}", error))
+    }
+}
+
+#[cfg(not(target_arch = "bpf"))]
+impl From<workflow_rpc::asynchronous::client::error::Error> for Error {
+    fn from(error: workflow_rpc::asynchronous::client::error::Error) -> Error {
+        Error::new()
+            .with_variant(Variant::RpcError(error))
+        // JsValue::from(format!("{:?}", error))
+    }
+}
+
+#[cfg(not(target_arch = "bpf"))]
+impl From<async_std::channel::RecvError> for Error {
+    fn from(error: async_std::channel::RecvError) -> Error {
+        Error::new()
+            .with_code(ErrorCode::ChannelRecvError)
+            .with_message(&format!("{}", error))
+    }
+}
+
+#[cfg(not(target_arch = "bpf"))]
+impl<T> From<async_std::channel::SendError<T>> for Error {
+    fn from(error: async_std::channel::SendError<T>) -> Error {
+        Error::new()
+            .with_code(ErrorCode::ChannelSendError)
+            .with_message(&format!("{}", error))
     }
 }
 
@@ -644,6 +692,10 @@ impl From<Error> for ProgramError {
                     #[cfg(not(target_arch = "bpf"))]
                     Variant::JsValue(_error) => {
                         ProgramError::Custom(0)
+                    },
+                    #[cfg(not(target_arch = "bpf"))]
+                    Variant::RpcError(_error) => {
+                        ProgramError::Custom(ErrorCode::RpcError as u32)
                     },
                     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
                     Variant::ClientError(_error) => {

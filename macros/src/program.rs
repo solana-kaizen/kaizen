@@ -118,6 +118,10 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         &format!("entrypoint_declaration_register_{}",program_id_string), 
         Span::call_site()
     );
+    // let program_declaration_ = Ident::new(
+    //     &format!("program_declaration_{}",program_id_string), 
+    //     Span::call_site()
+    // );
 
 
     let output = quote!{
@@ -125,6 +129,14 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
 
         solana_program::declare_id!(#program_id);
         solana_program::entrypoint!(process_instruction);
+
+        #[inline(never)]
+        pub fn init() -> solana_program::pubkey::Pubkey { id() }
+
+        // #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))]
+        // lazy_static::lazy_static!{
+        //     static ref #program_declaration_ : String = #program_name.to_string();
+        // }
 
         pub fn program_id() -> solana_program::pubkey::Pubkey { id() }
 

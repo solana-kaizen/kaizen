@@ -68,6 +68,7 @@ pub mod registry {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn init() -> Result<()> {
+        // log_trace!("program entrypoing init");
         let registry = global();
         let mut map = registry.write()?;
         if map.len() != 0 {

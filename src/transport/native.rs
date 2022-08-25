@@ -13,8 +13,8 @@ use crate::accounts::*;
 use crate::error::*;
 use crate::result::Result;
 use crate::accounts::AccountData;
+use crate::simulator::interface::EmulatorInterface;
 use crate::transport::queue::TransactionQueue;
-use crate::error;
 use workflow_log::log_trace;
 use workflow_allocator::cache::Cache;
 use solana_program::instruction::Instruction;
@@ -37,9 +37,11 @@ static mut TRANSPORT : Option<Arc<Transport>> = None;
 
 // #[derive(Derivative)]
 // #[derivative(Debug)]
-pub struct Transport {
+pub struct Transport
+// where Arc<dyn EmulatorInterface> : Sized
+{
 
-    pub simulator : Option<Arc<Simulator>>,
+    pub emulator : Option<Arc<Box<dyn EmulatorInterface>>>,
     
     // #[derivative(Debug="ignore")]
     pub client_ctx : Option<(RpcClient,Keypair,Pubkey)>,
@@ -68,15 +70,15 @@ pub struct Transport {
 // #[wasm_bindgen]
 impl Transport {
 
-    pub fn simulator(&self) -> Result<Arc<Simulator>> {
-        match &self.simulator {
-            Some(simulator) => Ok(simulator.clone()),
-            None => {
-                panic!("Transport is missing simulator")
-                // Err(error!("transport is missing simulator"))
-            }
-        }
-    }
+    // pub fn simulator(&self) -> Result<Arc<Simulator>> {
+    //     match &self.simulator {
+    //         Some(simulator) => Ok(simulator.clone()),
+    //         None => {
+    //             panic!("Transport is missing simulator")
+    //             // Err(error!("transport is missing simulator"))
+    //         }
+    //     }
+    // }
 
     pub async fn try_new_for_unit_tests(config : TransportConfig) -> Result<Arc<Transport>> {
         let mut transport_env_var = std::env::var("TRANSPORT").unwrap_or("simulator".into());
@@ -95,11 +97,11 @@ impl Transport {
 
 
         
-        let (client_ctx, simulator) = match network {
+        let (client_ctx, emulator) = match network {
             "simulator" | "simulation" => {
-                let simulator = Arc::new(Simulator::try_new_with_store()?);
+                let emulator: Arc<Box<dyn EmulatorInterface>> = Arc::new(Box::new(Simulator::try_new_with_store()?));
                 // let simulator = Simulator::try_new_inproc()?;
-                (None, Some(simulator))
+                (None, Some(emulator))
             },
 
             // TODO: native
@@ -172,7 +174,7 @@ impl Transport {
 
         // let transport = Transport::new_with_inner( TransportInner {
         let transport = Transport {
-            simulator,
+            emulator,
             client_ctx,
             // entrypoints,
             config,
@@ -211,16 +213,18 @@ impl Transport {
     pub async fn balance(&self) -> Result<u64> {
 
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
-        match &self.simulator {
-            Some(simulator) => {
-                match simulator.store.lookup(&simulator.authority()).await? {
-                    Some(authority) => {
-                        Ok(authority.lamports().await)
-                    },
-                    None => {
-                        Err(error!("Transport: simulator dataset is missing authority account"))
-                    }
-                }
+        match &self.emulator {
+            Some(emulator) => {
+                // TODO emulator
+                // match emulator.lookup(&simulator.authority()).await? {
+                //     Some(authority) => {
+                //         Ok(authority.lamports().await)
+                //     },
+                //     None => {
+                //         Err(error!("Transport: simulator dataset is missing authority account"))
+                //     }
+                // }
+                unimplemented!("transport authority")
             },
             None => {
                 // let inner = self.try_inner()?;
@@ -248,9 +252,12 @@ impl Transport {
 
     pub fn get_payer_pubkey(&self) -> Result<Pubkey> {
         // let simulator = { self.try_inner()?.simulator.clone() };
-        match &self.simulator {
-            Some(simulator) => {
-                Ok(simulator.authority())
+        match &self.emulator {
+            Some(emulator) => {
+                // TODO emulator
+                unimplemented!("transport authority")
+                // Err(error!(""))
+                // Ok(emulator.authority())
             },
             None => {
                 // let inner = self.try_inner()?;
@@ -328,9 +335,9 @@ impl Transport {
 
     async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        match &self.simulator {
-            Some(simulator) => {
-                Ok(simulator.store.lookup(pubkey).await?)
+        match &self.emulator {
+            Some(emulator) => {
+                Ok(emulator.clone().lookup(pubkey).await?)
             },
             None => {
                 let (client, _payer_kp, _payer_pk) = if let Some(client_ctx) = &self.client_ctx {
@@ -356,9 +363,11 @@ impl super::Interface for Transport {
 // impl Transport {
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
         // let simulator = { self.try_inner()?.simulator.clone() };
-        match &self.simulator {
-            Some(simulator) => {
-                Ok(simulator.authority())
+        match &self.emulator {
+            Some(emulator) => {
+                // TODO emulator
+                unimplemented!("transport authority")
+                // Ok(simulator.authority())
             },
             None => {
                 // let inner = self.try_inner()?;
@@ -378,24 +387,26 @@ impl super::Interface for Transport {
     // pub async fn execute_with_args(&self, program_id: &Pubkey, accounts: &[AccountMeta], data: &[u8]) -> Result<()> {
         log_trace!("execute with args");
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
-        match &self.simulator {
-            Some(simulator) => {
+        match &self.emulator {
+            Some(emulator) => {
 
-                let fn_entrypoint = {
-                    match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
-                        Some(entry_point) => { entry_point.entrypoint_fn },
-                        None => {
-                            log_trace!("program entrypoint not found: {:?}",instruction.program_id);
-                            return Err(error!("program entrypoint not found: {:?}",instruction.program_id).into());
-                        }
-                    }
-                };
+                // let fn_entrypoint = {
+                //     match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
+                //         Some(entry_point) => { entry_point.entrypoint_fn },
+                //         None => {
+                //             log_trace!("program entrypoint not found: {:?}",instruction.program_id);
+                //             return Err(error!("program entrypoint not found: {:?}",instruction.program_id).into());
+                //         }
+                //     }
+                // };
 
-                simulator.emulator.execute_entrypoint(
-                    &instruction.program_id,
-                    &instruction.accounts,
-                    &instruction.data,
-                    fn_entrypoint
+
+                emulator.clone().execute(
+                    instruction
+                    // &instruction.program_id,
+                    // &instruction.accounts,
+                    // &instruction.data,
+                    // // fn_entrypoint
                 ).await?;
 
             },

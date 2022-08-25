@@ -21,11 +21,11 @@ const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         pub struct Cache {
-            cache_store : Arc<Mutex<MokaCache<Pubkey,Arc<AccountDataReference>>>>
+            cache_impl : Arc<Mutex<MokaCache<Pubkey,Arc<AccountDataReference>>>>
         }
     } else {
         pub struct Cache {
-            cache_store : MokaCache<Pubkey,Arc<AccountDataReference>>
+            cache_impl : MokaCache<Pubkey,Arc<AccountDataReference>>
         }
     }
 }
@@ -33,20 +33,19 @@ cfg_if! {
 impl Cache {
 
     pub fn new_with_capacity(capacity: u64) -> Cache {
-        log_trace!("init moka");
-        let cache_store = MokaCache::builder()
+        log_trace!("init account data cache with {} MiB capacity", capacity/1024/1024);
+        let cache_impl = MokaCache::builder()
         .weigher(|_key, reference: &Arc<AccountDataReference>| -> u32 {
             reference.data_len as u32
         })
         .max_capacity(capacity)
         .build();
-        log_trace!("init moka ok");
 
         cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
-                Self { cache_store : Arc::new(Mutex::new(cache_store)) }
+                Self { cache_impl : Arc::new(Mutex::new(cache_impl)) }
             } else {
-                Self { cache_store }
+                Self { cache_impl }
             }
         }
     }
@@ -60,23 +59,34 @@ impl Cache {
 
             #[inline(always)]
             pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-                Ok(self.cache_store.lock().await.get(pubkey).cloned())
+                Ok(self.cache_impl.lock().await.get(pubkey).cloned())
             }
             
             #[inline(always)]
-            pub async fn store(&mut self, reference : &Arc<AccountDataReference>) -> Result<()> {
-                Ok(self.cache_store.lock().await.insert(*reference.key,reference.clone()))
+            pub async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
+                Ok(self.cache_impl.lock().await.insert(*reference.key,reference.clone()))
+            }
+
+            #[inline(always)]
+            pub async fn purge(&self, pubkey : &Pubkey) -> Result<()> {
+                Ok(self.cache_impl.lock().await.invalidate(pubkey))
             }
 
         } else {
             
+            #[inline(always)]
             pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-                Ok(self.cache_store.get(pubkey))
+                Ok(self.cache_impl.get(pubkey))
             }
             
             #[inline(always)]
-            pub async fn store(&mut self, reference : &Arc<AccountDataReference>) -> Result<()> {
-                Ok(self.cache_store.insert(*reference.key,reference.clone()))
+            pub async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
+                Ok(self.cache_impl.insert(*reference.key,reference.clone()))
+            }
+
+            #[inline(always)]
+            pub async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+                Ok(self.cache_impl.invalidate(&pubkey))
             }
 
         }

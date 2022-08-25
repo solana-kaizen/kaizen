@@ -1,7 +1,9 @@
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use ahash::AHashSet;
+use async_trait::async_trait;
 use solana_program::instruction::Instruction;
+// use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
 use solana_program::sysvar::slot_history::AccountInfo;
@@ -18,11 +20,11 @@ use workflow_allocator::builder::{
     InstructionBuilder,
     // InstructionBuilderConfig
 };
-use crate::accounts::AccountData;
-use crate::container::try_get_container_type;
-
-
+use workflow_allocator::accounts::AccountData;
+use workflow_allocator::container::try_get_container_type;
 use workflow_allocator::store;
+
+use super::interface::{EmulatorInterface, ExecutionResponse};
 
 
 pub struct Emulator {
@@ -31,50 +33,35 @@ pub struct Emulator {
 
 impl Emulator {
 
-    pub fn new(store : Arc<dyn store::Store>) -> Self {
-        Emulator { store : store }
+    pub fn new(
+        store : Arc<dyn store::Store>,
+    ) -> Self {
+        Emulator { 
+            store,
+        }
     }
 
-    pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        Ok(self.store.lookup(pubkey).await?)
-    }
-
-    pub async fn execute_entrypoint(
+    pub fn execute_entrypoing_impl(
         &self,
         program_id: &Pubkey,
-        accounts: &[AccountMeta],
+        // accounts : &Arc<Mutex<Vec<AccountInfo>>>,
+        accounts : &Vec<AccountInfo>,
         instruction_data: &[u8],
-
         entrypoint: ProcessInstruction,
+
     ) -> Result<()> {
-        // let store = self.store();
-        let mut account_data = self.program_local_load(program_id, accounts).await?;
-        let mut accounts = Vec::new();
-        for (pubkey, account_data) in account_data.iter_mut() {
-            let is_signer = account_data.is_signer;
-            let is_writable = account_data.is_writable;
-            let mut account_info = (&*pubkey, account_data).into_account_info();
-
-            // pass signer and writer flags from the source account
-            account_info.is_signer = is_signer;
-            account_info.is_writable = is_writable;
-
-            accounts.push(account_info);
-        }
-
         log_trace!("▷ entrypoint begin");
+        // let accounts = accounts.lock().unwrap();
         match entrypoint(program_id, &accounts[..], instruction_data) {
             Ok(_) => {}
             Err(e) => return Err(error!("entrypoint error: {:?}", e)),
         }
         log_trace!("◁ entrypoint end");
-        self.program_local_store(&accounts).await?;
-
         Ok(())
     }
 
     pub async fn execute_handler(
-        &self,
+        self : Arc<Self>,
         builder: InstructionBuilder,
         handler: SimulationHandlerFn,
     ) -> Result<()> {
@@ -82,7 +69,7 @@ impl Emulator {
         // let store = self.store();
         let ec: Instruction = builder.try_into()?;
         let mut account_data = self.program_local_load(&ec.program_id, &ec.accounts).await?;
-        let mut accounts = Vec::new();
+        let accounts = Arc::new(Mutex::new(Vec::new()));
         for (pubkey, account_data) in account_data.iter_mut() {
             let is_signer = account_data.is_signer;
             let is_writable = account_data.is_writable;
@@ -92,8 +79,9 @@ impl Emulator {
             account_info.is_signer = is_signer;
             account_info.is_writable = is_writable;
 
-            accounts.push(account_info);
+            accounts.lock().unwrap().push(account_info);
         }
+        let accounts = accounts.lock().unwrap();
         let ctx: Context = (
             &ec.program_id,
             &accounts[..],
@@ -110,7 +98,7 @@ impl Emulator {
                 // return Err(err.message());
             }
         }
-        self.program_local_store(&accounts).await?;
+        // self.program_local_store(&accounts).await?;
 
         Ok(())
     }
@@ -129,8 +117,10 @@ impl Emulator {
 
 
     /// Load multiple accounts from local store for test program usage
+    // pub async fn program_local_load(self : Arc<Self>, program_id : &Pubkey, accounts : &[AccountMeta]) -> Result<Vec<(Pubkey,AccountData)>> {
     pub async fn program_local_load(&self, program_id : &Pubkey, accounts : &[AccountMeta]) -> Result<Vec<(Pubkey,AccountData)>> {
 
+        // let self_ = self.clone();
         let mut keyset = AHashSet::<Pubkey>::new();
 
         let mut account_data_vec = Vec::new();
@@ -146,7 +136,7 @@ impl Emulator {
                 keyset.insert(pubkey.clone());
             }
 
-            let mut account_data = match self.store.lookup(&pubkey).await? {
+            let mut account_data = match self.clone().lookup(&pubkey).await? {
                 Some(reference) => {
                     let account_data = reference.clone_for_program().await;//account_data.clone_for_prog//read().await.ok_or(error!("account read lock failed"))?.clone_for_program();
 
@@ -200,11 +190,13 @@ impl Emulator {
     }
 
 
-    pub async fn program_local_store<'t>(&self, accounts : &[AccountInfo<'t>]) -> Result<()> {
+    pub async fn program_local_store<'t>(&self, accounts : &Arc<Mutex<Vec<AccountInfo<'t>>>>) -> Result<()> {
         // pub async fn program_local_store(&self, accounts : Vec<AccountInfo>) -> Result<()> {
         // pub async fn program_local_store<'info>(&self, accounts : Vec<AccountInfo>) -> Result<()> {
 
-        for account_info in accounts.iter() {
+        // let accounts = accounts.lock().unwrap();
+
+        for account_info in accounts.lock().unwrap().iter() {
             // if false 
             {
                 let rent = Rent::default();
@@ -266,11 +258,66 @@ impl Emulator {
         Ok(())
     }
     
-
-
-
-
-
+    // async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
+    //     self.store.store(reference).await?;
+    //     Ok(())
+    // }
 
 }
 
+#[async_trait]
+impl EmulatorInterface for Emulator {
+
+    // async fn lookup(self : Arc<Self>, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+        Ok(self.store.lookup(pubkey).await?)
+    }
+
+    async fn execute(
+        // self : Arc<Self>,
+        &self,
+        // &self,
+        instruction : &solana_program::instruction::Instruction
+        // program_id: &Pubkey,
+        // accounts: &[AccountMeta],
+        // instruction_data: &[u8],
+
+        // entrypoint: ProcessInstruction,
+    ) -> Result<ExecutionResponse> {
+
+        let entrypoint = {
+            match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
+                Some(entry_point) => { entry_point.entrypoint_fn },
+                None => {
+                    log_trace!("program entrypoint not found: {:?}",instruction.program_id);
+                    return Err(error!("program entrypoint not found: {:?}",instruction.program_id).into());
+                }
+            }
+        };
+
+        // let store = self.store();
+        let mut account_data = self.clone().program_local_load(&instruction.program_id, &instruction.accounts).await?;
+        // let accounts = Arc::new(Mutex::new(Vec::new()));
+        let mut accounts = Vec::new();
+        for (pubkey, account_data) in account_data.iter_mut() {
+            let is_signer = account_data.is_signer;
+            let is_writable = account_data.is_writable;
+            let mut account_info = (&*pubkey, account_data).into_account_info();
+
+            // pass signer and writer flags from the source account
+            account_info.is_signer = is_signer;
+            account_info.is_writable = is_writable;
+
+            // accounts.lock().unwrap().push(account_info);
+            accounts.push(account_info);
+        }
+
+        self.clone().execute_entrypoing_impl(&instruction.program_id, &accounts, &instruction.data, entrypoint)?;
+
+        // let accounts = accounts.into_inner().unwrap
+        // self.program_local_store(&accounts).await?;
+
+        Ok(ExecutionResponse::new(None,None))
+    }
+
+}

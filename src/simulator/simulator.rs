@@ -1,45 +1,29 @@
 use std::sync::Arc;
-use solana_program::entrypoint::ProcessInstruction;
-use solana_program::instruction::AccountMeta;
+use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use workflow_allocator::store;
 use workflow_allocator::result::Result;
 use workflow_allocator::accounts::{ AccountData, AccountDataReference };
 use workflow_allocator::builder::{ InstructionBuilder, InstructionBuilderConfig };
-
+use workflow_allocator::context::SimulationHandlerFn;
+use super::interface::{EmulatorInterface, ExecutionResponse};
 use super::mockdata::InProcMockData;
 use super::emulator::Emulator;
-
-use workflow_allocator::context::SimulationHandlerFn;
-
+use async_trait::async_trait;
 
 pub struct Simulator {
-    // lamports: u64,
-
     pub inproc_mock_data : Option<InProcMockData>,
-
-    // #[wasm_bindgen(skip)]
-    // #[derivative(Debug="ignore")]
     pub store: Arc<dyn store::Store>, 
-
-    pub emulator: Emulator,
-    // MemoryStore,
+    pub emulator: Arc<Emulator>,
 }
 
-// declare_async_rwlock!(Simulator, SimulatorInner);
-
-// #[wasm_bindgen]
 impl Simulator {
 
-    // pub fn store(&self) -> Arc<Store> {
-    //     self.store
-    // }
-
-    pub fn new(store: Arc<dyn store::Store>) -> Simulator {
-        let executor = Emulator::new(store.clone());
+    pub fn new(store: &Arc<dyn store::Store>) -> Simulator {
+        let emulator = Arc::new(Emulator::new(store.clone()));
         Simulator {
-            store,
-            emulator: executor,
+            store : store.clone(),
+            emulator,
             inproc_mock_data : None,
         }
     }
@@ -47,39 +31,24 @@ impl Simulator {
     
     pub fn try_new_with_store() -> Result<Simulator> {
         let store = Arc::new(store::MemoryStore::new_local()?);
-        let executor = Emulator::new(store.clone());
+        let emulator = Arc::new(Emulator::new(store.clone()));
         let simulator = Simulator {
             store,
-            emulator: executor,
+            emulator,
             inproc_mock_data : None,
         };
         Ok(simulator)
     }
 
-
-
-    // #[wasm_bindgen(constructor)]
     pub fn try_new_for_testing() -> Result<Simulator> {
         let store = Arc::new(store::MemoryStore::new_local()?);
-        let executor = Emulator::new(store.clone());
-
-
-        {
-            // let mut store_inner = store.inner_mut().unwrap();
-            // let store = self.store.;
-            // let identity_account_data = Arc::new(RwLock::new(identity_account_data));
-        }
-
+        let emulator = Arc::new(Emulator::new(store.clone()));
         let inproc_mock_data = Some(InProcMockData::new());
 
         let simulator = Simulator {//}::new_with_inner(SimulatorInner {
             store,
-            emulator: executor,
+            emulator,
             inproc_mock_data,
-            // lamports,
-            // authority,
-            // identity,
-            // program_id,
         };
 
         Ok(simulator)
@@ -171,26 +140,27 @@ impl Simulator {
 
         builder
     }
-
     
-    pub async fn execute_entrypoint(
-        &self,
-        program_id: &Pubkey,
-        accounts: &[AccountMeta],
-        instruction_data: &[u8],
-
-        entrypoint: ProcessInstruction,
-    ) -> Result<()> {
-        self.emulator.execute_entrypoint(program_id, accounts, instruction_data, entrypoint).await
-    }
-
     pub async fn execute_handler(
         &self,
         builder: InstructionBuilder,
         handler: SimulationHandlerFn,
     ) -> Result<()> {
-        self.emulator.execute_handler(builder,handler).await
+        self.emulator.clone().execute_handler(builder,handler).await
     }
+}
 
-
+#[async_trait]
+impl EmulatorInterface for Simulator {
+    // async fn lookup(self : Arc<Self>, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+        self.emulator.clone().lookup(pubkey).await
+    }
+    async fn execute(
+        // self : Arc<Self>,
+        &self,
+        instruction : &Instruction,
+    ) -> Result<ExecutionResponse> {
+        self.emulator.clone().execute(instruction).await
+    }
 }

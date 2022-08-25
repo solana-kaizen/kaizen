@@ -8,7 +8,7 @@ use solana_program::pubkey::Pubkey;
 use workflow_allocator::container::Containers;
 
 #[derive(Debug, Copy, Clone)]
-#[repr(C)]
+#[repr(packed)]
 pub struct IdentityProxyMeta {
     version : u32,
     pubkey : Pubkey,

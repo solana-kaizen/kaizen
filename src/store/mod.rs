@@ -15,12 +15,12 @@ cfg_if! {
 }
 
 #[async_trait]
-pub trait Store // : Sized
+pub trait Store : Sync + Send // : Sized
 // where 
 //     Self : Sized,
 //     Arc<Self>: Sized
 {
-    async fn list(self : &Self) -> Result<()>;
+    async fn list(&self) -> Result<()>;
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn store(&self, reference: &Arc<AccountDataReference>) -> Result<()>;
     async fn purge(&self, pubkey: &Pubkey) -> Result<()>;

@@ -66,6 +66,7 @@ mod client {
     use std::sync::{ Arc, Mutex };
     use async_std::sync::RwLock;
     use borsh::{BorshDeserialize, BorshSerialize};
+    use serde::{Deserialize, Serialize};
     use std::time::Instant;
     // use atomic_instant::AtomicInstant;
     use solana_program::account_info::IntoAccountInfo;
@@ -103,7 +104,7 @@ mod client {
         pub fn new(account_data : AccountData) -> Self {
             let key = Arc::new(account_data.key.clone());
             let timestamp = Arc::new(Mutex::new(Instant::now()));
-            let data_len = account_data.data.len();
+            let data_len = account_data.data.len() - ACCOUNT_DATA_OFFSET;
             let container_type = account_data.container_type().unwrap_or(0);
 
             AccountDataReference {
@@ -131,7 +132,7 @@ mod client {
 
 
     #[cfg(not(target_arch = "bpf"))]
-    #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
+    #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub struct AccountData {
         pub key: Pubkey,
         pub owner: Pubkey,
