@@ -34,6 +34,7 @@ pub enum Containers {
     PDATestInterface,
 
     FrameworkContainers = Ranges::Framework as u32,
+    Root,
     IdentityProxy,
     Identity,
     PGPPubkey,
@@ -116,11 +117,13 @@ pub mod registry {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn init() -> Result<()> {
+        // println!("initializing container registry...");
         let registry = global();
         let mut map = registry.write()?;
         // let mut map = global().write()?;
         if map.len() != 0 {
-            panic!("entrypoint type registry is already initialized");
+            // println!("existing container registry: {:?}", map);
+            panic!("container registry is already initialized");
         }
 
         for container_declaration in inventory::iter::<workflow_allocator::container::registry::ContainerDeclaration> {

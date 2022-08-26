@@ -22,7 +22,7 @@ impl From<&instruction::AccountMeta> for AccountMeta {
     }
 }
 
-impl Into<instruction::AccountMeta> for AccountMeta {
+impl Into<instruction::AccountMeta> for &AccountMeta {
     fn into(self) -> instruction::AccountMeta {
         instruction::AccountMeta {
             pubkey: self.pubkey,
@@ -40,16 +40,53 @@ pub struct ExecuteReq {
 }
 
 
-impl From<(Pubkey, Vec<instruction::AccountMeta>, Vec<u8>)> for ExecuteReq {
-    fn from((program_id, accounts, instruction_data): (Pubkey, Vec<instruction::AccountMeta>, Vec<u8>)) -> Self {
-        let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
+impl From<instruction::Instruction> for ExecuteReq {
+    fn from(instruction : instruction::Instruction) -> Self {
+        // let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
+        
         Self {
-            program_id,
-            accounts,
-            instruction_data,
+            program_id: instruction.program_id.clone(),
+            accounts: instruction.accounts.iter().map(|account| account.into()).collect(),
+            instruction_data: instruction.data.clone(),
+            // program_id,
+            // accounts,
+            // instruction_data,
         }
     }
 }
+
+
+impl Into<instruction::Instruction> for ExecuteReq {
+    fn into(self) -> instruction::Instruction {
+        // let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
+        
+        instruction::Instruction {
+            program_id : self.program_id.clone(),
+            accounts : self.accounts.iter().map(|account| account.into()).collect(),
+            data : self.instruction_data.clone(),
+        }
+
+        // instruction::In {
+        //     program_id: instruction.program_id.clone(),
+        //     accounts: instruction.accounts.iter().map(|account| account.into()).collect(),
+        //     instruction_data: instruction.data.clone(),
+        //     // program_id,
+        //     // accounts,
+        //     // instruction_data,
+        // }
+    }
+}
+
+// impl From<(Pubkey, Vec<instruction::AccountMeta>, Vec<u8>)> for ExecuteReq {
+//     fn from((program_id, accounts, instruction_data): (Pubkey, Vec<instruction::AccountMeta>, Vec<u8>)) -> Self {
+//         let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
+//         Self {
+//             program_id,
+//             accounts,
+//             instruction_data,
+//         }
+//     }
+// }
 
 
 

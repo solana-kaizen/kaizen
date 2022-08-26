@@ -10,8 +10,8 @@ use workflow_log::*;
 
 pub const LINEAR_STORE_VERSION: u32 = 27;//0xfe;
 
-#[repr(C)]
-#[derive(Debug)]
+#[repr(packed)]
+// #[derive(Debug)]
 pub struct LinearStoreMeta {
     pub version: u32,
     // flags : u32,

@@ -7,6 +7,7 @@ use solana_program::instruction;
 use workflow_allocator::result::Result;
 use workflow_allocator::accounts::AccountDataReference;
 use workflow_allocator::error::ErrorCode;
+use downcast::{downcast_sync, AnySync};
 
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -28,7 +29,7 @@ impl ExecutionResponse {
 }
 
 #[async_trait]
-pub trait EmulatorInterface 
+pub trait EmulatorInterface : AnySync
 // where Arc<Self> : Sized// + Send + Sync + 'static
 {
     // fn ctor(self : Arc<Self>) { }
@@ -43,3 +44,5 @@ pub trait EmulatorInterface
     //     instruction : &instruction::Instruction,
     // ) -> Result<ExecutionResponse>;
 }
+
+downcast_sync!(dyn EmulatorInterface);

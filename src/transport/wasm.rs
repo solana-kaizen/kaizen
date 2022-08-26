@@ -7,6 +7,7 @@ use solana_program::pubkey::Pubkey;
 // use solana_program::entrypoint::ProcessInstruction;
 use crate::simulator::Simulator;
 use crate::accounts::AccountData;
+use crate::simulator::client::EmulatorRpcClient;
 use crate::simulator::interface::EmulatorInterface;
 // use crate::wasm::*;
 use workflow_wasm::utils;
@@ -28,7 +29,7 @@ use crate::transport::TransportConfig;
 use crate::transport::lookup::{LookupHandler,RequestType};
 use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
-
+use super::Mode;
 // pub mod router {
 //     use super::*;
 
@@ -132,7 +133,10 @@ mod wasm_bridge {
 // #[derivative(Debug)] // , Clone)]
 pub struct Transport {
     // pub simulator : Option<Arc<Simulator>>,
-    pub emulator : Option<Arc<Box<dyn EmulatorInterface>>>,
+
+    pub mode : Mode,
+
+    pub emulator : Option<Arc<dyn EmulatorInterface>>,
 
 
     // #[wasm_bindgen(skip)]
@@ -203,9 +207,17 @@ impl Transport {
     pub async fn balance(&self) -> Result<u64> {
 
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
-        match &self.emulator {
-            Some(simulator) => {
-                Ok(0u64)
+        match self.mode { //&self.emulator {
+            Mode::Inproc | Mode::Emulator => {
+                let pubkey: Pubkey = self.get_payer_pubkey()?;
+                let result = self.emulator().lookup(&pubkey).await?;
+                match result {
+                    Some(reference) => Ok(reference.lamports().await),
+                    None => {
+                        return Err(error!("[Emulator] - WASM::Transport::balance() unable to lookup account: {}", pubkey)); 
+                    }
+                }
+                // Ok(0u64)
                 // match simulator.store.lookup(&simulator.authority()).await? {
                 //     Some(authority) => {
                 //         Ok(authority.lamports().await)
@@ -215,7 +227,7 @@ impl Transport {
                 //     }
                 // }
             },
-            None => {
+            Mode::Validator => {
                 let pubkey: Pubkey = self.get_payer_pubkey()?;
                 let result = self.lookup_remote_impl(&pubkey).await?;
                 match result{
@@ -242,12 +254,36 @@ impl Transport {
     }
 
     pub fn get_payer_pubkey(&self) -> Result<Pubkey> {
-        match &self.emulator {
-            Some(simulator) => {
-                // Ok(simulator.authority())
-                unimplemented!("TODO")
+
+        match self.mode {
+
+        // }
+        // match &self.emulator {
+            // Some(simulator) => {
+            Mode::Inproc => {
+
+                let simulator = self.emulator
+                    .clone()
+                    .unwrap()
+                    .downcast_arc::<Simulator>()
+                    .expect("Unable to downcast to Simulator");
+
+                Ok(simulator.authority())
+                
             },
-            None => {
+
+            Mode::Emulator => {
+                let wallet_adapter = &self.wallet()?;
+                let public_key = unsafe{js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))?};
+                let pubkey = Pubkey::new(&utils::try_get_vec_from_bn(&public_key)?);
+                Ok(pubkey)
+
+            },
+    
+                // Ok(simulator.authority())
+            //     unimplemented!("TODO")
+            // },
+            Mode::Validator => {
                 let wallet_adapter = &self.wallet()?;
                 let public_key = unsafe{js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))?};
                 let pubkey = Pubkey::new(&utils::try_get_vec_from_bn(&public_key)?);
@@ -273,14 +309,15 @@ impl Transport {
         // let solana = js_sys::Reflect::get(&workflow, &"solana".into())?;
         // log_trace!("initializing network setup, solana: {:?}", solana);
         let solana = Self::solana()?;
-        let (connection, emulator) = match network {
-            "simulator" | "simulation" => {
-                let emulator: Arc<Box<dyn EmulatorInterface>> = Arc::new(Box::new(Simulator::try_new_with_store()?));
-
-                (JsValue::NULL, Some(emulator))
-                // (JsValue::NULL, Some(Arc::new(Box::new(Simulator::try_new_with_store()?))))
-            },
-            "mainnet-beta" | "testnet" | "devnet" => {
+        let (mode, connection, emulator) = 
+            if network == "inproc" {
+                let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
+                (Mode::Inproc, JsValue::NULL, Some(emulator))
+            } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
+                // let emulator = EmulatorRpcClient::new(network)?;
+                let emulator: Arc<dyn EmulatorInterface> = Arc::new(EmulatorRpcClient::new(network)?);
+                (Mode::Emulator, JsValue::NULL, Some(emulator))
+            } else if network == "mainnet-beta" || network == "testnet" || network == "devnet" {
                 let cluster_api_url_fn = js_sys::Reflect::get(&solana,&JsValue::from("clusterApiUrl"))?;
                 let args = Array::new_with_length(1);
                 args.set(0, JsValue::from(network));
@@ -290,22 +327,30 @@ impl Transport {
                 let args = Array::new_with_length(1);
                 args.set(0, url);
                 let ctor = js_sys::Reflect::get(&solana,&JsValue::from("Connection"))?;
-                (js_sys::Reflect::construct(&ctor.into(),&args)?, None)
-            },
-            _ => {
-                let is_match = regex::Regex::new(r"^https?://").unwrap().is_match(network);
-                if is_match {
-                    let args = Array::new_with_length(1);
-                    args.set(0, JsValue::from(network));
-                    let ctor = js_sys::Reflect::get(&solana,&JsValue::from("Connection"))?;
-                    log_trace!("ctor: {:?}", ctor);
-                    (js_sys::Reflect::construct(&ctor.into(),&args)?, None)
-                } else {
-                    //log_trace!("Transport creation error");
-                    return Err(error!("Transport cluster must be mainnet-beta, devnet, testnet, simulation").into());
-                }
-            }
-        };
+                (Mode::Validator, js_sys::Reflect::construct(&ctor.into(),&args)?, None)
+            } else if regex::Regex::new(r"^https?://").unwrap().is_match(network) {
+                let args = Array::new_with_length(1);
+                args.set(0, JsValue::from(network));
+                let ctor = js_sys::Reflect::get(&solana,&JsValue::from("Connection"))?;
+                log_trace!("ctor: {:?}", ctor);
+                (Mode::Validator, js_sys::Reflect::construct(&ctor.into(),&args)?, None)
+            } else {
+                return Err(error!("Transport cluster must be mainnet-beta, devnet, testnet, simulation").into());
+            };
+        // match network {
+            // "simulator" | "simulation" => {
+            //     // (JsValue::NULL, Some(Arc::new(Box::new(Simulator::try_new_with_store()?))))
+            // },
+            // "mainnet-beta" | "testnet" | "devnet" => {
+            // },
+            // _ => {
+            //     let is_match = regex::Regex::new(r"^https?://").unwrap().is_match(network);
+            //     if is_match {
+            //     } else {
+            //         //log_trace!("Transport creation error");
+            //     }
+            // }
+        // };
 
         log_trace!("Transport interface creation ok...");
         
@@ -317,6 +362,7 @@ impl Transport {
         let lookup_handler = LookupHandler::new();
 
         let transport = Arc::new(Transport {
+            mode,
             emulator,
             connection,
             // wallet : JsValue::UNDEFINED,
@@ -337,13 +383,21 @@ impl Transport {
         Ok(transport.clone())
     }
 
+    #[inline(always)]
+    fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
+        self.emulator.as_ref().expect("missing emulator interface")
+    }
+
     pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         
-        match &self.emulator {
-            Some(emulator) => {
-                Ok(emulator.lookup(&pubkey).await?)
+        match self.mode { //&self.emulator {
+            Mode::Inproc | Mode::Emulator => {
+                // let emulator = self.emulator.as_ref().unwrap();
+                self.emulator().lookup(pubkey).await
+            // Some(emulator) => {
+            //     Ok(emulator.lookup(&pubkey).await?)
             },
-            None => {
+            Mode::Validator => {
 
                 let response = {
                     let pk_jsv = self.pubkey_to_jsvalue(&pubkey).unwrap();
@@ -393,23 +447,27 @@ impl Transport {
 impl super::Interface for Transport {
 
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
-        // let simulator = { self.try_inner()?.simulator.clone() };
-        match &self.emulator {
-            Some(emulator) => {
-                unimplemented!("TODO")
-                // Ok(simulator.authority())
-            },
-            None => {
-                todo!("not implemented")
-            }
-        }
+        self.get_payer_pubkey()
+        // // let simulator = { self.try_inner()?.simulator.clone() };
+        // match &self.emulator {
+        //     Some(emulator) => {
+        //         unimplemented!("TODO")
+        //         // Ok(simulator.authority())
+        //     },
+        //     None => {
+        //         todo!("not implemented")
+        //     }
+        // }
 
     }
 
     async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 
         log_trace!("transport execute");
-        match &self.emulator {
-            Some(emulator) => {
+        // match &self.emulator {
+        match self.mode {
+            Mode::Inproc | Mode::Emulator => {
+
+            // Some(emulator) => {
 
                 // let fn_entrypoint = {
                 //     match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
@@ -421,7 +479,7 @@ impl super::Interface for Transport {
                 //     }
                 // };
 
-                emulator.execute(
+                self.emulator().execute(
                     instruction
                     // &instruction.program_id,
                     // &instruction.accounts,
@@ -431,7 +489,7 @@ impl super::Interface for Transport {
 
                 Ok(())
             },
-            None => {
+            Mode::Validator => {
                 log_trace!("native A");
                 let wallet_adapter = &self.wallet()?;
                 let accounts = &instruction.accounts;

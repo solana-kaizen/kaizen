@@ -13,13 +13,17 @@ use crate::accounts::*;
 use crate::error::*;
 use crate::result::Result;
 use crate::accounts::AccountData;
+use crate::simulator::client::EmulatorRpcClient;
 use crate::simulator::interface::EmulatorInterface;
 use crate::transport::queue::TransactionQueue;
 use workflow_log::log_trace;
 use workflow_allocator::cache::Cache;
 use solana_program::instruction::Instruction;
 use crate::transport::TransportConfig;
+use crate::transport::Mode;
 use crate::transport::lookup::{LookupHandler,RequestType};
+// use downcast::{downcast_sync, AnySync};
+
 
 use solana_client::{
     rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig,
@@ -41,7 +45,10 @@ pub struct Transport
 // where Arc<dyn EmulatorInterface> : Sized
 {
 
-    pub emulator : Option<Arc<Box<dyn EmulatorInterface>>>,
+    mode : Mode,
+
+    // pub emulator : Option<Arc<Box<dyn EmulatorInterface>>>,
+    pub emulator : Option<Arc<dyn EmulatorInterface>>,
     
     // #[derivative(Debug="ignore")]
     pub client_ctx : Option<(RpcClient,Keypair,Pubkey)>,
@@ -70,6 +77,23 @@ pub struct Transport
 // #[wasm_bindgen]
 impl Transport {
 
+    pub async fn connect(&self, block : bool) -> Result<()> {
+        match self.mode {
+            Mode::Emulator => {
+                let emulator = self.emulator
+                    .clone()
+                    .unwrap()
+                    .downcast_arc::<EmulatorRpcClient>()
+                    .expect("Unable to downcast to EmulatorRpcClient");
+
+                emulator.connect(block).await?;
+
+                Ok(())
+            },
+            _ => { Ok(()) }
+        }
+    }
+
     // pub fn simulator(&self) -> Result<Arc<Simulator>> {
     //     match &self.simulator {
     //         Some(simulator) => Ok(simulator.clone()),
@@ -97,16 +121,28 @@ impl Transport {
 
 
         
-        let (client_ctx, emulator) = match network {
-            "simulator" | "simulation" => {
-                let emulator: Arc<Box<dyn EmulatorInterface>> = Arc::new(Box::new(Simulator::try_new_with_store()?));
+        let (mode, client_ctx, emulator) = // match network {
+
+            if network == "inproc" {
+
+            // "inproc" => {
+                // let emulator: Arc<Box<dyn EmulatorInterface>> = Arc::new(Box::new(Simulator::try_new_with_store()?));
+                let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
                 // let simulator = Simulator::try_new_inproc()?;
-                (None, Some(emulator))
-            },
+                (Mode::Inproc, None, Some(emulator))
+            // } else 
+            } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
+                // let emulator: Arc<Box<dyn EmulatorInterface>> = Arc::new(Box::new(EmulatorRpcClient::new(network)?));
+                let emulator = EmulatorRpcClient::new(network)?;
+                // emulator.connect(true).await?;
+                let emulator: Arc<dyn EmulatorInterface> = Arc::new(emulator);
+                (Mode::Emulator, None, Some(emulator))
+
+            } else {
 
             // TODO: native
 
-            _ => {
+            // _ => {
                 // let timeout_sec = 60u64; // args.timeout.parse::<u64>()?;
                 // let max_retries = 2;
                 let url = network; //args.rpc_endpoint;
@@ -143,10 +179,10 @@ impl Transport {
                 // .get_balance(&payer_pk)
                 // .expect("Couldn't get payer balance");
 
-                (Some((client, payer_kp, payer_pk)), None)
-            }
+                (Mode::Validator, Some((client, payer_kp, payer_pk)), None)
+            };
 
-        };
+        // };
 
 
         // let timeout_sec = 60u64; // args.timeout.parse::<u64>()?;
@@ -174,6 +210,7 @@ impl Transport {
 
         // let transport = Transport::new_with_inner( TransportInner {
         let transport = Transport {
+            mode,
             emulator,
             client_ctx,
             // entrypoints,
@@ -201,6 +238,14 @@ impl Transport {
     //     Ok(self)
     // }
 
+    #[inline(always)]
+    fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
+        self.emulator.as_ref().expect("missing emulator interface")
+    }
+    // fn emulator<'transport>(&'transport self) -> &'transport Arc<Box<dyn EmulatorInterface>> {
+    //     self.emulator.as_ref().expect("missing emulator interface")
+    // }
+
     pub fn global() -> Result<Arc<Transport>> {
         let clone = unsafe { (&TRANSPORT).as_ref().unwrap().clone() };
         Ok(clone)
@@ -213,8 +258,22 @@ impl Transport {
     pub async fn balance(&self) -> Result<u64> {
 
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
-        match &self.emulator {
-            Some(emulator) => {
+        // match &self.emulator {
+        //     Some(emulator) => {
+
+        match self.mode { //&self.emulator {
+            Mode::Inproc | Mode::Emulator => {
+    
+                let pubkey: Pubkey = self.get_payer_pubkey()?;
+                let result = self.emulator().lookup(&pubkey).await?;
+                match result {
+                    Some(reference) => Ok(reference.lamports().await),
+                    None => {
+                        return Err(error!("[Emulator] - Transport::balance() unable to lookup account: {}", pubkey)); 
+                    }
+                }
+
+
                 // TODO emulator
                 // match emulator.lookup(&simulator.authority()).await? {
                 //     Some(authority) => {
@@ -224,9 +283,9 @@ impl Transport {
                 //         Err(error!("Transport: simulator dataset is missing authority account"))
                 //     }
                 // }
-                unimplemented!("transport authority")
+                // unimplemented!("transport authority")
             },
-            None => {
+            Mode::Validator => {
                 // let inner = self.try_inner()?;
                 // let (client, _payer_kp, payer_pk) = if let Some(client_ctx) = &inner.client_ctx {
                 let (client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.client_ctx {
@@ -252,15 +311,32 @@ impl Transport {
 
     pub fn get_payer_pubkey(&self) -> Result<Pubkey> {
         // let simulator = { self.try_inner()?.simulator.clone() };
-        match &self.emulator {
-            Some(emulator) => {
-                // TODO emulator
-                unimplemented!("transport authority")
-                // Err(error!(""))
-                // Ok(emulator.authority())
+        // match &self.emulator {
+        match self.mode {
+
+            // Some(emulator) => {
+            Mode::Inproc => {
+
+                let simulator = self.emulator
+                    .clone()
+                    .unwrap()
+                    .downcast_arc::<Simulator>()
+                    .expect("Unable to downcast to Simulator");
+
+                Ok(simulator.authority())
+                
             },
-            None => {
-                // let inner = self.try_inner()?;
+            
+            Mode::Emulator => {
+                let home = home::home_dir().expect("unable to get home directory");
+                let home = Path::new(&home);
+                let payer_kp_path = home.join(".config/solana/id.json");
+                let payer_kp =
+                    read_keypair_file(payer_kp_path).expect("Couldn't read payer keypair");
+                let payer_pk = payer_kp.pubkey();
+                Ok(payer_pk)
+            },
+            Mode::Validator => {
                 let (_client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.client_ctx {
                     client_ctx
                 } else {
@@ -362,24 +438,25 @@ impl super::Interface for Transport {
 // #[async_trait]
 // impl Transport {
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
+        self.get_payer_pubkey()
         // let simulator = { self.try_inner()?.simulator.clone() };
-        match &self.emulator {
-            Some(emulator) => {
-                // TODO emulator
-                unimplemented!("transport authority")
-                // Ok(simulator.authority())
-            },
-            None => {
-                // let inner = self.try_inner()?;
-                let (_client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.client_ctx {
-                    client_ctx
-                } else {
-                    return Err(error_code!(ErrorCode::MissingClient));
-                };
+        // match &self.emulator {
+        //     Some(emulator) => {
+        //         // TODO emulator
+        //         unimplemented!("transport authority")
+        //         // Ok(simulator.authority())
+        //     },
+        //     None => {
+        //         // let inner = self.try_inner()?;
+        //         let (_client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.client_ctx {
+        //             client_ctx
+        //         } else {
+        //             return Err(error_code!(ErrorCode::MissingClient));
+        //         };
 
-                Ok(payer_pk.clone())
-            }
-        }
+        //         Ok(payer_pk.clone())
+        //     }
+        // }
 
     }
 

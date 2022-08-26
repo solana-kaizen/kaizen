@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "workflow_allocator"
+# name = "workflow_allocator"
 crate-type = ["cdylib", "rlib"]
 
 [features]
@@ -62,6 +62,8 @@ futures = "0.3.21"
 manual_future = "0.1.1"
 hexplay = "0.2.1"
 regex = "1.6.0"
+downcast = "0.11.0"
+
 # atomic-instant = "0.1.1"
 # thiserror = "1.0.32"
 

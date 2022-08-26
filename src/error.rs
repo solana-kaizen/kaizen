@@ -39,6 +39,7 @@ pub enum ErrorCode {
 
     NotImplemented,
     ErrorMessage,
+    RootAccess,
     IdentityMissing,
     IdentityAccess,
     IdentityMissingForeignAuthority,
@@ -310,7 +311,7 @@ impl Error {
                         format!("\n+---\n{}\n+---\n", variant.info())
                     },
                     _ => {
-                        format!("\n+---\n|   error: {}\n| source: {}\n| variant: {}\n| account: {}\n+---\n", 
+                        format!("\n+---\n|   error: {}\n|  source: {}\n| variant: {}\n| account: {}\n+---\n", 
                             message,
                             source,
                             variant.info(),
@@ -320,7 +321,7 @@ impl Error {
                 }
             },
             None => {
-                format!("\n+---\n|   error: {}\n| source: {}\n| account: {}\n+---\n", 
+                format!("\n+---\n|   error: {}\n|  source: {}\n| account: {}\n+---\n", 
                     message,
                     source,
                     account

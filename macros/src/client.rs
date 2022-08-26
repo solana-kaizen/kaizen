@@ -92,7 +92,7 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
 
     let target_primitive_path = execution.target_primitive_path;
     let interface_dispatch_method = execution.interface_dispatch_method;
-    // let client_struct_decl = execution.client_struct_decl;
+    let client_struct_name = execution.client_struct_decl.to_string();
     // let client_lifetimes = execution.client_lifetimes;
 
     let impl_wasm_str = match &execution.client_lifetimes {
@@ -137,20 +137,22 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
 
             // use workflow_allocator::transport::Interface;
 
+            pub fn bind() -> &'static str { #client_struct_name }
+
             pub async fn execute(
-                // mut 
                 instruction : solana_program::instruction::Instruction
             ) -> Result<()> {
-            // ) -> Promise {
                 use workflow_allocator::transport::Interface;
-
                 let transport = workflow_allocator::transport::Transport::global()?;
                 Ok(transport.execute(&instruction).await?)
-                // use workflow_allocator::transport::Interface;
-                // wasm_bindgen_futures::future_to_promise(async move {
-                //     Ok(transport.execute(&instruction).await?)
-                //     // Ok(JsValue::from(response))
-                // })
+            }
+
+            pub async fn execute_with_transport(
+                transport : &Arc<workflow_allocator::transport::Transport>,
+                instruction : solana_program::instruction::Instruction
+            ) -> Result<()> {
+                use workflow_allocator::transport::Interface;
+                Ok(transport.execute(&instruction).await?)
             }
 
             // pub fn execute_transaction_async(

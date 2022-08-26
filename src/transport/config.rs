@@ -1,6 +1,13 @@
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
+pub enum Mode {
+    Inproc,
+    Emulator,
+    Validator,
+}
+
+#[derive(Debug, Clone)]
 pub struct TransportConfig {
     pub timeout : Duration,
     pub confirm_transaction_initial_timeout : Duration,

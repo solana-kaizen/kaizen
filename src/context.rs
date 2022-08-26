@@ -533,13 +533,9 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         )?;
 
         // let identity = 
-        match &self.identity {
-            Some(identity) => {
-                identity.advance_pda_sequence()?;
-            },
-            None => { }
+        if let Some(identity) = &self.identity {
+            identity.advance_pda_sequence()?;
         }
-        // identity.advance_pda_sequence()?;
 
         Ok(res)
     }

@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use async_trait::async_trait;
+use regex::Regex;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::Instruction;
 use workflow_allocator::accounts::AccountDataReference;
 use workflow_allocator::result::Result;
 use workflow_allocator::error::*;
+use workflow_log::log_trace;
 use workflow_rpc::asynchronous::client::RpcClient;
 use workflow_rpc::asynchronous::client::result::Result as RpcResult;
 use super::interface::{EmulatorInterface, ExecutionResponse};
@@ -17,8 +19,12 @@ pub struct EmulatorRpcClient {
 
 impl EmulatorRpcClient {
     pub fn new(url : &str) -> RpcResult<EmulatorRpcClient> {
+
+        let re = Regex::new(r"^rpc").unwrap();
+        let url = re.replace(url, "ws");
+        log_trace!("Emulator RPC client url: {}", url);
         let client = EmulatorRpcClient {
-            rpc: Arc::new(RpcClient::new(url)?),
+            rpc: Arc::new(RpcClient::new(&url)?),
         };
 
         Ok(client)

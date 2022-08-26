@@ -41,7 +41,7 @@ const ENTRY_FLAG_READONLY : u32 = 0x00000001;
 pub const DEFAULT_IDENTITY_RECORDS: usize = 5;
 
 #[derive(Debug, Clone, Copy)]
-#[repr(C)]
+#[repr(packed)]
 pub struct IdentityEntry {
     pub data_type : u32,
     pub entry_flags : u32,
@@ -61,7 +61,7 @@ impl PartialEq for IdentityEntry {
 #[repr(packed)]
 pub struct IdentityMeta {
     pub version : u32,
-    pub payload_len : u32,
+    // pub payload_len : u32,
     pub pda_sequence : u64,
     pub reserved_for_future_flags : u32,
 }
@@ -71,7 +71,7 @@ pub struct Identity<'info,'refs> {
     pub meta : RefCell<&'info mut IdentityMeta>,
     pub store : SegmentStore<'info,'refs>,
     // ---
-    #[segment(reserve(LinearStore::<IdentityMeta>::calculate_data_len(5)))]
+    #[segment(reserve(LinearStore::<IdentityEntry>::calculate_data_len(5)))]
     pub list : LinearStore<'info,'refs, IdentityEntry>,
 }
 
@@ -97,7 +97,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     pub fn init(&self) -> Result<()> {
         let mut meta = self.meta.try_borrow_mut()?;
         meta.version = 1;
-        meta.payload_len = 0;
+        // meta.payload_len = 0;
         meta.pda_sequence = 0;
         meta.reserved_for_future_flags = 0;
         Ok(())

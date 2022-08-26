@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use borsh::{BorshSerialize,BorshDeserialize};
+use solana_program::instruction::Instruction;
 use workflow_rpc::asynchronous::server::RpcHandlerBorsh;
 use workflow_rpc::asynchronous::server::RpcResponseError;
 use workflow_rpc::asynchronous::result::RpcResult;
@@ -68,7 +69,19 @@ impl RpcHandlerBorsh<EmulatorOps> for Server
             },
             EmulatorOps::Execute => {
 
+                let req = ExecuteReq::try_from_slice(data)?;
+                // entry_point
+
+                let instruction : Instruction = req.into();
+
+                self.emulator.execute(&instruction).await?;
+
                 let resp = ExecutionResponse::new(None,None);
+
+                // let vec = resp.try_to_vec()?;
+                // log_trace!("**** TEST VEC: {:?}",vec);
+                // let xx = ExecutionResponse::try_from_slice(&vec)?;
+
                 Ok(resp.try_to_vec()?)
             }
 
