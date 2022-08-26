@@ -78,9 +78,9 @@ pub use solana::{
 };
 
 #[cfg(not(target_arch = "bpf"))]
-pub mod simulator;
+pub mod emulator;
 #[cfg(not(target_arch = "bpf"))]
-pub use simulator::{
+pub use emulator::{
     allocate_pda,
     allocate_multiple_pda,
     transfer_sol,

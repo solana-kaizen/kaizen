@@ -55,41 +55,15 @@ impl From<instruction::Instruction> for ExecuteReq {
     }
 }
 
-
 impl Into<instruction::Instruction> for ExecuteReq {
     fn into(self) -> instruction::Instruction {
-        // let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
-        
         instruction::Instruction {
             program_id : self.program_id.clone(),
             accounts : self.accounts.iter().map(|account| account.into()).collect(),
             data : self.instruction_data.clone(),
         }
-
-        // instruction::In {
-        //     program_id: instruction.program_id.clone(),
-        //     accounts: instruction.accounts.iter().map(|account| account.into()).collect(),
-        //     instruction_data: instruction.data.clone(),
-        //     // program_id,
-        //     // accounts,
-        //     // instruction_data,
-        // }
     }
 }
-
-// impl From<(Pubkey, Vec<instruction::AccountMeta>, Vec<u8>)> for ExecuteReq {
-//     fn from((program_id, accounts, instruction_data): (Pubkey, Vec<instruction::AccountMeta>, Vec<u8>)) -> Self {
-//         let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
-//         Self {
-//             program_id,
-//             accounts,
-//             instruction_data,
-//         }
-//     }
-// }
-
-
-
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct LookupReq {
@@ -101,12 +75,20 @@ pub struct LookupResp {
     pub account_data : Option<AccountData>
 }
 
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct FundReq {
+    pub key : Pubkey,
+    pub owner : Pubkey,
+    pub lamports : u64,
+}
+
 u32_try_from! {
     #[derive(Clone, Debug, PartialEq, Eq)]
     #[repr(u32)]
     pub enum EmulatorOps {
         Lookup = 0,
         Execute,
+        Fund,
     }
 }
 
@@ -116,33 +98,3 @@ impl Into<u32> for EmulatorOps {
     }
 }
 
-// enum Request {
-//     Lookup(LookupReq),
-//     Execute(ExecuteReq)
-// }
-
-
-// #[allow(non_camel_case_types)]
-// #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-// pub enum RespV1 {
-//     v1(RespV1)
-// }
-
-// #[allow(non_camel_case_types)]
-// #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-// pub enum Resp {
-//     v1(RespV1)
-// }
-
-// #[allow(non_camel_case_types)]
-// #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-// pub enum ReqV1 {
-//     Lookup(LookupReq),
-//     EntryPoint(EntryPointReq)
-// }
-
-// #[allow(non_camel_case_types)]
-// #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-// pub enum Req {
-//     v1(ReqV1)
-// }

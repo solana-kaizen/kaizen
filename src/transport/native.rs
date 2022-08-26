@@ -8,13 +8,13 @@ use async_std::path::Path;
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
 use solana_program::account_info::IntoAccountInfo;
-use crate::simulator::Simulator;
+use crate::emulator::Simulator;
 use crate::accounts::*;
 use crate::error::*;
 use crate::result::Result;
 use crate::accounts::AccountData;
-use crate::simulator::client::EmulatorRpcClient;
-use crate::simulator::interface::EmulatorInterface;
+use crate::emulator::client::EmulatorRpcClient;
+use crate::emulator::interface::EmulatorInterface;
 use crate::transport::queue::TransactionQueue;
 use workflow_log::log_trace;
 use workflow_allocator::cache::Cache;
@@ -239,7 +239,7 @@ impl Transport {
     // }
 
     #[inline(always)]
-    fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
+    pub fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
         self.emulator.as_ref().expect("missing emulator interface")
     }
     // fn emulator<'transport>(&'transport self) -> &'transport Arc<Box<dyn EmulatorInterface>> {
@@ -462,7 +462,6 @@ impl super::Interface for Transport {
 
     async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 
     // pub async fn execute_with_args(&self, program_id: &Pubkey, accounts: &[AccountMeta], data: &[u8]) -> Result<()> {
-        log_trace!("execute with args");
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
         match &self.emulator {
             Some(emulator) => {

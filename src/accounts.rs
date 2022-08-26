@@ -138,7 +138,7 @@ mod client {
         pub owner: Pubkey,
         pub lamports: u64,
         pub data: Vec<u8>,
-        pub space: usize,
+        // pub space: usize,
         pub rent_epoch: Epoch,
         pub executable: bool,
         pub is_signer: bool,
@@ -167,7 +167,6 @@ mod client {
                 self.is_writable,
                 &mut self.lamports,
                 &mut self.data[ACCOUNT_DATA_OFFSET..],
-                // &mut self.data,
                 &self.owner,
                 self.executable,
                 self.rent_epoch
@@ -176,7 +175,7 @@ mod client {
 
         // pub fn get_container_type(&self) -> Option<u32> {
         pub fn container_type(&self) -> Option<u32> {
-            if self.data.len() < ACCOUNT_DATA_OFFSET + 4 || self.space < 4 {
+            if self.data_len() < 4 { //|| self.space < 4 {
                 None
             } else {
                 let header = unsafe {
@@ -194,7 +193,7 @@ mod client {
         pub fn info(&self) -> Result<String> {
             let rent = Rent::default();
             let sol = format!("{:>20.10}",crate::utils::lamports_to_sol(self.lamports));
-            let minimum_balance = rent.minimum_balance(self.space);
+            let minimum_balance = rent.minimum_balance(self.data_len());
             let (sol, status) = if self.lamports == minimum_balance {
                 (style(sol).green(), style("").green())
             } else if self.lamports < minimum_balance {
@@ -233,7 +232,7 @@ mod client {
                 style(&key_str).yellow(),
                 container_type,
                 container_type_name,
-                style(self.space).cyan(),
+                style(self.data_len()).cyan(),
                 sol,
                 status
             );
@@ -250,18 +249,20 @@ mod client {
             AccountData::new_static_with_size(key, owner, 0)
         }
 
-        pub fn new_static_with_size(key: Pubkey, owner: Pubkey, space: usize) -> AccountData {
-            let buffer_len = space + ACCOUNT_DATA_OFFSET;
+        pub fn new_static_with_size(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {
+            let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
 
-            let size_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
-            *size_ptr = space as u64;
+
+            // let data_len_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
+            // *data_len_ptr = data_len as u64;
+            AccountData::init_data_len(&mut data,data_len);
+
             AccountData {
                 key,
                 owner,
                 data,
-                space,
                 lamports: 0,
                 rent_epoch: 0,
                 executable: false,
@@ -296,28 +297,28 @@ mod client {
         //     }
         // }
 
-        pub fn new_static_for_storage(
-            key: Pubkey,
-            owner: Pubkey,
-            lamports: u64,
-            data: Vec<u8>,
-            rent_epoch: u64,
-        ) -> AccountData {
-            let space = data.len();
-            AccountData {
-                key,
-                owner,
-                data,
-                lamports,
-                space,
-                rent_epoch,
-                executable: false,
-                is_signer: false,
-                is_writable: false,
-                // range: None,
-                // disposition: AccountDisposition::Storage,
-            }
-        }
+        // pub fn new_static_for_storage(
+        //     key: Pubkey,
+        //     owner: Pubkey,
+        //     lamports: u64,
+        //     data: Vec<u8>,
+        //     rent_epoch: u64,
+        // ) -> AccountData {
+        //     let space = data.len();
+        //     AccountData {
+        //         key,
+        //         owner,
+        //         data,
+        //         lamports,
+        //         space,
+        //         rent_epoch,
+        //         executable: false,
+        //         is_signer: false,
+        //         is_writable: false,
+        //         // range: None,
+        //         // disposition: AccountDisposition::Storage,
+        //     }
+        // }
 
         // Copy a slice of AccountData into a new instance
         // pub fn try_from_range(
@@ -345,21 +346,22 @@ mod client {
         // }
 
         pub fn clone_for_program(&self) -> AccountData {
-            let space = self.space; //self.data.len();
-            let buffer_len = space + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
+            let data_len = self.data_len();
+            let buffer_len = data_len + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
 
-            let size_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
-            *size_ptr = space as u64;
-            data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + space].copy_from_slice(
-                &self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + space],
+            AccountData::init_data_len(&mut data, data_len);
+            // let size_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
+            // *size_ptr = space as u64;
+            data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len].copy_from_slice(
+                &self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len],
             );
             AccountData {
                 key: self.key,
                 owner: self.owner,
                 data,
-                space,
+                // space,
                 lamports: self.lamports,
                 rent_epoch: self.rent_epoch,
                 executable: self.executable,
@@ -370,22 +372,50 @@ mod client {
             }
         }
 
-        pub fn new_template_for_program(key: Pubkey, owner: Pubkey, space: usize) -> AccountData {
-            Self::new_allocated_for_program(key,owner,space)
-        }
-
-        pub fn new_allocated_for_program(key: Pubkey, owner: Pubkey, space: usize) -> AccountData {
-            let buffer_len = space + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
+        pub fn clone_for_storage(&self) -> AccountData {
+            let data_len = self.data_len(); //self.data.len();
+            let buffer_len = data_len + ACCOUNT_DATA_OFFSET;// + ACCOUNT_DATA_PADDING;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
 
-            let size_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
-            *size_ptr = space as u64;
+            AccountData::init_data_len(&mut data, data_len);
+            // let size_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
+            // *size_ptr = space as u64;
+            data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len].copy_from_slice(
+                &self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len],
+            );
+            AccountData {
+                key: self.key,
+                owner: self.owner,
+                data,
+                // space,
+                lamports: self.lamports,
+                rent_epoch: self.rent_epoch,
+                executable: self.executable,
+                is_signer: self.is_signer,
+                is_writable: self.is_writable,
+                // range: None,
+                // disposition: AccountDisposition::Program,
+            }
+        }
+
+        pub fn new_template_for_program(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {
+            Self::new_allocated_for_program(key,owner,data_len)
+        }
+
+        pub fn new_allocated_for_program(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {
+            let buffer_len = data_len + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
+            let mut data = Vec::with_capacity(buffer_len);
+            data.resize(buffer_len, 0);
+
+            AccountData::init_data_len(&mut data, data_len);
+            // let size_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
+            // *size_ptr = space as u64;
             AccountData {
                 key,
                 owner,
                 data,
-                space,
+                // space,
                 lamports: 0,
                 rent_epoch: 0,
                 executable: false,
@@ -451,19 +481,36 @@ mod client {
                 is_writable: account_info.is_writable,
                 lamports,
                 data,
-                space,
+                // space,
                 // range: None,
                 // disposition,
             }
         }
 
         pub fn get_available_data_len(&self) -> usize {
+        // pub fn data_len(&self) -> usize {
             self.data.len() - ACCOUNT_DATA_OFFSET
         }
 
-        pub fn get_data(&mut self) -> &mut [u8] {
+        pub fn data(&mut self) -> &mut [u8] {
             &mut self.data[ACCOUNT_DATA_OFFSET..]
         }
+        // (&mut self.data).as_mut_ptr().offset(-4) as *mut u32;
+        
+        pub fn data_len(&self) -> usize {
+            let space : &u64 = unsafe { std::mem::transmute(&self.data[0]) };
+            *space as usize
+        }
+
+        pub fn init_data_len(data : &mut Vec<u8>, data_len : usize) {
+            let data_len_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
+            *data_len_ptr = data_len as u64;
+
+        }
+
+        // pub fn update_data_len(&mut self) {
+        //     self.space = self.data_len();
+        // }
 
     }
 
@@ -481,7 +528,7 @@ mod client {
         fn get(&mut self) -> (&mut u64, &mut [u8], &Pubkey, bool, u64) {
             let rent_epoch = 0;
             let data_begin = ACCOUNT_DATA_OFFSET;
-            let data_end = ACCOUNT_DATA_OFFSET + self.space as usize;
+            let data_end = ACCOUNT_DATA_OFFSET + self.data_len() as usize;
             (
                 &mut self.lamports,
                 &mut self.data[data_begin..data_end],

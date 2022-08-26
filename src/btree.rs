@@ -1661,7 +1661,7 @@ pub mod client {
 mod tests {
     use super::*;
     // use crate::prelude::client::*;
-    use crate::simulator::Simulator;
+    use crate::emulator::Simulator;
     use solana_program::account_info::IntoAccountInfo;
     use super::InsertionIndex;
 

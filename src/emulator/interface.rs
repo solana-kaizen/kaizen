@@ -6,24 +6,23 @@ use solana_program::pubkey::Pubkey;
 use solana_program::instruction;
 use workflow_allocator::result::Result;
 use workflow_allocator::accounts::AccountDataReference;
-use workflow_allocator::error::ErrorCode;
 use downcast::{downcast_sync, AnySync};
 
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct ErrorData {
-    pub message: String,
-    pub code : ErrorCode,
-}
+// #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+// pub struct ErrorData {
+//     pub message: String,
+//     pub error : Option<String>,
+// }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct ExecutionResponse {
-    pub error : Option<ErrorData>,
-    pub logs : Option<String>
+    pub error : Option<String>,
+    pub logs : Vec<String>,
 }
 
 impl ExecutionResponse {
-    pub fn new(error: Option<ErrorData>, logs: Option<String>) -> Self {
+    pub fn new(error: Option<String>, logs: Vec<String>) -> Self {
         ExecutionResponse { error, logs }
     }
 }
@@ -38,6 +37,7 @@ pub trait EmulatorInterface : AnySync
         &self,
         instruction : &instruction::Instruction,
     ) -> Result<ExecutionResponse>;
+    async fn fund(&self, key: &Pubkey, owner: &Pubkey, lamports: u64) -> Result<()>;
     // async fn lookup(self : &Arc<Self>, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     // async fn execute(
     //     self : Arc<Self>,

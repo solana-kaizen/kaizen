@@ -92,12 +92,11 @@ impl Store for FileStore {
         }
     }
     async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
-        log_trace!("storing account: {} with size: {}", reference.key, reference.data_len);
-        if reference.data_len == 0 {
-            log_error!("WARNING - skipping zero size account storage: {}", reference.key);
-            return Ok(());
-        }
-
+        // log_trace!("storing account: {} size: {} lamports: {}", reference.key, reference.data_len, reference.lamports().await);
+        // if reference.data_len == 0 {
+        //     log_error!("WARNING - skipping zero size account storage: {}", reference.key);
+        //     return Ok(());
+        // }
         if let Some(cache) = &self.cache {
             cache.store(&reference).await?;
         }

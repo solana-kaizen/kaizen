@@ -37,7 +37,7 @@ impl EmulatorRpcClient {
 
 #[async_trait]
 impl EmulatorInterface for EmulatorRpcClient {
-    // async fn lookup(self : Arc<Self>, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let message = LookupReq { pubkey : *pubkey };
         let resp : Result<LookupResp> = self.rpc.call(EmulatorOps::Lookup, message).await
@@ -49,8 +49,9 @@ impl EmulatorInterface for EmulatorRpcClient {
             Err(err) => Err(err)
         }
     }
+
     async fn execute(
-        &self,// : Arc<Self>,
+        &self,
         instruction : &Instruction,
     ) -> Result<ExecutionResponse> {
         // we try to re-use existing data types from Solana but 
@@ -62,6 +63,29 @@ impl EmulatorInterface for EmulatorRpcClient {
         };
         let resp : Result<ExecutionResponse> = self.rpc.call(EmulatorOps::Execute, message).await
             .map_err(|err|err.into());
+            // log_trace!("response: {:?}", resp);
+        if let Ok(resp) = &resp {
+            for line in resp.logs.iter() {
+                log_trace!("| {}",line);
+            }
+        }
+
         resp
+    }
+
+    async fn fund(
+        &self,
+        key : &Pubkey,
+        owner : &Pubkey,
+        lamports : u64
+    ) -> Result<()> {
+        let message = FundReq {
+            key : key.clone(),
+            owner : owner.clone(),
+            lamports
+        };
+        let resp : Result<()> = self.rpc.call(EmulatorOps::Fund, message).await
+            .map_err(|err|err.into());
+            resp
     }
 }

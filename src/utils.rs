@@ -1,6 +1,17 @@
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 
+pub fn shorten_pubkey(pubkey: &Pubkey) -> String {
+    let key_str = pubkey.to_string();
+    let key_str = key_str.as_str();
+    let key_str = format!(
+        "{}....{}",
+        &key_str[0..8],
+        &key_str[key_str.len() - 8..key_str.len()]
+    );
+    key_str
+}
+
 pub const LAMPORTS_PER_SOL: u64 = 1000000000;
 #[inline(always)]
 pub fn lamports_to_sol(lamports: u64) -> f64 {

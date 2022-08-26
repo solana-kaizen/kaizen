@@ -98,6 +98,8 @@ pub enum ErrorCode {
     ParsePubkeyInvalid,
     // CacheError,
     LookupError,
+    LookupErrorSource,
+    LookupErrorDestination,
 
     MissingClient,
     ClientError,
@@ -379,6 +381,9 @@ impl Error {
         }
     }
 
+    // pub fn code(&self) -> ErrorCode {
+
+    // }
     // pub fn with_code(mut self, code: u32) -> Self {
     //     // self.code = Some(code);
     //     self.error = Some(Variant::)

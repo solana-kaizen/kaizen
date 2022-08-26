@@ -152,15 +152,21 @@ impl Simulator {
 
 #[async_trait]
 impl EmulatorInterface for Simulator {
-    // async fn lookup(self : Arc<Self>, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        self.emulator.clone().lookup(pubkey).await
+        self.emulator.lookup(pubkey).await
     }
     async fn execute(
-        // self : Arc<Self>,
         &self,
         instruction : &Instruction,
     ) -> Result<ExecutionResponse> {
-        self.emulator.clone().execute(instruction).await
+        self.emulator.execute(instruction).await
+    }
+    async fn fund(
+        &self,
+        key: &Pubkey,
+        owner: &Pubkey,
+        lamports: u64
+    ) -> Result<()> {
+        self.emulator.fund(key,owner,lamports).await
     }
 }

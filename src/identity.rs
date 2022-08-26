@@ -230,7 +230,7 @@ mod tests {
     // use async_std;
     use super::*;
     // use workflow_allocator::prelude::*;
-    use workflow_allocator::simulator::Simulator;
+    use workflow_allocator::emulator::Simulator;
     use workflow_allocator::result::Result;
  
     #[async_std::test]
