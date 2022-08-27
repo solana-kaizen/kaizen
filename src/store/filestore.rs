@@ -21,6 +21,12 @@ pub struct FileStore {
 }
 
 impl FileStore {
+
+    pub fn default_data_folder() -> PathBuf {
+        let home_dir: PathBuf = home::home_dir().unwrap().into();
+        Path::new(&home_dir).join("workflow").join("accounts")
+    }
+
     pub fn try_new() -> Result<FileStore> {
         Self::try_new_with_folder_and_cache(None,None)
     }
@@ -31,8 +37,7 @@ impl FileStore {
         let data_folder = match data_folder {
             Some(data_folder) => data_folder,
             None => {
-                let home_dir: PathBuf = home::home_dir().unwrap().into();
-                Path::new(&home_dir).join("workflow").join("accounts")
+                Self::default_data_folder()
             }
         };
         log_trace!("init FileStore at {}",data_folder.clone().into_os_string().into_string()?);
