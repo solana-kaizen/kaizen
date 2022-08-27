@@ -6,6 +6,7 @@ use solana_program::instruction::Instruction;
 use workflow_allocator::accounts::AccountDataReference;
 use workflow_allocator::result::Result;
 use workflow_allocator::error::*;
+use workflow_core::trigger::Listener;
 use workflow_log::log_trace;
 use workflow_rpc::asynchronous::client::RpcClient;
 use workflow_rpc::asynchronous::client::result::Result as RpcResult;
@@ -30,7 +31,7 @@ impl EmulatorRpcClient {
         Ok(client)
     }
 
-    pub async fn connect(&self, block : bool) -> Result<()> {
+    pub async fn connect(&self, block : bool) -> Result<Option<Listener>> {
         Ok(self.rpc.connect(block).await.map_err(|e|error!("{}",e))?)
     }
 }
