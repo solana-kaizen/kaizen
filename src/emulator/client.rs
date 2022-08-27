@@ -43,8 +43,8 @@ impl EmulatorInterface for EmulatorRpcClient {
         let resp : Result<LookupResp> = self.rpc.call(EmulatorOps::Lookup, message).await
             .map_err(|err|err.into());
         match resp {
-            Ok(LookupResp { account_data }) => {
-                Ok(account_data.map(|account_data|Arc::new(AccountDataReference::new(account_data))))
+            Ok(LookupResp { account_data_store }) => {
+                Ok(account_data_store.map(|account_data_store|Arc::new(AccountDataReference::from(&account_data_store))))
             },
             Err(err) => Err(err)
         }

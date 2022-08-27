@@ -73,11 +73,25 @@ mod client {
     const ACCOUNT_DATA_PADDING: usize = 1024;
     pub static ACCOUNT_DATA_TEMPLATE_SIZE: usize = 1024 * 512; //1024 * 1; // 1mb
     
+    #[derive(Copy, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Eq)]
+    #[repr(u32)]
+    pub enum AccountType {
+        Container = 0,
+        // TODO
+        Unknown,
+        SplToken,
+        SplToken2022,
+        MetalplexFT,
+        MetalplexNFT,
+    }
+
+
     #[derive(Debug, Clone)]
     pub struct AccountDataReference {
         pub key : Arc<Pubkey>,
         pub timestamp : Arc<Mutex<Instant>>,
         pub container_type : u32,
+        pub data_type : AccountType,
         pub data_len : usize,
         pub account_data : Arc<RwLock<AccountData>>
     }
@@ -87,12 +101,17 @@ mod client {
             let key = Arc::new(account_data.key.clone());
             let timestamp = Arc::new(Mutex::new(Instant::now()));
             let data_len = account_data.data.len() - ACCOUNT_DATA_OFFSET;
-            let container_type = account_data.container_type().unwrap_or(0);
+            let data_type = account_data.data_type;
+            let container_type = if data_type == AccountType::Container {
+                account_data.container_type().unwrap_or(0)
+            } else { 0 };
+
 
             AccountDataReference {
                 key,
                 timestamp,
                 container_type,
+                data_type,
                 data_len,
                 account_data : Arc::new(RwLock::new(account_data))
             }
@@ -107,15 +126,79 @@ mod client {
         }
     }
 
-    #[derive(Clone, Debug)]
-    enum AccountType {
-        Internal = 0,
-        MetalplexNFT
+    impl From<&AccountDataStore> for AccountDataReference {
+        fn from(account_data_store: &AccountDataStore) -> Self {
+            AccountDataReference::new(AccountData::from(account_data_store))
+        }
+    }
+
+    #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+    pub struct AccountDataStore {
+        pub data_type : AccountType,
+        pub key: Pubkey,
+        pub owner: Pubkey,
+        pub lamports: u64,
+        pub data: Vec<u8>,
+        pub rent_epoch: Epoch,
+        pub executable: bool,
+    }
+
+    impl AccountDataStore {
+        pub fn from(account_data : &AccountData) -> Self {
+            Self {
+                data_type: account_data.data_type,
+                key: account_data.key,
+                owner: account_data.owner,
+                lamports: account_data.lamports,
+                data: account_data.data().to_vec(),
+                rent_epoch: account_data.rent_epoch,
+                executable: account_data.executable,
+            }
+        }
+    }
+
+    impl From<&AccountData> for AccountDataStore {
+        fn from(account_data: &AccountData) -> Self {
+            Self {
+                data_type: account_data.data_type,
+                key: account_data.key,
+                owner: account_data.owner,
+                lamports: account_data.lamports,
+                data: account_data.data().to_vec(),
+                rent_epoch: account_data.rent_epoch,
+                executable: account_data.executable,
+            }
+        }
+    }
+
+    impl From<&AccountDataStore> for AccountData {
+        fn from(account_data_store: &AccountDataStore) -> Self {
+
+            let data_len = account_data_store.data.len();
+            let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
+            let mut data = Vec::with_capacity(buffer_len);
+            data.resize(buffer_len, 0);
+            AccountData::init_data_len(&mut data,data_len);
+            AccountData {
+                data_type: account_data_store.data_type,
+                key : account_data_store.key,
+                owner : account_data_store.owner,
+                data,
+                lamports:  account_data_store.lamports,
+                rent_epoch: account_data_store.rent_epoch,
+                executable: account_data_store.executable,
+                is_signer: false,
+                is_writable: false,
+            }
+
+
+        }
     }
 
     #[cfg(not(target_arch = "bpf"))]
-    #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+    #[derive(Debug, Clone)]
     pub struct AccountData {
+        pub data_type: AccountType,
         pub key: Pubkey,
         pub owner: Pubkey,
         pub lamports: u64,
@@ -229,13 +312,9 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
-
-
-            // let data_len_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
-            // *data_len_ptr = data_len as u64;
             AccountData::init_data_len(&mut data,data_len);
-
             AccountData {
+                data_type : AccountType::Container,
                 key,
                 owner,
                 data,
@@ -259,6 +338,7 @@ mod client {
                 &self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len],
             );
             AccountData {
+                data_type : AccountType::Container,
                 key: self.key,
                 owner: self.owner,
                 data,
@@ -282,6 +362,7 @@ mod client {
                 &self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len],
             );
             AccountData {
+                data_type : AccountType::Container,
                 key: self.key,
                 owner: self.owner,
                 data,
@@ -305,6 +386,7 @@ mod client {
             AccountData::init_data_len(&mut data, data_len);
             // *size_ptr = space as u64;
             AccountData {
+                data_type : AccountType::Container,
                 key,
                 owner,
                 data,
@@ -334,6 +416,7 @@ mod client {
             *size_ptr = space as u64;
 
             AccountData {
+                data_type : AccountType::Container,
                 key: account_info.key.clone(),
                 owner: account_info.owner.clone(),
                 rent_epoch: account_info.rent_epoch,
@@ -350,7 +433,11 @@ mod client {
             self.data.len() - ACCOUNT_DATA_OFFSET
         }
 
-        pub fn data(&mut self) -> &mut [u8] {
+        pub fn data(&self) -> &[u8] {
+            &self.data[ACCOUNT_DATA_OFFSET..]
+        }
+        
+        pub fn data_mut(&mut self) -> &mut [u8] {
             &mut self.data[ACCOUNT_DATA_OFFSET..]
         }
         

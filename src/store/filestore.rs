@@ -1,3 +1,5 @@
+use crate::accounts::AccountDataStore;
+
 use super::*;
 use async_std::path::Path;
 use async_std::path::PathBuf;
@@ -63,7 +65,8 @@ impl Store for FileStore {
 
         for entry in entries {
             let data = fs::read(entry).await?;
-            let account_data = AccountData::try_from_slice(&data)?;
+            let account_data_store = AccountDataStore::try_from_slice(&data)?;
+            let account_data = AccountData::from(&account_data_store);
             let info = account_data.info()?;
             log_info!("{}", info);
 
@@ -84,7 +87,9 @@ impl Store for FileStore {
         let filename = self.data_folder.join(pubkey.to_string());
         if filename.exists().await {
             let data = fs::read(&self.data_folder.join(pubkey.to_string())).await?;
-            let account_data = AccountData::try_from_slice(&data)?;
+            let account_data_store = AccountDataStore::try_from_slice(&data)?;
+            // let account_data = AccountData::try_from_slice(&data)?;
+            let account_data = AccountData::from(&account_data_store);
             let reference = Arc::new(AccountDataReference::new(account_data));
 
             if let Some(cache) = &self.cache {
@@ -106,7 +111,8 @@ impl Store for FileStore {
             cache.store(&reference).await?;
         }
 
-        let data = reference.account_data.read().await.try_to_vec()?;
+        let data = AccountDataStore::from(&*reference.account_data.read().await).try_to_vec()?;
+        // let data = reference.account_data.read().await.try_to_vec()?;
         fs::write(&self.data_folder.join(reference.key.to_string()),data).await?;
         Ok(())
     }

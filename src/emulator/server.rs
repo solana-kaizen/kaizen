@@ -10,6 +10,8 @@ use workflow_allocator::emulator::rpc::*;
 use workflow_allocator::store::FileStore;
 use workflow_allocator::cache::Cache;
 use workflow_allocator::result::Result;
+use crate::accounts::AccountDataStore;
+
 use super::Emulator;
 use workflow_log::*;
 
@@ -63,11 +65,12 @@ impl RpcHandler<EmulatorOps> for Server
                 let reference = self.emulator.clone().lookup(&req.pubkey).await?;
                 let resp = match reference {
                     Some(reference) => {
-                        let account_data = reference.account_data.read().await;
-                        LookupResp { account_data : Some(account_data.clone()) };
+                        let account_data_store = AccountDataStore::from(&*reference.account_data.read().await);
+                        // let account_data = AccountData::from(&account_data_store);
+                        LookupResp { account_data_store : Some(account_data_store) };
                     },
                     None => {
-                        LookupResp { account_data : None };
+                        LookupResp { account_data_store : None };
                     } 
                 };
                 Ok(resp.try_to_vec()?)

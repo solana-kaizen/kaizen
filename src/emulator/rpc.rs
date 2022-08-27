@@ -3,7 +3,7 @@ use borsh::{BorshSerialize,BorshDeserialize};
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction;
 use workflow_core::u32_try_from;
-use crate::accounts::AccountData;
+use crate::accounts::AccountDataStore;
 
 #[derive(Debug, Default, PartialEq, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct AccountMeta {
@@ -72,7 +72,7 @@ pub struct LookupReq {
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct LookupResp {
-    pub account_data : Option<AccountData>
+    pub account_data_store : Option<AccountDataStore>
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
