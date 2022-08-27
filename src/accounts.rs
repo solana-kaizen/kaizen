@@ -180,6 +180,7 @@ mod client {
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
             AccountData::init_data_len(&mut data,data_len);
+            data[ACCOUNT_DATA_OFFSET..].copy_from_slice(&account_data_store.data);
             AccountData {
                 data_type: account_data_store.data_type,
                 key : account_data_store.key,

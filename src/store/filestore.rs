@@ -88,6 +88,8 @@ impl Store for FileStore {
                 //     log_trace!("################################### LOOKUP ");
                 // }
 
+
+
                 return Ok(Some(reference));
             }
         }
@@ -95,9 +97,31 @@ impl Store for FileStore {
         let filename = self.data_folder.join(pubkey.to_string());
         if filename.exists().await {
             let data = fs::read(&self.data_folder.join(pubkey.to_string())).await?;
+
+            log_trace!("################## LOAD STORE DATA {}",pubkey);
+            // let account_data = &reference.account_data.read().await;
+            trace_hex(&data);
+            log_trace!("################################### LOAD STORE DATA ");
+
+
             let account_data_store = AccountDataStore::try_from_slice(&data)?;
+
+
+
+
+
+
             // let account_data = AccountData::try_from_slice(&data)?;
             let account_data = AccountData::from(&account_data_store);
+
+
+
+            log_trace!("################## LOADED DATA {}",account_data.key);
+            // let account_data = &reference.account_data.read().await;
+            trace_hex(&account_data.data);
+            log_trace!("################################### LOADED DATA ");
+
+
             let reference = Arc::new(AccountDataReference::new(account_data));
 
             if let Some(cache) = &self.cache {
@@ -130,6 +154,15 @@ impl Store for FileStore {
         }
 
         let data = AccountDataStore::from(&*reference.account_data.read().await).try_to_vec()?;
+
+{
+            log_trace!("################## STORE {}",reference.key);
+            // let account_data = &reference.account_data.read().await;
+            trace_hex(&data);
+            log_trace!("################################### STORE ");
+        }
+
+
         // let data = reference.account_data.read().await.try_to_vec()?;
         fs::write(&self.data_folder.join(reference.key.to_string()),data).await?;
         Ok(())
