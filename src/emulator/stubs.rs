@@ -21,6 +21,11 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
         panic!("create_pda() account size is too large (current limit is: {} bytes", ACCOUNT_DATA_TEMPLATE_SIZE);
     }
 
+    // let tpl_data = tpl_account_info.try_borrow_data()?;
+    // if tpl_data.len() > 4 {
+
+    // }
+
     // log_trace!("* * * RECEIVING SEED: {:?}", tpl_adderss_data.seed);
     // let seeds = [user_seed, tpl_adderss_data.seed].concat();
     // let seeds_hex = crate::utils::hex(&seeds[..]);

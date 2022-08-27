@@ -755,7 +755,8 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let layout = Self::layout();
                 let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_create(
                     &account, segment_store_offset, &layout,
-                ).unwrap();
+                // ).unwrap();
+                )?;
 
                 #inits_ts2
 
@@ -841,7 +842,8 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 // println!("try_create##### offset:{},  11111:{:?}", offset, account);
                 let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_create(
                     &account, segment_store_offset, &layout,
-                ).unwrap();
+                // ).unwrap();
+                )?;
                 // println!("try_create#####22222:{:?}", #store_field_name);
                 #inits_ts2
 
@@ -864,7 +866,8 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 // println!("try_create##### offset:{},  11111:{:?}", offset, account);
                 let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_create(
                     &account, segment_store_offset, &layout,
-                ).unwrap();
+                // ).unwrap();
+                )?;
                 // println!("try_create#####22222:{:?}", #store_field_name);
                 #inits_ts2
 
@@ -893,7 +896,8 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let layout = Self::layout();
                 let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_load(
                     &account, segment_store_offset,
-                ).unwrap();
+                // ).unwrap();
+                )?;
 
                 {
                     let data = account.data.borrow_mut();

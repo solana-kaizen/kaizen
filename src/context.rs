@@ -1,30 +1,23 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use crate::address::ProgramAddressData;
-use crate::accounts::{
-    LamportAllocation, 
-    AllocationPayer,
-    // IsSigner,
-    // Access,
-    // SeedSuffix
-};
-use crate::error::*;
-use crate::result::*;
-// use crate::error;
-// use crate::log::trace_hex;
-use crate::rent::RentCollector;
-use crate::identity::Identity;
-use crate::payload::Payload;
-use workflow_log::*;
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
 
-// #[cfg(not(target_arch = "bpf"))]
-// use workflow_allocator::console::style;
-
+use workflow_allocator::address::ProgramAddressData;
+use workflow_allocator::accounts::{
+    LamportAllocation, 
+    AllocationPayer,
+};
+use workflow_allocator::error::*;
+use workflow_allocator::result::*;
+use workflow_allocator::rent::RentCollector;
+use workflow_allocator::identity::Identity;
+use workflow_allocator::payload::Payload;
+use workflow_allocator::container;
+use workflow_log::*;
 
 pub struct AccountAllocationArgs<'info,'refs> {
     lamports : LamportAllocation,
@@ -485,9 +478,15 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     pub fn create_pda(&self, data_len : usize, allocation_args : &AccountAllocationArgs<'info,'refs>) -> Result<&'refs AccountInfo<'info>> {
 
         log_trace!("+ pda: ... create_pda() starting");
-        let (program_address_data,account_info) = self.try_consume_program_address_data()?;
-        log_trace!("+ pda: ... create_pda() for account {}", account_info.key.to_string());
+        let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;
+        log_trace!("+ pda: ... create_pda() for account {}", tpl_account_info.key.to_string());
         
+        if let Ok(container_type) = container::try_get_container_type(tpl_account_info) {
+            if container_type != 0 {
+                return Err(ErrorCode::TplAccountHasData.into())
+            }
+        }    
+
         let lamports = match allocation_args.lamports {
             LamportAllocation::Auto => {
                 let rent = Rent::default();
@@ -525,8 +524,8 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             payer, //&self.authority,
             self.program_id,
             &user_seed,
-            &program_address_data,
-            account_info,
+            &tpl_program_address_data,
+            tpl_account_info,
             data_len,
             lamports,
             // &[(data_len, lamports)]

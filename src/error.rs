@@ -65,6 +65,7 @@ pub enum ErrorCode {
     PDAAccountArgumentData,
     PDAAccountArgumentMatch,
     NotEnoughAccountTemplates,
+    TplAccountHasData,
     ReallocFailure,
 
     LinearStorageBounds,
@@ -81,6 +82,7 @@ pub enum ErrorCode {
     SequenceStoreAccountDataNotBlank,
     SequenceStoreMagic,
     NotEnoughAccounts,
+    UnknownContainerType,
     BPTreeUnknownContainerType,
     ContainerTypeMismatch,
     ContainerMetaVersionMismatch,

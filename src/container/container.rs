@@ -1,5 +1,6 @@
 use workflow_allocator::*;
 use workflow_allocator::result::Result;
+use workflow_allocator::error::ErrorCode;
 use solana_program::account_info::AccountInfo;
 
 #[repr(packed)]
@@ -7,9 +8,13 @@ pub struct ContainerHeader {
     pub container_type : u32,
 }
 
+#[inline]
 pub fn try_get_container_type(account: &AccountInfo) -> Result<u32> {
     let data = account.data.try_borrow_mut()?;
-    let header = unsafe { std::mem::transmute::<_,&mut ContainerHeader>(
+    if data.len() < std::mem::size_of::<ContainerHeader>() {
+        return Err(ErrorCode::UnknownContainerType.into())
+    }
+    let header = unsafe { std::mem::transmute::<_,&ContainerHeader>(
         data.as_ptr()
     )};
 
