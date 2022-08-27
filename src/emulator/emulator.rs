@@ -182,7 +182,7 @@ impl Emulator {
                 keyset.insert(pubkey.clone());
             }
 
-            let mut account_data = match self.clone().lookup(&pubkey).await? {
+            let mut account_data = match self.lookup(&pubkey).await? {
                 Some(reference) => {
                     let account_data = reference.clone_for_program().await;//account_data.clone_for_prog//read().await.ok_or(error!("account read lock failed"))?.clone_for_program();
 
@@ -245,9 +245,19 @@ impl Emulator {
         // pub async fn program_local_store<'info>(&self, accounts : Vec<AccountInfo>) -> Result<()> {
 
         // let accounts = accounts.lock().unwrap();
-
+        for (pubkey, account_data) in accounts.iter() {
+            if let Some(existing_account_data) = self.store.lookup(&account_data.key).await? {
+                let existing_account_data = existing_account_data.account_data.read().await;//.ok_or(error!("account read lock failed"))?;
+                if !account_data.is_writable {
+                    if account_data.data[..] != existing_account_data.data[..] {
+                        log_error!("ERROR: non-mutable account has been modified: {}",pubkey);
+                        return Err(ErrorCode::NonMutableAccountChange.into())
+                    }
+                }
+            }
+        }
         // for account_info in accounts.lock().unwrap().iter() {
-        for (pubkey, account) in accounts.iter() {
+        for (pubkey, account_data) in accounts.iter() {
             // if false 
             {
                 let rent = Rent::default();
@@ -255,29 +265,29 @@ impl Emulator {
                 // let lamports = account_info.lamports.borrow();
 
                 // if account_data_len == 0 && account.lamports == 0u64 { //**lamports == 0u64 {
-                if account.data_len() == 0 && account.lamports == 0u64 { //**lamports == 0u64 {
+                if account_data.data_len() == 0 && account_data.lamports == 0u64 { //**lamports == 0u64 {
                     log_trace!("{} {}",style("purging account (no data, no balance):").white().on_red(),pubkey.to_string());
                     // self.store.purge(account_info.key).await?;
                     self.store.purge(pubkey).await?;
                     continue;
                 }
 
-                let minimum_balance = rent.minimum_balance(account.data_len());//_data_len);
+                let minimum_balance = rent.minimum_balance(account_data.data_len());//_data_len);
                 // if **lamports < minimum_balance {
-                if account.lamports < minimum_balance {
+                if account_data.lamports < minimum_balance {
                     // if *account_info.key != Pubkey::default() {
                     if *pubkey != Pubkey::default() {
                         log_trace!("{} {}",style("purging account (below minimum balance):").white().on_red(),pubkey.to_string());
                         // log_trace!("data len: {} balance needed: {}  balance in the account: {}", account.space, minimum_balance, **lamports);
-                        log_trace!("data len: {} balance needed: {}  balance in the account: {}", account.data_len(), minimum_balance, account.lamports);
-                        log_trace!("account type: 0x{:08x}",account.container_type().unwrap_or(0));
+                        log_trace!("data len: {} balance needed: {}  balance in the account: {}", account_data.data_len(), minimum_balance, account_data.lamports);
+                        log_trace!("account type: 0x{:08x}",account_data.container_type().unwrap_or(0));
                         self.store.purge(pubkey).await?;
                     }
                     // log_trace!("[store] skipping store for blank account {}", account_info.key.to_string());
                     continue;
                 }
             }
-            let account_data = account.clone_for_storage();
+            let account_data_for_storage = account_data.clone_for_storage();
             // let account_data = AccountData::clone_from_account_info(account_info);
             // log_trace!("... saving account: {} data len: {} lamports: {}  ... {}", 
             //     account_data.key.to_string(),
@@ -286,36 +296,42 @@ impl Emulator {
             //     account_data.info(),
             // );
             log_trace!("[store] ...   saving: {}", account_data.info()?);
+            self.store.store(
+                &Arc::new(AccountDataReference::new(account_data_for_storage))
+                // Arc::new(RwLock::new(account_data))
+            ).await?;
+// log_trace!("ACCOUNT DATA WRITAEABLE: {}", account_data.is_writable);
             // log_trace!("... account data: {:#?}", account_data);
-            match self.store.lookup(&account_data.key).await? {
-                Some(existing_account_data) => {
-                    // let mut dest = account_data_reference.write()?;
+            // match self.store.lookup(&account_data.key).await? {
+            //     Some(existing_account_data) => {
+            //         // let mut dest = account_data_reference.write()?;
 
-                    let mut save = true;
-                    let existing_account_data = existing_account_data.account_data.read().await;//.ok_or(error!("account read lock failed"))?;
-                    if !existing_account_data.is_writable {
-                        if account_data.data[..] != existing_account_data.data[..] {
-                            log_trace!("WARNING: data changed in non-mutable account");
-                            save = false;
-                        }
-                        // TODO: check if account was changed
-                    }
-                    if save {
-                        self.store.store(
-                            &Arc::new(AccountDataReference::new(account_data))
-                            // Arc::new(RwLock::new(account_data))
-                        ).await?;
-                        // self.store.store(Arc::new(RwLock::new(account_data))).await?;
-                        // *dest = account_data;
-                    }
-                },
-                None => {
-                    self.store.store(
-                        &Arc::new(AccountDataReference::new(account_data))
-                        // Arc::new(RwLock::new(account_data))
-                    ).await?;
-                }
-            }
+            //         // let mut save = true;
+            //         let existing_account_data = existing_account_data.account_data.read().await;//.ok_or(error!("account read lock failed"))?;
+            //         if !account_data.is_writable {
+            //             if account_data.data[..] != existing_account_data.data[..] {
+            //                 log_error!("ERROR: writing to non-mutable account");
+            //                 return Err(ErrorCode::NonMutableAccountChange.into())
+            //                 // save = false;
+            //             }
+            //             // TODO: check if account was changed
+            //         }
+            //         if save {
+            //             self.store.store(
+            //                 &Arc::new(AccountDataReference::new(account_data))
+            //                 // Arc::new(RwLock::new(account_data))
+            //             ).await?;
+            //             // self.store.store(Arc::new(RwLock::new(account_data))).await?;
+            //             // *dest = account_data;
+            //         }
+            //     },
+            //     None => {
+            //         self.store.store(
+            //             &Arc::new(AccountDataReference::new(account_data))
+            //             // Arc::new(RwLock::new(account_data))
+            //         ).await?;
+            //     }
+            // }
 
         }
 

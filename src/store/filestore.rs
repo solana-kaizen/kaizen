@@ -80,6 +80,14 @@ impl Store for FileStore {
 
         if let Some(cache) = &self.cache {
             if let Ok(Some(reference)) = cache.lookup(pubkey).await {
+
+                // {
+                //     log_trace!("################################### LOOKUP ");
+                //     let account_data = &reference.account_data.read().await;
+                //     trace_hex(&*account_data.data);
+                //     log_trace!("################################### LOOKUP ");
+                // }
+
                 return Ok(Some(reference));
             }
         }
@@ -107,6 +115,16 @@ impl Store for FileStore {
         //     log_error!("WARNING - skipping zero size account storage: {}", reference.key);
         //     return Ok(());
         // }
+
+
+        // {
+        //     log_trace!("################## STORE {}",reference.key);
+        //     let account_data = &reference.account_data.read().await;
+        //     trace_hex(&*account_data.data);
+        //     log_trace!("################################### STORE ");
+        // }
+
+
         if let Some(cache) = &self.cache {
             cache.store(&reference).await?;
         }

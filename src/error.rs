@@ -67,6 +67,7 @@ pub enum ErrorCode {
     NotEnoughAccountTemplates,
     TplAccountHasData,
     ReallocFailure,
+    NonMutableAccountChange,
 
     LinearStorageBounds,
     LinearStoreMetaNotBlank,

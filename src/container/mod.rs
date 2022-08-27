@@ -10,3 +10,7 @@ pub mod data;
 pub use data::*;
 pub mod serialized;
 pub use serialized::*;
+pub mod string;
+pub use string::*;
+
+

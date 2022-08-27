@@ -481,6 +481,10 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;
         log_trace!("+ pda: ... create_pda() for account {}", tpl_account_info.key.to_string());
         
+        // log_trace!(" CREATE PDA ACCOUNT DATA: ------------------------- * * *");
+        // trace_hex(&*tpl_account_info.data.borrow());
+        // log_trace!(" CREATE PDA ACCOUNT DATA: ------------------------- * * *");
+
         if let Ok(container_type) = container::try_get_container_type(tpl_account_info) {
             if container_type != 0 {
                 return Err(ErrorCode::TplAccountHasData.into())

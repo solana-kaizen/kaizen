@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use solana_program::account_info::AccountInfo;
 
 #[derive(Debug, Copy, Clone)]
@@ -143,19 +144,19 @@ mod client {
         pub executable: bool,
     }
 
-    impl AccountDataStore {
-        pub fn from(account_data : &AccountData) -> Self {
-            Self {
-                data_type: account_data.data_type,
-                key: account_data.key,
-                owner: account_data.owner,
-                lamports: account_data.lamports,
-                data: account_data.data().to_vec(),
-                rent_epoch: account_data.rent_epoch,
-                executable: account_data.executable,
-            }
-        }
-    }
+    // impl AccountDataStore {
+    //     pub fn from(account_data : &AccountData) -> Self {
+    //         Self {
+    //             data_type: account_data.data_type,
+    //             key: account_data.key,
+    //             owner: account_data.owner,
+    //             lamports: account_data.lamports,
+    //             data: account_data.data().to_vec(),
+    //             rent_epoch: account_data.rent_epoch,
+    //             executable: account_data.executable,
+    //         }
+    //     }
+    // }
 
     impl From<&AccountData> for AccountDataStore {
         fn from(account_data: &AccountData) -> Self {
@@ -327,6 +328,11 @@ mod client {
         }
 
         pub fn clone_for_program(&self) -> AccountData {
+
+            // log_trace!("clong_for_program: **********************");
+            // trace_hex(&self.data);
+            // log_trace!("clong_for_program: **********************");
+
             let data_len = self.data_len();
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
             let mut data = Vec::with_capacity(buffer_len);
@@ -441,28 +447,44 @@ mod client {
             &mut self.data[ACCOUNT_DATA_OFFSET..]
         }
         
-        pub fn data_len(&self) -> usize {
-            let space : &u64 = unsafe { std::mem::transmute(&self.data[0]) };
-            *space as usize
+        cfg_if! {
+            if #[cfg(target_pointer_width = "64")] {
+
+                pub fn data_len(&self) -> usize {
+                    let space : &u64 = unsafe { std::mem::transmute(&self.data[0]) };
+                    *space as usize
+                }
+
+                pub fn init_data_len(data : &mut Vec<u8>, data_len : usize) {
+                    let data_len_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
+                    *data_len_ptr = data_len as u64;
+                }
+
+            } else if #[cfg(target_pointer_width = "32")] {
+
+                pub fn data_len(&self) -> usize {
+                    let space : &u32 = unsafe { std::mem::transmute(&self.data[0]) };
+                    *space as usize
+                }
+
+                pub fn init_data_len(data : &mut Vec<u8>, data_len : usize) {
+                    let data_len_ptr: &mut u32 = unsafe { std::mem::transmute(&mut data[0]) };
+                    *data_len_ptr = data_len as u32;
+                }
+                
+            }
         }
-
-        pub fn init_data_len(data : &mut Vec<u8>, data_len : usize) {
-            let data_len_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
-            *data_len_ptr = data_len as u64;
-
-        }
-
     }
 
-    pub fn get_account_info_serialized_data_len(
-        account_info: &AccountInfo,
-    ) -> std::result::Result<u64, solana_program::program_error::ProgramError> {
-        let marker_value = unsafe {
-            let ptr = account_info.try_borrow_mut_data()?.as_mut_ptr().offset(-8) as *mut u64;
-            *ptr as u64
-        };
-        Ok(marker_value)
-    }
+    // pub fn get_account_info_serialized_data_len(
+    //     account_info: &AccountInfo,
+    // ) -> std::result::Result<u64, solana_program::program_error::ProgramError> {
+    //     let marker_value = unsafe {
+    //         let ptr = account_info.try_borrow_mut_data()?.as_mut_ptr().offset(-8) as *mut u64;
+    //         *ptr as u64
+    //     };
+    //     Ok(marker_value)
+    // }
 
     impl<'info> account_info::Account for AccountData {
         fn get(&mut self) -> (&mut u64, &mut [u8], &Pubkey, bool, u64) {
