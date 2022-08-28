@@ -1,5 +1,6 @@
 #![allow(unused_unsafe)]
 use std::*;
+// use std::sync::Mutex;
 use async_std::sync::RwLock;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -76,6 +77,10 @@ pub struct Transport
 
 // #[wasm_bindgen]
 impl Transport {
+
+    pub async fn root(&self) -> Pubkey {
+        self.config.read().await.root
+    }
 
     pub async fn connect(&self, block : bool) -> Result<()> {
         match self.mode {

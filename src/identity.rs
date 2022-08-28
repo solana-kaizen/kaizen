@@ -161,7 +161,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     }
 
     /// Create a new identity container and the corresponding identity proxy account
-    pub fn create(ctx:&Rc<Context>) -> ProgramResult {
+    pub fn create(ctx:&Rc<Context>) -> ProgramResult { //Result<()> {
         let allocation_args = AccountAllocationArgs::default();
         let proxy_account = ctx.create_pda(IdentityProxy::initial_data_len(), &allocation_args)?;
         let proxy = IdentityProxy::try_create(proxy_account)?;

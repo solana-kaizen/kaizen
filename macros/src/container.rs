@@ -730,11 +730,11 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let index_unit_size = cattr.index_size_type;
 
 
-    let meta_type = if let Some(type_path) = &meta_type_path {
-        type_path.to_token_stream()
-    } else {
-        quote!{}
-    };
+    // let meta_type = if let Some(type_path) = &meta_type_path {
+    //     type_path.to_token_stream()
+    // } else {
+    //     quote!{}
+    // };
 
     let struct_name_str = struct_name.to_string();
     // let struct_declaration = Ident::new(&struct_name_str.clone().to_uppercase(), struct_name.span());
@@ -743,41 +743,43 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 
     let try_create_with_meta = if let Some(_type_path) = &meta_type_path {
-        quote!{
+        quote!{}
 
-            pub fn try_create_with_meta(
-                account : &'refs solana_program::account_info::AccountInfo<'info>, 
-                meta_init : &#meta_type) 
-            -> workflow_allocator::result::Result<Self> {
+        // quote!{
+
+        //     pub fn try_create_with_meta(
+        //         account : &'refs solana_program::account_info::AccountInfo<'info>, 
+        //         meta_init : &#meta_type) 
+        //     -> workflow_allocator::result::Result<Self> {
             
-                #init_offset
-                let container_type : u32 = #container_type as u32;
-                let layout = Self::layout();
-                let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_create(
-                    &account, segment_store_offset, &layout,
-                // ).unwrap();
-                )?;
+        //         #init_offset
+        //         let container_type : u32 = #container_type as u32;
+        //         let layout = Self::layout();
+        //         let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_create(
+        //             &account, segment_store_offset, &layout,
+        //         // ).unwrap();
+        //         )?;
 
-                #inits_ts2
+        //         #inits_ts2
 
-                {
-                    let data = account.data.borrow_mut();
-                    let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
-                        data.as_ptr()
-                    ) };
-                    header.container_type = container_type;
-                }
+        //         {
+        //             let data = account.data.borrow_mut();
+        //             let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
+        //                 data.as_ptr()
+        //             ) };
+        //             header.container_type = container_type;
+        //         }
 
-                {
-                    let mut meta_dest = meta.borrow_mut();
-                    *(*meta_dest) = *meta_init;
-                }
+        //         {
+        //             let mut meta_dest = meta.borrow_mut();
+        //             *(*meta_dest) = *meta_init;
+        //         }
 
-                Ok(#inits_create)
-            }
+        //         Ok(#inits_create)
+        //     }
 
 
-        }
+        // }
     } else {
         quote!{}
     };
@@ -821,12 +823,23 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         impl #struct_params #struct_name #struct_params #where_clause {
 
+            // pub fn try_allocate<'pid,'instr>(
+            //     ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
+            //     allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>
+            // ) -> workflow_allocator::result::Result<Self> {
+
+            //     let data_len = Self::initial_data_len();
+            //     let account_info = ctx.create_pda(data_len,allocation_args)?;
+            //     Ok(Self::try_create(account_info)?)
+            // }
+        
             pub fn try_allocate<'pid,'instr>(
                 ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
-                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>
+                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
+                reserve_data_len : usize
             ) -> workflow_allocator::result::Result<Self> {
 
-                let data_len = Self::initial_data_len();
+                let data_len = Self::initial_data_len() + reserve_data_len;
                 let account_info = ctx.create_pda(data_len,allocation_args)?;
                 Ok(Self::try_create(account_info)?)
             }

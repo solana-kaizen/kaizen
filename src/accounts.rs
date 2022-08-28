@@ -328,6 +328,34 @@ mod client {
             }
         }
 
+        pub fn new_static_with_args(
+            key: Pubkey, 
+            owner: Pubkey,
+            lamports : u64,
+            src_data : &[u8],
+            rent_epoch: u64,
+            // data_len: usize
+        ) -> AccountData {
+            let data_len = src_data.len();
+            let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
+            let mut data = Vec::with_capacity(buffer_len);
+            data.resize(buffer_len, 0);
+            AccountData::init_data_len(&mut data,data_len);
+            data[ACCOUNT_DATA_OFFSET..].copy_from_slice(&src_data);
+
+            AccountData {
+                data_type : AccountType::Container,
+                key,
+                owner,
+                data,
+                lamports,
+                rent_epoch,
+                executable: false,
+                is_signer: false,
+                is_writable: false,
+            }
+        }
+
         pub fn clone_for_program(&self) -> AccountData {
 
             // log_trace!("clong_for_program: **********************");

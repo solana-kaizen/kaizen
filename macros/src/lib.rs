@@ -2,6 +2,7 @@
 
 extern crate proc_macro;
 
+mod meta;
 mod container;
 mod program;
 mod interface;
@@ -27,5 +28,10 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn container(attr: TokenStream, item: TokenStream) -> TokenStream {
     container::macro_handler(attr, item)
+}
+
+#[proc_macro_derive(Meta)]
+pub fn meta(input: TokenStream) -> TokenStream {
+    meta::derive_meta(input)
 }
 

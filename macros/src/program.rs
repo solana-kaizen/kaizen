@@ -156,7 +156,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
                 return Err(solana_program::program_error::ProgramError::InvalidArgument);
             }
             // println!("executing program ctx: {:#?}", ctx);
-            PROGRAM_HANDLERS[ctx.interface_id](ctx)
+            Ok(PROGRAM_HANDLERS[ctx.interface_id](ctx)?)
         }
 
         #[cfg(not(feature = "no-entrypoint"))]

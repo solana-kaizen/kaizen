@@ -3,14 +3,14 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use crate::result::Result;
 use crate::container::segment::Segment;
 
-pub struct SerializedT<'info,'refs, T>
+pub struct Serialized<'info,'refs, T>
 where T: BorshSerialize + BorshDeserialize
 {
     pub segment : Rc<Segment<'info,'refs>>,
     _t_ : std::marker::PhantomData<T>,
 }
 
-impl<'info,'refs, T> SerializedT<'info,'refs, T>
+impl<'info,'refs, T> Serialized<'info,'refs, T>
 where T: BorshSerialize + BorshDeserialize
 {
 
@@ -18,8 +18,8 @@ where T: BorshSerialize + BorshDeserialize
 
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<SerializedT<'info,'refs,T>> {
-        Ok(SerializedT {
+    ) -> Result<Serialized<'info,'refs,T>> {
+        Ok(Serialized {
             segment,
             _t_ : std::marker::PhantomData,
         })
@@ -27,21 +27,28 @@ where T: BorshSerialize + BorshDeserialize
 
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<SerializedT<'info,'refs,T>> {
-        Ok(SerializedT {
+    ) -> Result<Serialized<'info,'refs,T>> {
+        Ok(Serialized {
             segment,
             _t_ : std::marker::PhantomData,
         })
     }
 
+    #[inline]
     pub fn load(&self) -> Result<T> {
         let mut src = self.segment.as_slice::<u8>();
         let v = BorshDeserialize::deserialize(&mut src)?;
         Ok(v)
     }
 
-    pub fn store_volatile(&self, v : &T) -> Result<()> {
-        let vec = v.try_to_vec()?;
+    #[inline]
+    pub fn store(&self, v : &T) -> Result<()> {
+        self.store_bytes(&v.try_to_vec()?)?;
+        Ok(())
+    }
+
+    #[inline]
+    pub fn store_bytes(&self, vec : &[u8]) -> Result<()> {
         self.segment.try_resize(vec.len(), false)?;
         self.segment.as_slice_mut().copy_from_slice(&vec);
         Ok(())
@@ -50,26 +57,26 @@ where T: BorshSerialize + BorshDeserialize
 }
 
 
-pub struct Serialized<'info,'refs> {
+pub struct SerializedVariant<'info,'refs> {
     pub segment : Rc<Segment<'info,'refs>>,
 }
 
-impl<'info,'refs> Serialized<'info,'refs> {
+impl<'info,'refs> SerializedVariant<'info,'refs> {
 
     pub fn data_len_min() -> usize { 0 }
 
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<Serialized<'info,'refs>> {
-        Ok(Serialized {
+    ) -> Result<SerializedVariant<'info,'refs>> {
+        Ok(SerializedVariant {
             segment,
         })
     }
 
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<Serialized<'info,'refs>> {
-        Ok(Serialized {
+    ) -> Result<SerializedVariant<'info,'refs>> {
+        Ok(SerializedVariant {
             segment,
         })
     }
@@ -80,7 +87,7 @@ impl<'info,'refs> Serialized<'info,'refs> {
         Ok(v)
     }
 
-    pub fn store_volatile<T>(&self, v : &T) -> Result<()> where T : BorshDeserialize + BorshSerialize {
+    pub fn store<T>(&self, v : &T) -> Result<()> where T : BorshDeserialize + BorshSerialize {
         let vec = v.try_to_vec()?;
         self.segment.try_resize(vec.len(), false)?;
         self.segment.as_slice_mut().copy_from_slice(&vec);

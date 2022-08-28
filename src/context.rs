@@ -3,6 +3,7 @@ use std::cell::RefCell;
 
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
+// use solana_program::entrypoint::ProgramResult;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
 
@@ -21,14 +22,16 @@ use workflow_log::*;
 
 pub struct AccountAllocationArgs<'info,'refs> {
     lamports : LamportAllocation,
-    payer : AllocationPayer<'info,'refs>, //&'refs AccountInfo<'info>
+    payer : AllocationPayer<'info,'refs>,
+    // reserve_data_len : usize
 }
 
 impl<'info,'refs> Default for AccountAllocationArgs<'info,'refs> {
     fn default() -> AccountAllocationArgs<'info,'refs> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
-            payer : AllocationPayer::Authority
+            payer : AllocationPayer::Authority,
+            // reserve_data_len : 0,
         }
     }
 }
@@ -38,20 +41,31 @@ impl<'info,'refs> AccountAllocationArgs<'info,'refs> {
     pub fn new() -> AccountAllocationArgs<'info,'refs> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
-            payer : AllocationPayer::Authority
+            payer : AllocationPayer::Authority,
+            // reserve_data_len : 0,
         }
     }
 
     pub fn new_with_payer(payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
-            payer : AllocationPayer::Account(payer)
+            payer : AllocationPayer::Account(payer),
+            // reserve_data_len : 0,
         }
     }
+
+    // pub fn with_data_len(mut self, data_len : usize) -> Self {
+    //     self.reserve_data_len = data_len;
+    //     self
+    // }
 }
 
 
 pub type SimulationHandlerFn = fn(ctx: &Rc<Context>) -> Result<()>;
+// pub type HandlerFn = fn(ctx: &Rc<Context>) -> Result<()>;
+// pub type HandlerFnCPtr = *const fn(ctx: &Rc<Context>) -> Result<()>;
+// pub type ProgramHandlerFn = fn(ctx: &Rc<Context>) -> ProgramResult;
+// pub type ProgramHandlerFnCPtr = *const fn(ctx: &Rc<Context>) -> ProgramResult;
 pub type HandlerFn = fn(ctx: &Rc<Context>) -> ProgramResult;
 pub type HandlerFnCPtr = *const fn(ctx: &Rc<Context>) -> ProgramResult;
 

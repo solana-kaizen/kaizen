@@ -1743,7 +1743,7 @@ mod tests {
                     AccountMeta::new(test_container_pubkey.clone(),false)
                 ]).with_account_templates(2)
                 .with_sequence(sequence)
-                .with_handler_instruction_data(&hib)
+                .with_instruction_data(&hib)
                 .seal()?;
             
             sequence = builder.sequence();

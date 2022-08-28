@@ -1,14 +1,16 @@
 #![allow(unused_unsafe)]
 // use std::cell::RefCell;
 use std::*;
+// use std::sync::Mutex;
 // use std::collections::HashMap;
+use async_std::sync::RwLock;
 use wasm_bindgen::prelude::*;
 use solana_program::pubkey::Pubkey;
 // use solana_program::entrypoint::ProcessInstruction;
-use crate::simulator::Simulator;
 use crate::accounts::AccountData;
-use crate::simulator::client::EmulatorRpcClient;
-use crate::simulator::interface::EmulatorInterface;
+use crate::emulator::Simulator;
+use crate::emulator::client::EmulatorRpcClient;
+use crate::emulator::interface::EmulatorInterface;
 // use crate::wasm::*;
 use workflow_wasm::utils;
 use crate::transport::queue::TransactionQueue;
@@ -144,6 +146,8 @@ pub struct Transport {
     // #[wasm_bindgen(skip)]
     cache : Cache, //Arc<Store>,
     
+    pub config : Arc<RwLock<TransportConfig>>,
+
     connection : JsValue,
     // wallet : JsValue,
     // #[wasm_bindgen(skip)]
@@ -292,8 +296,12 @@ impl Transport {
         }
     }
 
+    pub async fn root(&self) -> Pubkey {
+        self.config.read().await.root
+    }
+
     // #![feature(local_key_cell_methods)]
-    pub fn try_new(network: &str, _config : TransportConfig) -> Result<Arc<Transport>> {
+    pub fn try_new(network: &str, config : TransportConfig) -> Result<Arc<Transport>> {
 
         // let transport = ;
         log_trace!("Creating transport (rust) for network {}", network);
@@ -359,11 +367,13 @@ impl Transport {
         log_trace!("Creating caching store");
         let cache = Cache::new_with_default_capacity();
         log_trace!("Creating lookup handler");
+        let config = Arc::new(RwLock::new(config));
         let lookup_handler = LookupHandler::new();
 
         let transport = Arc::new(Transport {
             mode,
             emulator,
+            config,
             connection,
             // wallet : JsValue::UNDEFINED,
             queue,
@@ -420,7 +430,7 @@ impl Transport {
                 let data = utils::try_get_vec_from_prop(&response,"data")?;
                 let _executable = utils::try_get_bool_from_prop(&response,"executable")?;
 
-                Ok(Some(Arc::new(AccountDataReference::new(AccountData::new_static_for_storage(pubkey.clone(), owner, lamports, data, rent_epoch)))))
+                Ok(Some(Arc::new(AccountDataReference::new(AccountData::new_static_with_args(pubkey.clone(), owner, lamports, &data, rent_epoch)))))
             }
         }
     }

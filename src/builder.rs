@@ -270,7 +270,7 @@ impl InstructionBuilder {
     //     self
     // }
 
-    pub fn with_handler_instruction_data(mut self, instruction_data : &[u8]) -> Self {
+    pub fn with_instruction_data(mut self, instruction_data : &[u8]) -> Self {
         self.handler_instruction_data.extend(instruction_data);
         self
     }

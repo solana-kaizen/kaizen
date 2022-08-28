@@ -39,10 +39,15 @@ pub enum Containers {
     PDATestInterface,
 
     FrameworkContainers = Ranges::Framework as u32,
-    Root,
     IdentityProxy,
     Identity,
     PGPPubkey,
+
+    Root,
+    Channel,
+    Offer,
+    Proposal,
+    Contract,
 
     IndexContainers = Ranges::Indexes as u32,
     BPTreeIndex,

@@ -20,15 +20,22 @@ impl<'info,'refs> Utf8String<'info,'refs> {
     }
 
     pub fn try_load_from_segment(
-            segment : Rc<Segment<'info, 'refs>>
+        segment : Rc<Segment<'info, 'refs>>
     ) -> Result<Utf8String<'info,'refs>> {
         Ok(Utf8String {
             segment,
         })
     }
 
-    pub fn store_volatile(&self, text: &str) -> Result<()> {
+    #[inline]
+    pub fn store(&self, text: &str) -> Result<()> {
         let bytes = text.as_bytes();
+        self.store_bytes(&bytes)?;
+        Ok(())
+    }
+
+    #[inline]
+    pub fn store_bytes(&self, bytes: &[u8]) -> Result<()> {
         self.segment.try_resize(bytes.len(), false)?;
         self.segment.as_slice_mut().copy_from_slice(&bytes);
         Ok(())

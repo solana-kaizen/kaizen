@@ -1,5 +1,6 @@
 pub use std::cell::RefCell;
 pub use std::rc::Rc;
+pub use std::sync::Arc;
 
 pub use std::convert::TryInto;
 pub use std::convert::TryFrom;
@@ -15,9 +16,12 @@ pub use crate::accounts::{AllocationPayer,LamportAllocation,IsSigner,Access};
 pub use crate::context::{ Context, HandlerFn, HandlerFnCPtr, AccountAllocationArgs };
 pub use crate::payload::Payload;
 pub use crate::rent::RentCollector;
+pub use crate::hash::PubkeyHashMap;
 pub use crate::container::segment::{Segment, SegmentStore, Layout};
 pub use crate::container::linear::LinearStore;
 pub use crate::container::ContainerHeader;
+pub use crate::transport::{Transport,Interface};
+
 pub use workflow_log::log_trace;
 
 // #[cfg(not(target_arch = "bpf"))]
@@ -28,6 +32,7 @@ pub use workflow_allocator_macros::{
     declare_handlers,
     declare_program,
     container,
+    Meta,
     // seal
 };
 

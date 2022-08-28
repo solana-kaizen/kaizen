@@ -113,12 +113,13 @@ pub fn declare_handlers(input: TokenStream) -> TokenStream {
             }
 
             pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> solana_program::entrypoint::ProgramResult {
+            // pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> workflow_allocator::result::Result<()> {
                 if ctx.handler_id >= #handler_struct_path::PRIMITIVE_HANDLERS.len() {
                     println!("Error - invalid argument in program handler");
                     return Err(solana_program::program_error::ProgramError::InvalidArgument);
                 }
                 // println!("executing program ctx: {:#?}", ctx);
-                #handler_struct_path::PRIMITIVE_HANDLERS[ctx.handler_id](ctx)
+                Ok(#handler_struct_path::PRIMITIVE_HANDLERS[ctx.handler_id](ctx)?)
             }
         }
     };

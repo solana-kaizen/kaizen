@@ -22,6 +22,7 @@ use solana_program::pubkey::Pubkey;
 use solana_program::pubkey::ParsePubkeyError;
 use std::convert::From;
 use std::cell::{BorrowError,BorrowMutError};
+use std::time::SystemTimeError;
 use workflow_log::log_trace;
 use std::io::Error as IoError;
 use borsh::{BorshSerialize,BorshDeserialize};
@@ -48,6 +49,7 @@ pub enum ErrorCode {
     BorrowMutError,
     IoError,
     OsString,
+    SystemTimeError,
     ReadOnlyAccess,
     EntryNotFound,
     AuthorityMustSign,
@@ -548,6 +550,13 @@ impl From<BorrowError> for Error {
     fn from(error: BorrowError) -> Error {
         Error::new()
             .with_variant(Variant::BorrowError(error))
+    }
+}
+
+impl From<SystemTimeError> for Error {
+    fn from(_error: SystemTimeError) -> Error {
+        Error::new()
+            .with_code(ErrorCode::SystemTimeError)
     }
 }
 
