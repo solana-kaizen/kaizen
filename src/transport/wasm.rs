@@ -73,9 +73,9 @@ mod wasm_bridge {
             Ok(())
         }
 
-        #[wasm_bindgen(js_name="getPayerPubkey")]
-        pub fn get_payer_pubkey(&self) -> Result<Pubkey> {
-            self.transport.get_payer_pubkey()
+        #[wasm_bindgen(js_name="getAuthorityPubkey")]
+        pub fn get_authority_pubkey(&self) -> Result<Pubkey> {
+            self.transport.get_authority_pubkey_impl()
         }
 
         #[wasm_bindgen(js_name="balance")]
@@ -146,7 +146,7 @@ pub struct Transport {
     // #[wasm_bindgen(skip)]
     cache : Cache, //Arc<Store>,
     
-    pub config : Arc<RwLock<TransportConfig>>,
+    pub config : Arc<Mutex<TransportConfig>>,
 
     connection : JsValue,
     // wallet : JsValue,
@@ -213,7 +213,7 @@ impl Transport {
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
         match self.mode { //&self.emulator {
             Mode::Inproc | Mode::Emulator => {
-                let pubkey: Pubkey = self.get_payer_pubkey()?;
+                let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.emulator().lookup(&pubkey).await?;
                 match result {
                     Some(reference) => Ok(reference.lamports().await),
@@ -232,7 +232,7 @@ impl Transport {
                 // }
             },
             Mode::Validator => {
-                let pubkey: Pubkey = self.get_payer_pubkey()?;
+                let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.lookup_remote_impl(&pubkey).await?;
                 match result{
                     Some(reference)=>{
@@ -257,7 +257,7 @@ impl Transport {
         }
     }
 
-    pub fn get_payer_pubkey(&self) -> Result<Pubkey> {
+    pub fn get_authority_pubkey_impl(&self) -> Result<Pubkey> {
 
         match self.mode {
 
@@ -367,7 +367,6 @@ impl Transport {
         log_trace!("Creating caching store");
         let cache = Cache::new_with_default_capacity();
         log_trace!("Creating lookup handler");
-        let config = Arc::new(RwLock::new(config));
         let lookup_handler = LookupHandler::new();
 
         let transport = Arc::new(Transport {
@@ -457,7 +456,7 @@ impl Transport {
 impl super::Interface for Transport {
 
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
-        self.get_payer_pubkey()
+        self.get_authority_pubkey_impl()
         // // let simulator = { self.try_inner()?.simulator.clone() };
         // match &self.emulator {
         //     Some(emulator) => {
