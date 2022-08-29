@@ -7,11 +7,11 @@ use workflow_allocator::error::*;
 use solana_program::pubkey::Pubkey;
 use workflow_allocator::container::Containers;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Meta)]
 #[repr(packed)]
 pub struct IdentityProxyMeta {
     version : u32,
-    pubkey : Pubkey,
+    identity_pubkey : Pubkey,
 }
 
 // #[derive(Debug)]
@@ -25,7 +25,7 @@ impl<'info, 'refs> IdentityProxy<'info, 'refs> {
     pub fn init(&self, pubkey : &Pubkey) -> Result<()> {
         let mut meta = self.meta.borrow_mut();
         meta.version = 1;
-        meta.pubkey = *pubkey;
+        meta.identity_pubkey = *pubkey;
         Ok(())
     }
 }
@@ -40,7 +40,7 @@ pub enum DataType {
 const ENTRY_FLAG_READONLY : u32 = 0x00000001;
 pub const DEFAULT_IDENTITY_RECORDS: usize = 5;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Copy, Clone)]
 #[repr(packed)]
 pub struct IdentityEntry {
     pub data_type : u32,
@@ -205,13 +205,13 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 }
 
 /// Returns pubkey of the identity proxy given program_id and the authority (wallet address)
-pub fn find_identity_proxy_pubkey(program_id: Pubkey, authority: Pubkey) -> Result<Pubkey> {
+pub fn find_identity_proxy_pubkey(program_id: &Pubkey, authority: &Pubkey) -> Result<Pubkey> {
     let bytes = "proxy".as_bytes();
     let seed_suffix = bytes.to_vec();
     let seeds = vec![program_id.as_ref(), authority.as_ref(), seed_suffix.as_ref()];
     let (address, _bump_seed) = Pubkey::find_program_address(
         &seeds[..],
-        &program_id
+        program_id
     );
     Ok(address)
 }
@@ -220,10 +220,39 @@ declare_handlers!(Identity::<'info,'refs>,[
     Identity::create
 ]);
 
-// =================================================================
-// use workflow_allocator_macros::async_test;
 
-// TODO fix wasm32 target
+#[cfg(not(target_arch = "bpf"))]
+pub mod client {
+    use super::*;
+
+    pub async fn locate_identity_pubkey(transport : &Arc<Transport>, program_id : &Pubkey, authority : &Pubkey) -> Result<Option<Pubkey>> {
+
+        let proxy_pubkey = super::find_identity_proxy_pubkey(program_id, authority)?;
+        if let Some(proxy_ref) = transport.lookup(&proxy_pubkey).await? {
+            let mut proxy_account_data = proxy_ref.account_data.write().await;
+            let proxy_account_info = proxy_account_data.into_account_info();
+            let proxy = IdentityProxy::try_load(&proxy_account_info)?;
+            let identity_pubkey = proxy.meta.borrow().get_identity_pubkey();
+            Ok(Some(identity_pubkey))
+        } else {
+            Ok(None)
+        }
+        
+    }
+
+    pub async fn load_identity(program_id: &Pubkey, authority : &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+        let transport = workflow_allocator::transport::Transport::global()?;
+        if let Some(identity_pubkey) = locate_identity_pubkey(&transport, program_id, authority).await? {
+            Ok(transport.lookup(&identity_pubkey).await?)
+        } else {
+            Ok(None)
+        }
+    }
+
+}
+
+
+
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(test)]
 mod tests {
@@ -261,7 +290,7 @@ mod tests {
         }).await?;
 
 
-        let proxy_pubkey = find_identity_proxy_pubkey(simulator.program_id(), simulator.authority())?;
+        let proxy_pubkey = find_identity_proxy_pubkey(&simulator.program_id(), &simulator.authority())?;
         log_trace!("validating proxy pubkey: {} vs {}", proxy.pubkey,proxy_pubkey);
         assert_eq!(proxy.pubkey, proxy_pubkey);
 
