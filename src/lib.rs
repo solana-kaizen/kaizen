@@ -26,6 +26,7 @@ pub mod btree;
 // pub mod macros;
 // pub mod log;
 pub mod identity;
+pub mod user;
 pub mod pgp;
 
 pub use utils::generate_random_pubkey;

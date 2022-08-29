@@ -240,9 +240,11 @@ pub mod client {
         
     }
 
-    pub async fn load_identity(program_id: &Pubkey, authority : &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    // pub async fn load_identity(program_id: &Pubkey, authority : &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    pub async fn load_identity(program_id: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let transport = workflow_allocator::transport::Transport::global()?;
-        if let Some(identity_pubkey) = locate_identity_pubkey(&transport, program_id, authority).await? {
+        let authority = transport.get_authority_pubkey_impl()?;
+        if let Some(identity_pubkey) = locate_identity_pubkey(&transport, program_id, &authority).await? {
             Ok(transport.lookup(&identity_pubkey).await?)
         } else {
             Ok(None)
