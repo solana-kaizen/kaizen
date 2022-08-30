@@ -251,6 +251,29 @@ pub mod client {
         }
     }
 
+    pub async fn create_identity(program_id: &Pubkey, authority: &Pubkey, interface_id: usize, handler_id : usize) -> Result<Arc<AccountDataReference>> {
+
+        let transport = workflow_allocator::transport::Transport::global()?;
+
+        let builder = InstructionBuilder::new(program_id, interface_id, handler_id as u16)
+            .with_authority(authority)
+            .with_account_templates_with_custom_suffixes(&["proxy"]) 
+            .with_account_templates(1)
+            .with_sequence(0u64) 
+            .seal()?;
+
+        let instruction : Instruction = builder.try_into()?;
+        transport.execute(&instruction).await?;
+
+        let identity = load_identity(program_id).await?;
+
+        match identity {
+            Some(identity) => Ok(identity),
+            None => Err(workflow_allocator::error!("Error creating identity").into())
+        }
+
+    }
+
 }
 
 

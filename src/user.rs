@@ -22,6 +22,7 @@ impl Inner {
     }
 }
 
+#[derive(Clone)]
 pub struct User {
     inner : Arc<Mutex<Inner>>,
 }
@@ -33,22 +34,23 @@ impl User {
         }
     }
 
-    pub async fn load_identity(&self, program_id : &Pubkey) -> Result<()> {
+    pub async fn load_identity(&self, program_id : &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     
         match workflow_allocator::identity::client::load_identity(program_id).await? {
             Some(identity) => {
                 let mut inner = self.inner.lock().await;
                 inner.identity_state = IdentityState::Present;
                 inner.identity_pubkey = Some(*identity.key);
+                Ok(Some(identity))
             },
             None => {
                 let mut inner = self.inner.lock().await;
                 inner.identity_state = IdentityState::Missing;
                 inner.identity_pubkey = None;
+                Ok(None)
             }
         }
 
-        Ok(())
     }
 
     pub async fn is_present(&self) -> bool {

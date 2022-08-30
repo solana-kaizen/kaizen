@@ -138,12 +138,15 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         //     static ref #program_declaration_ : String = #program_name.to_string();
         // }
 
+        #[inline(always)]
         pub fn program_id() -> solana_program::pubkey::Pubkey { id() }
 
         pub fn program_name() -> &'static str { #program_name }
 
+        #[inline(always)]
         pub fn program_handlers() -> &'static [workflow_allocator::context::HandlerFn] { &PROGRAM_HANDLERS[..] }
 
+        #[inline(always)]
         pub fn interface_id(handler_fn: workflow_allocator::context::HandlerFn) -> usize {
             PROGRAM_HANDLERS.iter()
             .position(|&hfn| hfn as workflow_allocator::context::HandlerFnCPtr == handler_fn as workflow_allocator::context::HandlerFnCPtr )

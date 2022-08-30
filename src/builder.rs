@@ -166,15 +166,15 @@ impl InstructionBuilder {
 
     }
 
-    pub fn new_for_testing(program_id: Pubkey) -> InstructionBuilder {
+    pub fn new_for_testing(program_id: &Pubkey) -> InstructionBuilder {
         Self::new(program_id,0,0u16)
     }
     
-    pub fn new<T : Into<u16>>(program_id: Pubkey, interface_id: usize, handler_id: T) -> InstructionBuilder {
+    pub fn new<T : Into<u16>>(program_id: &Pubkey, interface_id: usize, handler_id: T) -> InstructionBuilder {
         InstructionBuilder {
             authority : None,
             identity : None,
-            program_id,
+            program_id : program_id.clone(),
 
             interface_id : interface_id as u16,
             handler_id : handler_id.into(),

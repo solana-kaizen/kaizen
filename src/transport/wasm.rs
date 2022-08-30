@@ -146,7 +146,7 @@ pub struct Transport {
     // #[wasm_bindgen(skip)]
     cache : Cache, //Arc<Store>,
     
-    pub config : Arc<Mutex<TransportConfig>>,
+    pub config : Arc<RwLock<TransportConfig>>,
 
     connection : JsValue,
     // wallet : JsValue,
@@ -323,7 +323,12 @@ impl Transport {
                 (Mode::Inproc, JsValue::NULL, Some(emulator))
             } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
                 // let emulator = EmulatorRpcClient::new(network)?;
-                let emulator: Arc<dyn EmulatorInterface> = Arc::new(EmulatorRpcClient::new(network)?);
+                let emulator = Arc::new(EmulatorRpcClient::new(network)?);
+                emulator.connect_as_task()?;
+                // workflow_core::task::spawn(async move {
+                //     emulator.connect(false).await;
+                // });
+                let emulator: Arc<dyn EmulatorInterface> = emulator;
                 (Mode::Emulator, JsValue::NULL, Some(emulator))
             } else if network == "mainnet-beta" || network == "testnet" || network == "devnet" {
                 let cluster_api_url_fn = js_sys::Reflect::get(&solana,&JsValue::from("clusterApiUrl"))?;
@@ -368,6 +373,8 @@ impl Transport {
         let cache = Cache::new_with_default_capacity();
         log_trace!("Creating lookup handler");
         let lookup_handler = LookupHandler::new();
+
+        let config = Arc::new(RwLock::new(config));
 
         let transport = Arc::new(Transport {
             mode,

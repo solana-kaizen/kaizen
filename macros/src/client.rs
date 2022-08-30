@@ -119,11 +119,16 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
             }
 
             fn execution_context_for(handler: HandlerFn) -> InstructionBuilder {
-                let program_id = crate::program_id();
+                // let program_id = crate::program_id(); 
                 let interface_id = crate::interface_id(#interface_dispatch_method);
                 let handler_id = Self::handler_id(handler);
 
-                InstructionBuilder::new(program_id, interface_id, handler_id as u16)
+                InstructionBuilder::new(
+                    // program_id,
+                    &crate::program_id(),
+                    interface_id,
+                    handler_id as u16
+                )
             }
 
             // fn execute(instruction : solana_program::instruction::Instruction) -> Self::Output {

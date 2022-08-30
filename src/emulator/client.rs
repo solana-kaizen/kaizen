@@ -34,6 +34,14 @@ impl EmulatorRpcClient {
     pub async fn connect(&self, block : bool) -> Result<Option<Listener>> {
         Ok(self.rpc.connect(block).await.map_err(|e|error!("{}",e))?)
     }
+
+    pub fn connect_as_task(self : &Arc<Self>) -> Result<()> {
+        let self_ = self.clone();
+        workflow_core::task::spawn(async move {
+            self_.rpc.connect(false).await.ok();
+        });
+        Ok(())
+    }
 }
 
 #[async_trait]

@@ -43,6 +43,7 @@ pub enum Containers {
     Identity,
     PGPPubkey,
 
+    Statistics,
     Root,
     Channel,
     Offer,

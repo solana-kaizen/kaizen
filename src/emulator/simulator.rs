@@ -131,7 +131,7 @@ impl Simulator {
         // let inner = self.inner().unwrap();
 
         let builder = InstructionBuilder::new(
-            program_id.clone(),
+            &program_id,
             0,
             0u16,
         )
