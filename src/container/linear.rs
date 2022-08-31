@@ -333,7 +333,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
         {
             // log_trace!("{} resize: new byte len {} capacity {}", style("[linear store]").magenta(), new_byte_len, capacity);
             // assert_eq!(new_byte_len, self.get_capacity());
-            assert_eq!(meta.version(), MAPPED_ARRAY_VERSION);
+            assert_eq!(meta.get_version(), MAPPED_ARRAY_VERSION);
         }
         meta.records = records_after as u32;
         self.try_get_mut_at(idx)
