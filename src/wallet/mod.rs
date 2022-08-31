@@ -10,8 +10,10 @@ pub mod wasm;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native;
 
+#[derive(Debug)]
 pub struct Adapter {
     pub name : String,
+    pub icon : String,
     pub index : usize,
 }
 

@@ -66,9 +66,9 @@ cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         
         #[wasm_bindgen]
-        pub fn bind(workflow: &JsValue, solana: &JsValue) -> crate::result::Result<()> {
+        pub fn bind(workflow: &JsValue, solana: &JsValue, mods:&JsValue) -> crate::result::Result<()> {
                 
-            crate::wasm::bind(workflow,solana)?;
+            crate::wasm::bind(workflow, solana, mods)?;
             crate::program::registry::wasm::load_program_registry(workflow)?;
             crate::container::registry::wasm::load_container_registry(workflow)?;
         
