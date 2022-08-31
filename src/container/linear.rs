@@ -12,23 +12,23 @@ pub const LINEAR_STORE_VERSION: u32 = 27;//0xfe;
 
 #[repr(packed)]
 // #[derive(Debug)]
-pub struct LinearStoreMeta {
+pub struct MappedArrayMeta {
     pub version: u32,
     // flags : u32,
     // reserved : u32,
     pub records : u32
 }
 
-impl LinearStoreMeta {
-    pub fn from_buffer<'refs>(data: &'refs [u8], offset : usize) -> &'refs LinearStoreMeta {
-        unsafe { & *((data[offset..]).as_ptr() as *const LinearStoreMeta) }
+impl MappedArrayMeta {
+    pub fn from_buffer<'refs>(data: &'refs [u8], offset : usize) -> &'refs MappedArrayMeta {
+        unsafe { & *((data[offset..]).as_ptr() as *const MappedArrayMeta) }
     }
-    pub fn from_buffer_mut(data: &mut [u8], offset : usize) -> &mut LinearStoreMeta {
-        unsafe { &mut *((data[offset..]).as_ptr() as *mut LinearStoreMeta) }
+    pub fn from_buffer_mut(data: &mut [u8], offset : usize) -> &mut MappedArrayMeta {
+        unsafe { &mut *((data[offset..]).as_ptr() as *mut MappedArrayMeta) }
     }
-    pub fn from_account_buffer_mut<'refs,'info>(account: &'refs AccountInfo<'info>, offset : usize) -> &'info mut LinearStoreMeta {
+    pub fn from_account_buffer_mut<'refs,'info>(account: &'refs AccountInfo<'info>, offset : usize) -> &'info mut MappedArrayMeta {
         let data = account.data.borrow_mut();
-        unsafe { &mut *((data[offset..]).as_ptr() as *mut LinearStoreMeta) }
+        unsafe { &mut *((data[offset..]).as_ptr() as *mut MappedArrayMeta) }
     }
     // pub fn from_account_buffer_mut<'info>(account: &'info AccountInfo, offset : usize) -> &'info mut LinearStoreMeta {
     //     let data = account.data.borrow_mut();
@@ -37,18 +37,18 @@ impl LinearStoreMeta {
 }
 
 #[derive(Debug)]
-pub struct LinearStore<'info, 'refs, T> {
+pub struct MappedArray<'info, 'refs, T> {
     pub account : &'refs AccountInfo<'info>,
     pub segment : Rc<Segment<'info, 'refs>>,
     phantom: PhantomData<&'refs T>,
     // TODO: realloc_on_remove : bool,
 }
 
-impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
+impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
 
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<LinearStore<'info, 'refs, T>> {
+    ) -> Result<MappedArray<'info, 'refs, T>> {
         let store = Self::try_load_from_segment(segment)?;
 
         store.try_init_meta()?;
@@ -58,13 +58,13 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
 
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<LinearStore<'info, 'refs, T>> {
+    ) -> Result<MappedArray<'info, 'refs, T>> {
 
-        if segment.get_data_len() < mem::size_of::<LinearStoreMeta>() {
+        if segment.get_data_len() < mem::size_of::<MappedArrayMeta>() {
             return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
         }
 
-        let store = LinearStore {
+        let store = MappedArray {
             account : segment.store.account,
             segment : segment.clone(),
             phantom : PhantomData,
@@ -75,12 +75,12 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     }
 
     pub fn data_len_min() -> usize {
-        std::mem::size_of::<LinearStoreMeta>()
+        std::mem::size_of::<MappedArrayMeta>()
     }
 
     #[inline(always)]
-    pub fn get_meta(&self) -> &'info mut LinearStoreMeta {
-        LinearStoreMeta::from_account_buffer_mut(
+    pub fn get_meta(&self) -> &'info mut MappedArrayMeta {
+        MappedArrayMeta::from_account_buffer_mut(
             self.account, 
             self.get_offset()
         )
@@ -94,10 +94,10 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     ) -> Result<&'info [T]> {
         let elements = {
             let data = account.data.borrow_mut();
-            let meta = LinearStoreMeta::from_buffer(&data, byte_offset);
+            let meta = MappedArrayMeta::from_buffer(&data, byte_offset);
             meta.records as usize
         };
-        let data_offset = byte_offset + mem::size_of::<LinearStoreMeta>();
+        let data_offset = byte_offset + mem::size_of::<MappedArrayMeta>();
         let slice = utils::account_buffer_as_slice_mut(account,data_offset,elements);
         Ok(slice)
     }
@@ -109,29 +109,29 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     ) -> Result<&'info mut [T]> {
         let elements = {
             let data = account.data.borrow_mut();
-            let meta = LinearStoreMeta::from_buffer(&data, byte_offset);
+            let meta = MappedArrayMeta::from_buffer(&data, byte_offset);
             meta.records as usize
         };
-        let data_offset = byte_offset + mem::size_of::<LinearStoreMeta>();
+        let data_offset = byte_offset + mem::size_of::<MappedArrayMeta>();
         let slice = utils::account_buffer_as_slice_mut(account,data_offset,elements);
         Ok(slice)
     }
 
-    pub fn try_init_meta(&self) -> Result<&'info mut LinearStoreMeta> {
+    pub fn try_init_meta(&self) -> Result<&'info mut MappedArrayMeta> {
         // let offset = self.get_offset();
         let meta = self.get_meta();
         if meta.version != 0u32 {
-            return Err(ErrorCode::LinearStoreMetaNotBlank.into());
+            return Err(ErrorCode::MappedArrayMetaNotBlank.into());
         }
         meta.version = LINEAR_STORE_VERSION;
         Ok(meta)
     }
 
     pub fn try_init_meta_with_templates(&self, records: usize)
-        -> Result<&mut LinearStoreMeta>
+        -> Result<&mut MappedArrayMeta>
     {
         #[cfg(feature = "check-buffer-sizes")]
-        if self.segment.get_data_len() < LinearStore::<T>::calculate_data_len(records) {
+        if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records) {
             return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
         }
 
@@ -141,10 +141,10 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     }
 
     pub fn try_init_meta_with_records(&self, records : &[T])
-        -> Result<&'info mut LinearStoreMeta> where T : 'info + Copy
+        -> Result<&'info mut MappedArrayMeta> where T : 'info + Copy
     {
         #[cfg(feature = "check-buffer-sizes")]
-        if self.segment.get_data_len() < LinearStore::<T>::calculate_data_len(records.len()) {
+        if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records.len()) {
             return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
         }
 
@@ -164,10 +164,10 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     }
 
     pub fn try_init_meta_with_refs(&self, records : &[&T]) 
-        -> Result<&mut LinearStoreMeta> where T : 'info + Copy
+        -> Result<&mut MappedArrayMeta> where T : 'info + Copy
     {
         #[cfg(feature = "check-buffer-sizes")]
-        if self.segment.get_data_len() < LinearStore::<T>::calculate_data_len(records.len()) {
+        if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records.len()) {
             return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
         }
 
@@ -205,11 +205,11 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     }
 
     pub fn get_data_offset(&self) -> usize {
-        self.get_offset() + mem::size_of::<LinearStoreMeta>()
+        self.get_offset() + mem::size_of::<MappedArrayMeta>()
     }
 
     pub fn calculate_data_len(records:usize) -> usize {
-        mem::size_of::<LinearStoreMeta>() + records * mem::size_of::<T>()
+        mem::size_of::<MappedArrayMeta>() + records * mem::size_of::<T>()
     }
 
     #[inline(always)]
@@ -265,7 +265,7 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
 
         // TODO review potential capacity problem - memory is available but segment is not sized correctly
 
-        let new_byte_len = LinearStore::<T>::calculate_data_len(records);//mem::size_of::<LinearStoreMeta>() + records * mem::size_of::<T>();
+        let new_byte_len = MappedArray::<T>::calculate_data_len(records);//mem::size_of::<LinearStoreMeta>() + records * mem::size_of::<T>();
         log_trace!("***########### resize for items -  capacity: {}  new_byte_len: {}", capacity, new_byte_len);
         // panic!("***");
         if new_byte_len > capacity {
@@ -286,7 +286,7 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     }
 
     pub fn get_byte_offset_at_idx(&self, idx: usize) -> usize {
-        mem::size_of::<LinearStoreMeta>() + idx * mem::size_of::<T>()
+        mem::size_of::<MappedArrayMeta>() + idx * mem::size_of::<T>()
     }
 
     pub fn volatile_try_insert_at(&self, idx : usize, zero_init:bool) -> Result<&'refs mut T> {
@@ -363,7 +363,7 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
 
             records -= 1;
             meta.records = records as u32;
-            mem::size_of::<LinearStoreMeta>() + records * mem::size_of::<T>()
+            mem::size_of::<MappedArrayMeta>() + records * mem::size_of::<T>()
         };
 
         if realloc {
@@ -405,7 +405,7 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
 
         records -= 1;
         meta.records = records as u32;
-        let new_len = mem::size_of::<LinearStoreMeta>() + records * mem::size_of::<T>();
+        let new_len = mem::size_of::<MappedArrayMeta>() + records * mem::size_of::<T>();
         // };
 
         if realloc {
@@ -433,14 +433,14 @@ impl<'info, 'refs, T> LinearStore<'info, 'refs, T> {
     }
 }
 
-impl<'info, 'refs, T> Index<usize> for LinearStore<'info, 'refs, T> {
+impl<'info, 'refs, T> Index<usize> for MappedArray<'info, 'refs, T> {
     type Output = T;
     fn index(&self, idx : usize) -> &Self::Output {
         self.get_at(idx)
     }
 }
 
-impl<'info, 'refs, T> IndexMut<usize> for LinearStore<'info, 'refs, T> {
+impl<'info, 'refs, T> IndexMut<usize> for MappedArray<'info, 'refs, T> {
     fn index_mut(&mut self, idx : usize) -> &mut Self::Output {
         self.get_at_mut(idx)
     }
@@ -473,7 +473,7 @@ impl<'info, 'refs, T> LinearStoreIterator<'info, T> {
     #[inline(always)]
     fn get_at(&self, idx: usize) -> &'refs mut T {
         let data = self.data.borrow();
-        let data_offset = self.offset + mem::size_of::<LinearStoreMeta>();
+        let data_offset = self.offset + mem::size_of::<MappedArrayMeta>();
         unsafe { &mut *((data[(data_offset + idx*mem::size_of::<T>())..]).as_ptr() as *mut T) }
     }
 }

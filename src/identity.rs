@@ -71,8 +71,8 @@ pub struct Identity<'info,'refs> {
     pub meta : RefCell<&'info mut IdentityMeta>,
     pub store : SegmentStore<'info,'refs>,
     // ---
-    #[segment(reserve(LinearStore::<IdentityEntry>::calculate_data_len(5)))]
-    pub list : LinearStore<'info,'refs, IdentityEntry>,
+    #[segment(reserve(MappedArray::<IdentityEntry>::calculate_data_len(5)))]
+    pub list : MappedArray<'info,'refs, IdentityEntry>,
 }
 
 impl<'info,'refs> std::fmt::Debug for Identity<'info,'refs> {

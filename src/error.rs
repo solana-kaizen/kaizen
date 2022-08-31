@@ -72,8 +72,8 @@ pub enum ErrorCode {
     NonMutableAccountChange,
 
     LinearStorageBounds,
-    LinearStoreMetaNotBlank,
-    LinearStoreRemoveAtError,
+    MappedArrayMetaNotBlank,
+    MappedArrayRemoveAtError,
     SegmentStoreMagic,
     SegmentStorageSize,
     SegmentStorageBounds,
