@@ -4,7 +4,8 @@ use proc_macro::{TokenStream};
 use proc_macro2::{Span, Ident, Group};
  use proc_macro2::{TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
-use workflow_macro::attributes::*;
+use workflow_macro_tools::attributes::*;
+
 // use syn::parse::ParseBuffer;
 use syn::{
     Error,
