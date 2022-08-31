@@ -22,6 +22,7 @@ use solana_program::instruction::Instruction;
 use crate::transport::TransportConfig;
 use crate::transport::Mode;
 use crate::transport::lookup::{LookupHandler,RequestType};
+use crate::wallet::*;
 
 use solana_client::{
     rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig,
@@ -29,7 +30,7 @@ use solana_client::{
 
 use solana_sdk::{
     commitment_config::{CommitmentConfig, CommitmentLevel},
-    signature::{read_keypair_file, Keypair, Signature},
+    signature::{read_keypair_file, Signature},
     signer::Signer,
     transaction::Transaction,
 };
@@ -40,7 +41,8 @@ pub struct Transport
 {
     mode : Mode,
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
-    pub client_ctx : Option<(RpcClient,Keypair,Pubkey)>,
+    pub rpc_client : Option<RpcClient>, //Option<(RpcClient,Keypair,Pubkey)>,
+    pub wallet : Arc<dyn Wallet>,
     pub config : Arc<RwLock<TransportConfig>>,
     pub cache : Arc<Cache>,
     pub queue : Option<TransactionQueue>,
@@ -80,7 +82,9 @@ impl Transport {
 
     pub fn try_new(network: &str, config : TransportConfig) -> Result<Arc<Transport>> {
 
-        let (mode, client_ctx, emulator) = // match network {
+        let wallet = Arc::new(native::Wallet::try_new()?);
+
+        let (mode, rpc_client, emulator) = // match network {
 
             if network == "inproc" {
                 let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
@@ -101,18 +105,20 @@ impl Transport {
                 );
             
                 // authority is the local pk
-                let home = home::home_dir().expect("unable to get home directory");
-                let home = Path::new(&home);
-                let payer_kp_path = home.join(".config/solana/id.json");
+                // let home = home::home_dir().expect("unable to get home directory");
+                // let home = Path::new(&home);
+                // let payer_kp_path = home.join(".config/solana/id.json");
             
-                let payer_kp =
-                    read_keypair_file(payer_kp_path).expect("Couldn't read authority keypair");
-                let payer_pk = payer_kp.pubkey();
+                // let payer_kp =
+                //     read_keypair_file(payer_kp_path).expect("Couldn't read authority keypair");
+                // let payer_pk = payer_kp.pubkey();
             
-                log_trace!("User authority: {}", payer_pk.to_string());
+                // log_trace!("User authority: {}", payer_pk.to_string());
 
-                (Mode::Validator, Some((client, payer_kp, payer_pk)), None)
+
+                (Mode::Validator, Some(client), None)
             };
+
 
         // TODO implement transaction queue support
         let queue = None;
@@ -124,7 +130,8 @@ impl Transport {
         let transport = Transport {
             mode,
             emulator,
-            client_ctx,
+            wallet,
+            rpc_client,
             config,
             cache,
             queue,
@@ -148,6 +155,11 @@ impl Transport {
         Ok(clone)
     }
 
+    #[inline(always)]
+    pub fn wallet(&self) -> Arc<dyn Wallet> {
+        self.wallet.clone()
+    }
+
     pub async fn balance(&self) -> Result<u64> {
 
         match self.mode {
@@ -163,14 +175,18 @@ impl Transport {
                 }
             },
             Mode::Validator => {
-                let (client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.client_ctx {
-                    client_ctx
-                } else {
-                    panic!("Transport: Missing RPC Client");
-                };
+                // let (client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
+                //     client_ctx
 
-                let payer_balance = client
-                    .get_balance(&payer_pk)
+                let rpc_client = self.rpc_client.as_ref().expect("Transport: Missing RPC client");
+                // if let Some(rpc_client) = self.rpc_client {
+                //     rpc_client
+                // } else {
+                //     panic!("Transport: Missing RPC Client");
+                // };
+
+                let payer_balance = rpc_client
+                    .get_balance(&self.wallet.pubkey()?)
                     .expect("Could not get payer balance");
 
                 Ok(payer_balance)
@@ -202,13 +218,15 @@ impl Transport {
                 Ok(payer_pk)
             },
             Mode::Validator => {
-                let (_client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.client_ctx {
-                    client_ctx
-                } else {
-                    return Err(error_code!(ErrorCode::MissingClient));
-                };
 
-                Ok(payer_pk.clone())
+                Ok(self.wallet.pubkey()?.clone())
+                // let (_client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
+                //     client_ctx
+                // } else {
+                //     return Err(error_code!(ErrorCode::MissingClient));
+                // };
+
+                // Ok(payer_pk.clone())
             }
         }
     }
@@ -257,13 +275,9 @@ impl Transport {
                 Ok(emulator.clone().lookup(pubkey).await?)
             },
             None => {
-                let (client, _payer_kp, _payer_pk) = if let Some(client_ctx) = &self.client_ctx {
-                    client_ctx
-                } else {
-                    panic!("No client");
-                };
 
-                let mut account = client.get_account(pubkey)?;
+                let rpc_client = self.rpc_client.as_ref().expect("Missing RPC Client");
+                let mut account = rpc_client.get_account(pubkey)?;
                 let account_info = (pubkey, &mut account).into_account_info();
                 let account_data = AccountData::clone_from_account_info(&account_info);
                 Ok(Some(Arc::new(AccountDataReference::new(account_data))))
@@ -290,21 +304,27 @@ impl super::Interface for Transport {
             None => {
                 
                 log_trace!("transport: running in native mode");
+                let rpc_client = self.rpc_client.as_ref().expect("Missing RPC Client");
 
-                let (client, payer_kp, payer_pk) = if let Some(client_ctx) = &self.client_ctx {
-                    client_ctx
-                } else {
-                    panic!("No client");
-                };
+                // let (client, payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
+                //     client_ctx
+                // } else {
+                //     panic!("No client");
+                // };
 
-                let recent_hash = client
+                let wallet = self.wallet.clone().downcast_arc::<native::Wallet>()
+                    .expect("Unable to downcast native wallt");
+
+                let recent_hash = rpc_client
                     .get_latest_blockhash()
                     .expect("Couldn't get recent blockhash");
 
                 let transaction = Transaction::new_signed_with_payer(
                     &[instruction.clone()],
-                    Some(&payer_pk),
-                    &[payer_kp],
+                    Some(&wallet.keypair().pubkey()),
+                    // Some(&payer_pk),
+                    &[wallet.keypair()],
+                    // &[payer_kp],
                     recent_hash,
                 );
 
@@ -318,7 +338,7 @@ impl super::Interface for Transport {
             
                 log_trace!("transprt: send_and_confirm_transaction_with_config");
                 let _result = self.send_and_confirm_transaction_with_config(
-                    &client,
+                    rpc_client,
                     &transaction,
                     commitment_config,
                     send_config,

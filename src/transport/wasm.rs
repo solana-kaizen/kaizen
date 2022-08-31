@@ -32,6 +32,9 @@ use crate::transport::lookup::{LookupHandler,RequestType};
 use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
 use super::Mode;
+use crate::wallet::*;
+use crate::wallet::wasm;
+
 // pub mod router {
 //     use super::*;
 
@@ -140,6 +143,7 @@ pub struct Transport {
 
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
 
+    pub wallet : Arc<dyn Wallet>,
 
     // #[wasm_bindgen(skip)]
     pub queue : Option<TransactionQueue>,
@@ -198,7 +202,7 @@ impl Transport {
         //     transport_env_var = "http://127.0.0.1:8899".into();
         // }
         // Self::try_new(transport_env_var.as_str(), config)//.await
-        Self::try_new("simulator", config)//.await
+        Self::try_new("inproc", config)//.await
     }
 
     // pub fn simulator(&self) -> Result<Arc<Simulator>> {
@@ -207,6 +211,11 @@ impl Transport {
     //         None => Err(error!("transport is missing simulator"))
     //     }
     // }
+
+    #[inline(always)]
+    pub fn new_wallet(&self) -> Arc<dyn Wallet> {
+        self.wallet.clone()
+    }
 
     pub async fn balance(&self) -> Result<u64> {
 
@@ -365,6 +374,8 @@ impl Transport {
             // }
         // };
 
+        let wallet = Arc::new(wasm::Wallet::try_new()?);
+
         log_trace!("Transport interface creation ok...");
         
         // let entrypoints = Arc::new(RwLock::new(HashMap::new()));
@@ -381,6 +392,7 @@ impl Transport {
             emulator,
             config,
             connection,
+            wallet,
             // wallet : JsValue::UNDEFINED,
             queue,
             cache,
