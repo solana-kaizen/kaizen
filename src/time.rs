@@ -2,18 +2,23 @@
 use cfg_if::cfg_if;
 use solana_program::clock::UnixTimestamp as SolanaUnixTimestamp;
 use workflow_allocator::result::Result;
+use serde::*;
 use borsh::*;
 
 cfg_if! {
     if #[cfg(target_arch = "bpf")] {
         use solana_program::clock::Clock;
         use solana_program::sysvar::Sysvar;
+    } else if #[cfg(target_arch = "wasm32")] {
+        use js_sys::Date;
     } else {
         use std::time::SystemTime;
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, BorshSchema, Debug, PartialEq, Eq, Clone, Copy)]
+/// Instant-like struct compatible with Native, Wasm32, BPF platforms.
+/// This structure keeps internal time in seconds and supports Borsh serialization.
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct Instant(pub u64);
 
@@ -25,6 +30,8 @@ impl Instant {
         cfg_if! {
             if #[cfg(target_arch = "bpf")] {
                 let unix_timestamp = Clock::get()?.unix_timestamp;
+            } else if #[cfg(target_arch = "wasm32")] {
+                let unix_timestamp = Date::now() / 1000.0;
             } else {
                 let unix_timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_secs();
             }
@@ -48,7 +55,7 @@ impl From<SolanaUnixTimestamp> for Instant {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, BorshSchema, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(BorshDeserialize, BorshSerialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct Duration(pub u64);
 
