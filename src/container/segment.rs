@@ -892,7 +892,7 @@ log_trace!("ALLOC A");
 mod tests {
     use super::*;
     use crate::accounts::*;
-    use crate::container::linear::LINEAR_STORE_VERSION;
+    use crate::container::linear::MAPPED_ARRAY_VERSION;
     use crate::container::linear::MappedArrayMeta;
 
     fn check_lsv<T>(ls:&MappedArray<T>) {
@@ -904,7 +904,7 @@ mod tests {
         // log_trace!("list a meta: {:#?}",ls.get_meta());
 
 
-        assert_eq!(ls.get_meta().version, LINEAR_STORE_VERSION);
+        assert_eq!(ls.get_meta().version, MAPPED_ARRAY_VERSION);
         assert!(ls.get_meta().records < 16);
     }
 
@@ -961,11 +961,6 @@ mod tests {
 
 //        fill_account_buffer_u8(&account,0, 16, 0xfe);
 
-// let vv = [
-//     LinearStore::<u8>::calculate_data_len(0),
-//     LinearStore::<u8>::calculate_data_len(0),
-//     LinearStore::<u8>::calculate_data_len(0),
-// ];
 
         let store = SegmentStore::try_create(&account, 0, &layout)?;
 

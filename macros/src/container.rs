@@ -65,9 +65,9 @@ impl SegmentArgs {
 #[segment(reserve(1024))]
 #[segment(reserve = 1024)]
 #[segment(reserve(size_of<T>*3))]
-#[segment(reserve(LinearStore::size_with_records(3)))]
-#[segment(resize, reserve(LinearStore::size_with_records(3)))]
-#[segment(resize = true, reserve(LinearStore::size_with_records(3)))]
+#[segment(reserve(MappedArray::size_with_records(3)))]
+#[segment(resize, reserve(MappedArray::size_with_records(3)))]
+#[segment(resize = true, reserve(MappedArray::size_with_records(3)))]
 */
 
 const SEGMENT_ATTRIBUTES: &[&str] = &["fixed","reserve","flex"];

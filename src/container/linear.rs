@@ -2,16 +2,17 @@ use std::{cell::RefCell, rc::Rc, mem};
 use std::marker::PhantomData;
 use std::ops::{Index,IndexMut};
 use solana_program::account_info::AccountInfo;
+use workflow_allocator_macros::Meta;
 use crate::container::segment::Segment;
 use crate::result::Result;
 use crate::error::*;
 use crate::utils;
 use workflow_log::*;
 
-pub const LINEAR_STORE_VERSION: u32 = 27;//0xfe;
+pub const MAPPED_ARRAY_VERSION: u32 = 27;//0xfe;
 
 #[repr(packed)]
-// #[derive(Debug)]
+#[derive(Meta)]
 pub struct MappedArrayMeta {
     pub version: u32,
     // flags : u32,
@@ -30,10 +31,6 @@ impl MappedArrayMeta {
         let data = account.data.borrow_mut();
         unsafe { &mut *((data[offset..]).as_ptr() as *mut MappedArrayMeta) }
     }
-    // pub fn from_account_buffer_mut<'info>(account: &'info AccountInfo, offset : usize) -> &'info mut LinearStoreMeta {
-    //     let data = account.data.borrow_mut();
-    //     unsafe { &mut *((data[offset..]).as_ptr() as *mut LinearStoreMeta) }
-    // }
 }
 
 #[derive(Debug)]
@@ -61,7 +58,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     ) -> Result<MappedArray<'info, 'refs, T>> {
 
         if segment.get_data_len() < mem::size_of::<MappedArrayMeta>() {
-            return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
+            return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
         let store = MappedArray {
@@ -123,7 +120,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
         if meta.version != 0u32 {
             return Err(ErrorCode::MappedArrayMetaNotBlank.into());
         }
-        meta.version = LINEAR_STORE_VERSION;
+        meta.version = MAPPED_ARRAY_VERSION;
         Ok(meta)
     }
 
@@ -132,7 +129,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     {
         #[cfg(feature = "check-buffer-sizes")]
         if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records) {
-            return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
+            return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
         let meta = self.try_init_meta()?;
@@ -145,7 +142,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     {
         #[cfg(feature = "check-buffer-sizes")]
         if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records.len()) {
-            return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
+            return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
         let meta = self.try_init_meta()?;
@@ -168,7 +165,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     {
         #[cfg(feature = "check-buffer-sizes")]
         if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records.len()) {
-            return Err(ErrorCode::LinearStorageSegmentSizeTooSmall.into());
+            return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
         let meta = self.try_init_meta()?;
@@ -215,7 +212,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     #[inline(always)]
     pub fn try_get_at(&self, idx: usize) -> Result<&'refs T> {
         if idx >= self.len() {
-            return Err(ErrorCode::LinearStorageBounds.into());
+            return Err(ErrorCode::MappedArrayBounds.into());
         }
 
         let data_offset = self.get_data_offset();
@@ -226,7 +223,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     #[inline(always)]
     pub fn try_get_mut_at(&self, idx: usize) -> Result<&'refs mut T> {
         if idx >= self.len() {
-            return Err(ErrorCode::LinearStorageBounds.into());
+            return Err(ErrorCode::MappedArrayBounds.into());
         }
 
         let data_offset = self.get_data_offset();
@@ -265,7 +262,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
 
         // TODO review potential capacity problem - memory is available but segment is not sized correctly
 
-        let new_byte_len = MappedArray::<T>::calculate_data_len(records);//mem::size_of::<LinearStoreMeta>() + records * mem::size_of::<T>();
+        let new_byte_len = MappedArray::<T>::calculate_data_len(records);
         log_trace!("***########### resize for items -  capacity: {}  new_byte_len: {}", capacity, new_byte_len);
         // panic!("***");
         if new_byte_len > capacity {
@@ -336,7 +333,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
         {
             // log_trace!("{} resize: new byte len {} capacity {}", style("[linear store]").magenta(), new_byte_len, capacity);
             // assert_eq!(new_byte_len, self.get_capacity());
-            assert_eq!(meta.version, LINEAR_STORE_VERSION);
+            assert_eq!(meta.version(), MAPPED_ARRAY_VERSION);
         }
         meta.records = records_after as u32;
         self.try_get_mut_at(idx)
@@ -344,7 +341,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
 
     pub fn try_remove_at(&self, idx: usize, realloc: bool, zero_init:bool) -> Result<()> {
         if idx >= self.len() {
-            return Err(ErrorCode::LinearStorageBounds.into());
+            return Err(ErrorCode::MappedArrayBounds.into());
         }
 
         let new_len = {
@@ -378,7 +375,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     pub fn try_remove_at_swap_last(&self, idx: usize, realloc: bool, zero_init:bool) -> Result<()> {
         // FIXME: finish try_remove_at_swap_last implementation!
         if idx >= self.len() {
-            return Err(ErrorCode::LinearStorageBounds.into());
+            return Err(ErrorCode::MappedArrayBounds.into());
         }
 
         let meta = self.get_meta();
@@ -422,8 +419,8 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     }
 
 
-    pub fn iter(&self) -> LinearStoreIterator<'info, T> {
-        LinearStoreIterator {
+    pub fn iter(&self) -> MappedArrayIterator<'info, T> {
+        MappedArrayIterator {
             offset : self.get_offset(),
             data : self.account.data.clone(),
             idx: 0,
@@ -446,7 +443,7 @@ impl<'info, 'refs, T> IndexMut<usize> for MappedArray<'info, 'refs, T> {
     }
 }
 
-pub struct LinearStoreIterator<'info, T> where T : 'info {
+pub struct MappedArrayIterator<'info, T> where T : 'info {
     idx: usize,
     len : usize,
     offset : usize,
@@ -454,7 +451,7 @@ pub struct LinearStoreIterator<'info, T> where T : 'info {
     phantom : PhantomData<T>,
 }
 
-impl<'info, T> Iterator for LinearStoreIterator<'info, T> {
+impl<'info, T> Iterator for MappedArrayIterator<'info, T> {
     type Item = &'info mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -469,7 +466,7 @@ impl<'info, T> Iterator for LinearStoreIterator<'info, T> {
     }
 }
 
-impl<'info, 'refs, T> LinearStoreIterator<'info, T> {
+impl<'info, 'refs, T> MappedArrayIterator<'info, T> {
     #[inline(always)]
     fn get_at(&self, idx: usize) -> &'refs mut T {
         let data = self.data.borrow();

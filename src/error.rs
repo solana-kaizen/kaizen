@@ -71,7 +71,7 @@ pub enum ErrorCode {
     ReallocFailure,
     NonMutableAccountChange,
 
-    LinearStorageBounds,
+    MappedArrayBounds,
     MappedArrayMetaNotBlank,
     MappedArrayRemoveAtError,
     SegmentStoreMagic,
@@ -81,7 +81,7 @@ pub enum ErrorCode {
     SegmentNotResizable,
     SegmentSizeTooLargeForIndexUnitSize,
     AccountSizeTooSmall,
-    LinearStorageSegmentSizeTooSmall,
+    MappedArraySegmentSizeTooSmall,
     SequenceStoreAccountDataNotBlank,
     SequenceStoreMagic,
     NotEnoughAccounts,

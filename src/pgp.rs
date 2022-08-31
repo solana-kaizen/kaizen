@@ -32,7 +32,7 @@ pub struct PGPData<'info,'refs> {
 
     pub pgp_pubkey : Segment<'info,'refs>, 
 //    pub pubkey : Data<PgpPubkey>,
-    // pub list : LinearStore<'info,'refs, IdentityEntry>,
+    // pub list : MappedArray<'info,'refs, IdentityEntry>,
     // pub _v2: MyType<'info,'refs>,
     // pub _v3: MyType<'info,'refs>,
 }

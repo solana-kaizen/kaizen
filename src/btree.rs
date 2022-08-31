@@ -18,7 +18,6 @@ use std::marker::PhantomData;
 // use std::marker::PhantomData;
 // use std::rc::Rc;
 // pub use crate::segment::{Segment, SegmentStore, Layout};
-// pub use crate::linear::LinearStore;
 // pub use crate::container::ContainerHeader;
 // pub use solana_program::account_info::AccountInfo;
 
