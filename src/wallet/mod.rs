@@ -15,6 +15,7 @@ pub struct Adapter {
     pub name : String,
     pub icon : String,
     pub index : usize,
+    pub detected: bool
 }
 
 

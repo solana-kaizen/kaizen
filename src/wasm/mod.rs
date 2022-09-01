@@ -2,14 +2,13 @@
 // pub mod utils;
 
 use wasm_bindgen::prelude::*;
-use workflow_wasm::utils;
 
 pub fn bind(workflow: &JsValue, solana: &JsValue, mods: &JsValue) -> std::result::Result<(), JsValue> {
     let global = js_sys::Object::new();
     js_sys::Reflect::set(&js_sys::global(), &"$workflow".into(), &global)?;
     js_sys::Reflect::set(&global,&"workflow".into(),&workflow)?;
     js_sys::Reflect::set(&global,&"solana".into(),&solana)?;
-    js_sys::Reflect::set(&global,&"mods".into(),&mods)?;
+    js_sys::Reflect::set(&global,&"modules".into(),&mods)?;
     Ok(())
 }
 
@@ -22,11 +21,11 @@ pub fn workflow() -> std::result::Result<JsValue,JsValue> {
 }
 
 pub fn solana() -> std::result::Result<JsValue,JsValue> {
-    Ok(js_sys::Reflect::get(&workflow()?, &"solana".into())?)
+    Ok(js_sys::Reflect::get(&global()?, &"solana".into())?)
 }
 
-pub fn mods() -> std::result::Result<JsValue,JsValue> {
-    Ok(js_sys::Reflect::get(&workflow()?, &"mods".into())?)
+fn mods() -> std::result::Result<JsValue,JsValue> {
+    Ok(js_sys::Reflect::get(&global()?, &"modules".into())?)
 }
 
 pub fn wallet_ready_state() -> std::result::Result<JsValue,JsValue> {

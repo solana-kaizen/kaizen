@@ -9,7 +9,9 @@ use js_sys;
 use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen::JsValue;
 //use std::sync::{Mutex, Arc};
+use workflow_allocator::wasm as wasm_utils;
 use crate::prelude::log_trace;
+use crate::transport::Transport;
 
 use crate::error;
 
@@ -52,56 +54,33 @@ impl Wallet {
             }
         }
 
-        let future = if let Some(adapter_jsv) = adapter_selection{
-            let res = utils::apply_with_args0(&adapter_jsv, "connect");
+        if let Some(adapter_jsv) = &adapter_selection{
+            let res = utils::apply_with_args0(adapter_jsv, "connect");
             match res{
                 Ok(promise)=>{
-                    JsFuture::from(js_sys::Promise::from(promise))
+                    let future = JsFuture::from(js_sys::Promise::from(promise));
+                    log_trace!("wallet.connect ........");
+                    match future.await{
+                        Ok(v)=>{
+                            log_trace!("wallet.connect future.await success: {:?}", v);
+                            Transport::global()?.with_wallet(adapter_jsv.clone())?;
+                            log_trace!("wallet.connect future.await transport updated");
+                            Ok(v)
+                        }
+                        Err(e)=>{
+                            log_trace!("wallet.connect future.await error: {:?}", e);
+                            let msg = utils::try_get_string(&e, "message")?;
+                            Err(error!("Error: {:?}", msg))
+                        }
+                    }
                 }
                 Err(err)=>{
-                    return Err(error!("{:?}", err));
+                    Err(error!("{:?}", err))
                 }
             }
         }else{
-            return Err(error!("Unable to find wallet adapter."));
-        };
-        //let err:Arc<Mutex<Option<Result<String>>>> = Arc::new(Mutex::new(None));
-        //let err_ = err.clone();
-        log_trace!("wallet.connect ------ ........");
-        //workflow_core::task::wasm::spawn(async move {
-            //let mut error = err_.lock().expect("Unable to lock");
-            match future.await{
-                Ok(v)=>{
-                    log_trace!("wallet.connect future.await: {:?}", v);
-                    //*error = Some(Ok(format!("{:?}", v)));
-                    Ok(v)
-                }
-                Err(e)=>{
-                    log_trace!("wallet.connect future.await error: {:?}", e);
-                    //*error = Some(Err(error!("{:?}", e)));
-                    let msg = utils::try_get_string(&e, "message")?;
-                    Err(error!("Error: {:?}", msg))
-                }
-            }
-        //});
-        /*
-        let error = err.lock().expect("Unable to lock");
-        match error.as_ref(){
-            Some(e)=>{
-                match e {
-                    Ok(v)=>{
-                        Ok(JsValue::from(v))
-                    }
-                    Err(e)=>{
-                        Err(error!("{:?}", e))
-                    }
-                }
-            }
-            None=>{
-                Ok(JsValue::from("1234"))
-            }
+            Err(error!("Unable to find wallet adapter."))
         }
-        */
     }
 
     // async fn get_balance(&self) -> Result<u64>;
@@ -122,19 +101,23 @@ impl super::Wallet for Wallet {
     }
 
     async fn get_adapter_list(&self) -> Result<Option<Vec<super::Adapter>>> {
-        let win = js_sys::global();
-        let adapters_jsv = js_sys::Reflect::get(&win, &"WalletAdapters".into())?;
-        let adapters = js_sys::Array::from(&adapters_jsv);
+        let adapters = wasm_utils::adapters()?;
+        let wallet_ready_state = wasm_utils::wallet_ready_state()
+            .expect("Wallet: unable to get wallet_ready_state.");
+        let installed = utils::try_get_string(&wallet_ready_state, "Installed")
+            .expect("Wallet: unable to get Installed property from WalletReadyState.");
+        //let win = js_sys::global();
+        //let adapters_jsv = js_sys::Reflect::get(&win, &"WalletAdapters".into())?;
+        //let adapters = js_sys::Array::from(&adapters_jsv);
         let mut adapters_info = Vec::new();
         for (index, adapter) in adapters.iter().enumerate(){
-            //let readyState = utils::try_get_string(&adapter, "readyState")?;
-            //if readyState.eq(installed){
-                adapters_info.push(super::Adapter{
-                    icon: utils::try_get_string(&adapter, "icon")?,
-                    name: utils::try_get_string(&adapter, "name")?,
-                    index
-                });
-            //}
+            let ready_state = utils::try_get_string(&adapter, "readyState")?;
+            adapters_info.push(super::Adapter{
+                icon: utils::try_get_string(&adapter, "icon")?,
+                name: utils::try_get_string(&adapter, "name")?,
+                index,
+                detected:ready_state.eq(&installed)
+            });
         }
         //log_trace!("adapters_info: {:?}, adapters_jsv:{:?}", adapters_info, adapters_jsv);
 
