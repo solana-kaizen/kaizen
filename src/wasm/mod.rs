@@ -1,6 +1,3 @@
-// pub mod timers;
-// pub mod utils;
-
 use wasm_bindgen::prelude::*;
 
 pub fn bind(workflow: &JsValue, solana: &JsValue, mods: &JsValue) -> std::result::Result<(), JsValue> {
@@ -39,11 +36,19 @@ pub fn adapters() -> std::result::Result<Vec<JsValue>, JsValue> {
     for name in names{
         match js_sys::Reflect::get(&mods, &name.into()){
             Ok(adapter_ctr)=>{
-                let adapter = js_sys::Reflect::construct(&adapter_ctr.into(), &js_sys::Array::new_with_length(0))?;
-                list.push(adapter);
+                //log_trace!("adapter_ctr: {:?}", adapter_ctr);
+                match js_sys::Reflect::construct(&adapter_ctr.into(), &js_sys::Array::new_with_length(0)){
+                    Ok(adapter)=>{
+                        list.push(adapter);
+                    }
+                    Err(_e)=>{
+                        //
+                    }
+                }
+                
             }
             Err(_e)=>{
-
+                //
             }
         }
     }
