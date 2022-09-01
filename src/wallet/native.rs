@@ -42,7 +42,7 @@ impl Wallet {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl super::Wallet for Wallet {
 
     fn is_connected(&self) -> bool {

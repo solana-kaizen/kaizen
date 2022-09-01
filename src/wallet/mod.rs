@@ -19,7 +19,7 @@ pub struct Adapter {
 }
 
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait Wallet : AnySync {
     fn is_connected(&self) -> bool;
     fn pubkey(&self) -> Result<Pubkey>;
