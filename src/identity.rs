@@ -6,6 +6,9 @@ use workflow_allocator::error::*;
 // use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 use workflow_allocator::container::Containers;
+use workflow_allocator::container::*;
+use borsh::*;
+use serde::*;
 
 #[derive(Meta)]
 #[repr(packed)]
@@ -35,21 +38,67 @@ impl<'info, 'refs> IdentityProxy<'info, 'refs> {
 pub enum DataType {
     Authority        = 0x00000001,
     PGPPubkey        = 0x00000002,
+    UserTypes        = 0xf0000000,
 }
 
-const ENTRY_FLAG_READONLY : u32 = 0x00000001;
-pub const DEFAULT_IDENTITY_RECORDS: usize = 5;
+const FLAG_READONLY : u32 = 0x00000001;
 
-#[derive(Copy, Clone)]
-#[repr(packed)]
-pub struct IdentityEntry {
+#[derive(Meta, Copy, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct IdentityRecordStore {
     pub data_type : u32,
-    pub entry_flags : u32,
-    pub data_flags : u32,
+    pub flags : u32,
     pub pubkey : Pubkey,
 }
 
-impl PartialEq for IdentityEntry {
+impl Into<IdentityRecord> for &IdentityRecordStore {
+    fn into(self) -> IdentityRecord {
+        IdentityRecord {
+            data_type: self.get_data_type(),
+            flags: self.get_flags(),
+            pubkey: self.get_pubkey(),
+        }
+    }
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub enum Op {
+    CreateRecords(Vec<IdentityRecordStore>),
+    CreateCollections(Vec<u32>),
+    // ChangeEntryFlags(u32),
+    // ChangeDataFlags(u32),
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub enum Instr {
+    Ops(Vec<Op>)
+}
+
+// impl Instr {
+//     pub fn get_records<'instr>(&'instr self) -> Vec<&'instr IdentityRecordStore> {
+//         let mut records = Vec::new();
+//         match self {
+//             Instr::Ops(ops) => {
+//                 for op in ops.iter() {
+//                     if let Op::CreateRecords(vec) = op {
+//                         vec.iter().map(|record| records.push(record));
+//                     }
+//                 }
+//             }
+//         }
+
+//         records
+//     }
+// }
+
+#[derive(Meta, Copy, Clone)]
+#[repr(packed)]
+pub struct IdentityRecord {
+    pub data_type : u32,
+    pub flags : u32,
+    pub pubkey : Pubkey,
+}
+
+impl PartialEq for IdentityRecord {
     fn eq(&self, other: &Self) -> bool {
         self.data_type == other.data_type
 //        self.data_flags == other.data_flags
@@ -57,7 +106,7 @@ impl PartialEq for IdentityEntry {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Meta, Copy, Clone)]
 #[repr(packed)]
 pub struct IdentityMeta {
     pub version : u32,
@@ -71,35 +120,25 @@ pub struct Identity<'info,'refs> {
     pub meta : RefCell<&'info mut IdentityMeta>,
     pub store : SegmentStore<'info,'refs>,
     // ---
-    #[segment(reserve(MappedArray::<IdentityEntry>::calculate_data_len(5)))]
-    pub list : MappedArray<'info,'refs, IdentityEntry>,
+    #[segment(reserve(MappedArray::<IdentityRecord>::calculate_data_len(5)))]
+    pub records : MappedArray<'info,'refs, IdentityRecord>,
+    pub collections : MappedArray<'info,'refs, Collection>,
 }
 
 impl<'info,'refs> std::fmt::Debug for Identity<'info,'refs> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Identity {{ {} }}",self.pubkey())?;
-        // FIXME dump identity info
-        // let inner = self.0.try_lock();
-        // match inner {
-        //     Some(inner) => {
-        //         write!(f, "Cache {{ size: {}, items: {}, capacity: {} }}", inner.size, inner.items, inner.capacity)?;
-        //     },
-        //     None => {
-        //     }
-        // }
         Ok(())
     }
 }
-
 
 impl<'info, 'refs> Identity<'info, 'refs> {
 
     pub fn init(&self) -> Result<()> {
         let mut meta = self.meta.try_borrow_mut()?;
-        meta.version = 1;
-        // meta.payload_len = 0;
-        meta.pda_sequence = 0;
-        meta.reserved_for_future_flags = 0;
+        meta.set_version(1);
+        meta.set_pda_sequence(0);
+        meta.set_reserved_for_future_flags(0);
         Ok(())
     }
 
@@ -116,33 +155,33 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     }
 
     /// Insert IdentityEntry into the entry list
-    pub fn try_insert_entry(&mut self, entry : &IdentityEntry) -> Result<()> {
-        let new_entry = self.list.volatile_try_insert(false)?;
-        *new_entry = *entry;
-        Ok(())
-    }
+    // pub fn try_insert_entry(&mut self, entry : &IdentityRecord) -> Result<()> {
+    //     let new_entry = self.records.try_allocate_volatile(false)?;
+    //     *new_entry = *entry;
+    //     Ok(())
+    // }
 
     // Insert Authority Pubkey as IdentityEntry into the entry list
-    pub fn try_add_authority(&mut self, pubkey: &Pubkey)-> Result<()>{
-        let entry = IdentityEntry {
+    pub fn try_insert_authority(&mut self, pubkey: &Pubkey)-> Result<()>{
+        let record = IdentityRecord {
             data_type : DataType::Authority as u32,
-            entry_flags : 0,
-            data_flags : 0,
-            pubkey:pubkey.clone()
+            flags : 0,
+            pubkey:pubkey.clone(),
         };
-        self.try_insert_entry(&entry)
+        unsafe { self.records.try_insert(&record) }
+        // self.try_insert_entry(&entry)
     }
 
     /// Remove entry from the identity entry list
-    pub fn try_remove_entry(&mut self, target : &IdentityEntry) -> Result<()> {
+    pub unsafe fn try_remove_entry(&mut self, target : &IdentityRecord) -> Result<()> {
         // let entries = self.try_get_entries()?;
-        for idx in 0..self.list.len() {
-            let entry = self.list.get_at(idx);
+        for idx in 0..self.records.len() {
+            let entry = self.records.get_at(idx);
             if entry == target {
-                if entry.entry_flags & ENTRY_FLAG_READONLY != 0 {
+                if entry.flags & FLAG_READONLY != 0 {
                     return Err(program_error_code!(ErrorCode::ReadOnlyAccess));
                 }
-                self.list.try_remove_at(idx,true,true)?;
+                self.records.try_remove_at(idx,true,true)?;
             }
         }
 
@@ -152,7 +191,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     /// Check if identity has an authority pubkey in the list
     pub fn try_has_authority(&self, pubkey: &Pubkey) -> Result<bool> {
         // let entries = self.try_get_entries()?;
-        for entry in self.list.iter() {
+        for entry in self.records.iter() {
             if entry.data_type == (DataType::Authority as u32) && entry.pubkey == *pubkey {
                 return Ok(true);
             }
@@ -160,19 +199,64 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         Ok(false)
     }
 
+    // pub fn has_collection(&self, pubkey : &Pubkey) -> bool {
+    //     for record in self.records.iter() {
+    //         if record.data_type == (DataType::Collection as u32) && record.pubkey == *pubkey {
+    //             return true;
+    //         }
+    //     }
+
+    //     false
+    // }
+
     /// Create a new identity container and the corresponding identity proxy account
     pub fn create(ctx:&Rc<Context>) -> ProgramResult { //Result<()> {
-        let allocation_args = AccountAllocationArgs::default();
-        let proxy_account = ctx.create_pda(IdentityProxy::initial_data_len(), &allocation_args)?;
-        let proxy = IdentityProxy::try_create(proxy_account)?;
+
+        let mut records : Vec<IdentityRecordStore> = Vec::new();
+        let mut collections : Vec<u32> = Vec::new();
+        if ctx.instruction_data.len() > 0 {
+            match Instr::try_from_slice(&ctx.instruction_data)? {
+                Instr::Ops(ops) => {
+                    for op in ops {
+                        match op {
+                            Op::CreateRecords(src) => {
+                                records.extend_from_slice(&src);
+                            },
+                            Op::CreateCollections(src) => {
+                                collections.extend_from_slice(&src);
+                            },
+                        }
+                    }
+                }
+            }
+        }
+        // let records = instr.get_records();
 
         let allocation_args = AccountAllocationArgs::default();
-        let identity_account = ctx.create_pda(Identity::initial_data_len(), &allocation_args)?;
-        let mut identity = Identity::try_create(identity_account)?;
+        let proxy = IdentityProxy::try_allocate(ctx, &allocation_args, 0)?;
+
+        let data_len = 
+            (1 + records.len()) * std::mem::size_of::<IdentityRecord>() +
+            collections.len() * std::mem::size_of::<Collection>();
+        let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
         
         identity.init()?;
         proxy.init(identity.pubkey())?;
-        identity.try_add_authority(ctx.authority.key)?;
+        identity.try_insert_authority(ctx.authority.key)?;
+
+        for record in records.iter() {
+            let record : IdentityRecord = record.into();
+            unsafe { identity.records.try_insert(&record)?; }
+        }
+
+        for idx in 0..collections.len() {
+            let collection_data_type = collections[idx];
+            let allocation_args = AccountAllocationArgs::default();
+            let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;
+            collection_store.try_init(collection_data_type)?;
+            let collection = unsafe { identity.collections.try_allocate(false)? };
+            collection.init(collection_store.pubkey(), collection_data_type);
+        }
 
         Ok(())
     }

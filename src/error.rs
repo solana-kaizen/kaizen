@@ -71,6 +71,8 @@ pub enum ErrorCode {
     ReallocFailure,
     NonMutableAccountChange,
 
+    CollectionMetaSegmentSizeTooSmall,
+    CollectionCollision,
     MappedArrayBounds,
     MappedArrayMetaNotBlank,
     MappedArrayRemoveAtError,

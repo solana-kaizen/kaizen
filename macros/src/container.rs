@@ -834,6 +834,14 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             //     Ok(Self::try_create(account_info)?)
             // }
         
+            pub fn try_allocate_default<'pid,'instr>(
+                ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
+                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
+            ) -> workflow_allocator::result::Result<Self> {
+                
+                Ok(Self::try_allocate(ctx,allocation_args,0)?)
+            }
+        
             pub fn try_allocate<'pid,'instr>(
                 ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
                 allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,

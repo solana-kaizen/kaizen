@@ -15,8 +15,6 @@ pub const MAPPED_ARRAY_VERSION: u32 = 27;//0xfe;
 #[derive(Meta)]
 pub struct MappedArrayMeta {
     pub version: u32,
-    // flags : u32,
-    // reserved : u32,
     pub records : u32
 }
 
@@ -34,14 +32,18 @@ impl MappedArrayMeta {
 }
 
 #[derive(Debug)]
-pub struct MappedArray<'info, 'refs, T> {
+pub struct MappedArray<'info, 'refs, T> 
+where T : Copy
+{
     pub account : &'refs AccountInfo<'info>,
     pub segment : Rc<Segment<'info, 'refs>>,
     phantom: PhantomData<&'refs T>,
     // TODO: realloc_on_remove : bool,
 }
 
-impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
+impl<'info, 'refs, T> MappedArray<'info, 'refs, T> 
+where T: Copy
+{
 
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, 'refs>>
@@ -256,7 +258,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
         unsafe { &mut *((data[(data_offset + idx*mem::size_of::<T>())..]).as_ptr() as *mut T) }
     }
 
-    pub fn try_resize_for_items(&self, records: usize, zero_init: bool) -> Result<()> {
+    pub unsafe fn try_resize_for_items(&self, records: usize, zero_init: bool) -> Result<()> {
         log_trace!("try_resize_for_items records:{}", records);
         let capacity = self.get_capacity();
 
@@ -278,15 +280,27 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
         Ok(())
     }
 
-    pub fn volatile_try_insert(&self, zero_init:bool) -> Result<&'refs mut T> {
-        Ok(self.volatile_try_insert_at(self.len(),zero_init)?)
+    pub unsafe fn try_insert(&self, record : &T) -> Result<()> {
+        let dest = self.try_allocate(false)?;
+        *dest = *record;
+        Ok(())
+    }
+
+    pub unsafe fn try_insert_at(&self, idx : usize, record : &T) -> Result<()> {
+        let dest = self.try_allocate_at(idx, false)?;
+        *dest = *record;
+        Ok(())
+    }
+
+    pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> {
+        Ok(self.try_allocate_at(self.len(),zero_init)?)
     }
 
     pub fn get_byte_offset_at_idx(&self, idx: usize) -> usize {
         mem::size_of::<MappedArrayMeta>() + idx * mem::size_of::<T>()
     }
 
-    pub fn volatile_try_insert_at(&self, idx : usize, zero_init:bool) -> Result<&'refs mut T> {
+    pub unsafe fn try_allocate_at(&self, idx : usize, zero_init:bool) -> Result<&'refs mut T> {
         let records_before = self.len();
         let capacity = self.get_capacity();
         let records_after = records_before+1;
@@ -339,7 +353,7 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
         self.try_get_mut_at(idx)
     }
 
-    pub fn try_remove_at(&self, idx: usize, realloc: bool, zero_init:bool) -> Result<()> {
+    pub unsafe fn try_remove_at(&self, idx: usize, realloc: bool, zero_init:bool) -> Result<()> {
         if idx >= self.len() {
             return Err(ErrorCode::MappedArrayBounds.into());
         }
@@ -430,14 +444,18 @@ impl<'info, 'refs, T> MappedArray<'info, 'refs, T> {
     }
 }
 
-impl<'info, 'refs, T> Index<usize> for MappedArray<'info, 'refs, T> {
+impl<'info, 'refs, T> Index<usize> for MappedArray<'info, 'refs, T> 
+where T: Copy
+{
     type Output = T;
     fn index(&self, idx : usize) -> &Self::Output {
         self.get_at(idx)
     }
 }
 
-impl<'info, 'refs, T> IndexMut<usize> for MappedArray<'info, 'refs, T> {
+impl<'info, 'refs, T> IndexMut<usize> for MappedArray<'info, 'refs, T> 
+where T: Copy
+{
     fn index_mut(&mut self, idx : usize) -> &mut Self::Output {
         self.get_at_mut(idx)
     }

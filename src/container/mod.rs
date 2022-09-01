@@ -4,6 +4,8 @@ pub mod segment;
 pub use segment::*;
 pub mod linear;
 pub use linear::*;
+pub mod collection;
+pub use collection::*;
 pub mod structure;
 pub use structure::*;
 pub mod data;

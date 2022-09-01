@@ -359,15 +359,15 @@ where
     }
 
 
-    pub fn volatile_try_insert(&self, key: K, target: &Pubkey) -> Result<()> {
-        let cell = self.data.volatile_try_insert(false)?;
+    pub unsafe fn try_insert(&self, key: K, target: &Pubkey) -> Result<()> {
+        let cell = self.data.try_allocate(false)?;
         cell.key = key;
         cell.target = *target;
         Ok(())
     }
 
-    pub fn volatile_try_insert_at(&self, idx: usize, src: &BPTreeIndexCell<K>) -> Result<()> {
-        let cell = self.data.volatile_try_insert_at(idx, false)?;
+    pub unsafe fn try_insert_at(&self, idx: usize, src: &BPTreeIndexCell<K>) -> Result<()> {
+        let cell = self.data.try_allocate_at(idx, false)?;
         *cell = *src;//.clone();
         // cell.key = key;
         // cell.target = *target;
@@ -488,15 +488,15 @@ where
         self.meta.borrow().capacity as usize
     }
 
-    pub fn volatile_try_insert(&self, key: &K, value: &V) -> Result<()> {
-        let cell = self.data.volatile_try_insert(false)?;
+    pub unsafe fn try_insert(&self, key: &K, value: &V) -> Result<()> {
+        let cell = self.data.try_allocate(false)?;
         cell.key = *key;
         cell.value = *value;
         Ok(())
     }
 
-    pub fn volatile_try_insert_at(&self, idx: usize, key: &K, value: &V) -> Result<()> {
-        let cell = self.data.volatile_try_insert_at(idx, false)?;
+    pub unsafe fn try_insert_at(&self, idx: usize, key: &K, value: &V) -> Result<()> {
+        let cell = self.data.try_allocate_at(idx, false)?;
         cell.key = *key;
         cell.value = *value;
         Ok(())
@@ -623,13 +623,13 @@ where
         
         // TODO: check - this should not invoke realloc!
         log_trace!("{}",style("AAA").white().on_cyan());
-        right.data.try_resize_for_items(right_len,false)?;
+        unsafe { right.data.try_resize_for_items(right_len,false)?; }
         let src_slice = &left.data.as_slice()[left_len..];
         right.data.as_slice_mut().copy_from_slice(src_slice);
         // right.
         // TODO: reduce account size
         log_trace!("{}",style("BBB").white().on_cyan());
-        left.data.try_resize_for_items(left_len, false)?; //init_len(len_left);
+        unsafe { left.data.try_resize_for_items(left_len, false)?; }
         
         {
             let mut left_meta = left.meta.borrow_mut();
@@ -705,7 +705,7 @@ where
         log_trace!("{}",style("   CCCCCCCCCCCCCC   ").white().on_blue());
         log_trace!("{} {}",style("right_alloc_records:").white().on_blue(),right_alloc_records);
         
-        right.data.try_resize_for_items(right_alloc_records,false)?;
+        unsafe { right.data.try_resize_for_items(right_alloc_records,false)?; }
         let src_slice = &left.data.as_slice()[left_len..];
         log_trace!("{}:{}",style("src slice len:").red(),src_slice.len());
 
@@ -720,11 +720,16 @@ where
                 };
 
                 // TODO: reduce account size
-                let cell = left.data.volatile_try_insert_at(idx,false)?;
-                *cell = insert_cell;
+                unsafe { 
+                    let cell = left.data.try_allocate_at(idx,false)?;
+                    *cell = insert_cell;
+                }
                 // TODO: this should not be needed as volatile_try_insert_at() ^ should handle
                 log_trace!("{}",style("DDD").white().on_cyan());
-                left.data.try_resize_for_items(left_len+1, false)?;
+                
+                unsafe {
+                    left.data.try_resize_for_items(left_len+1, false)?;
+                }
 
         } else {
 
@@ -742,7 +747,9 @@ where
 
                 // TODO: transfer out lamports
                 log_trace!("{}",style("EEE").white().on_cyan());
-                left.data.try_resize_for_items(left_len, false)?; //init_len(len_left);
+                unsafe {
+                    left.data.try_resize_for_items(left_len, false)?; //init_len(len_left);
+                }
         }
         
         // TODO: check - this should not invoke realloc!
@@ -803,7 +810,7 @@ where
             // log_trace!("[b+tree] creating values container: {}",values.pubkey().to_string());
             // log_trace!("~~ values segment store meta before: {:#?}", values.store.get_meta());
             // log_trace!("executing: {}", style("values.volatile_try_insert(key,value)?;").red());
-            values.volatile_try_insert(key,value)?;
+            unsafe { values.try_insert(key,value)?; }
             // log_trace!("~~ values segment store meta after init: {:#?}", values.store.get_meta());
             meta.root = *values.pubkey(); //*new_account.key;
             // log_trace!("values segment store meta after root: {:#?}", values.store.get_meta());
@@ -879,7 +886,7 @@ where
                             .with_message(&format!("BPTreeCollision {:?}", search_kv)));
                     },
                     Err(idx) => {
-                        values.volatile_try_insert_at(idx,key,value)?;
+                        unsafe { values.try_insert_at(idx,key,value)?; }
                         // meta.count += 1;
                         let rent_collector = RentCollector::Program;
                         values.sync_rent(ctx,&rent_collector)?;
@@ -905,13 +912,13 @@ where
                     
                                 let mut index_meta = index.meta.borrow_mut();
                                 index_meta.last = *right.pubkey();
-                                index.volatile_try_insert(right_cell.key,left.pubkey())?;
+                                unsafe { index.try_insert(right_cell.key,left.pubkey())?; }
                                 meta.root = *index.pubkey();
             
                             } else {
                                 // * insert in parent
                                 let parent = &levels[level-1];
-                                parent.volatile_try_insert(right_cell.key,left.pubkey())?;
+                                unsafe { parent.try_insert(right_cell.key,left.pubkey())?; }
                             }
 
                         }
@@ -947,7 +954,7 @@ where
         
                     let mut index_meta = index.meta.borrow_mut();
                     index_meta.last = *right.pubkey();
-                    index.volatile_try_insert(right_cell.key,left.pubkey())?;
+                    unsafe { index.try_insert(right_cell.key,left.pubkey())?; }
                     meta.root = *index.pubkey();
 
                 } else {
@@ -978,7 +985,7 @@ where
                                 meta.last = *right.pubkey();
                             } 
 
-                            index.volatile_try_insert_at(idx, &cell)?;
+                            unsafe { index.try_insert_at(idx, &cell)?; }
                             let rent_collector = RentCollector::Program;
                             index.sync_rent(ctx,&rent_collector)?;
     
@@ -1018,7 +1025,7 @@ where
         let right_len = right.len();
         let total_len = right_len + left_len;
         log_trace!("{}",style("FFF").white().on_cyan());
-        left.data.try_resize_for_items(total_len,false)?;
+        unsafe { left.data.try_resize_for_items(total_len,false)?; }
         let dest = left.data.as_slice_mut();
         dest[left_len..].copy_from_slice(right.data.as_slice());
 
@@ -1043,7 +1050,7 @@ where
         let right_len = right.len();
         let total_len = right_len + left_len;
         log_trace!("{}",style("GGG").white().on_cyan());
-        left.data.try_resize_for_items(total_len,false)?;
+        unsafe { left.data.try_resize_for_items(total_len,false)?; }
         let dest = left.data.as_slice_mut();
         dest[left_len..].copy_from_slice(right.data.as_slice());
 
@@ -1090,13 +1097,13 @@ where
 
             if values.data.len() < threshold {
 
-                values.data.try_remove_at(idx,false,false)?;
+                unsafe { values.data.try_remove_at(idx,false,false)?; }
 
                 // ^ TODO: MERGE
 
                 // ^ GO UPWARDS
             } else {
-                values.data.try_remove_at(idx,true,false)?;
+                unsafe { values.data.try_remove_at(idx,true,false)?; }
 
             }
 

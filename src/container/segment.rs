@@ -165,18 +165,22 @@ impl<'info, 'refs> Segment<'info, 'refs> {
         utils::account_buffer_as_slice_mut(self.store.account,self.get_offset(),elements)
     }
 
-    pub fn try_create_linear_store<T>(self: &Rc<Self>) -> Result<MappedArray<'info,'refs,T>> {
+    pub fn try_create_linear_store<T>(self: &Rc<Self>) -> Result<MappedArray<'info,'refs,T>> 
+    where T: Copy
+    {
         let linear_store = MappedArray::try_load_from_segment(self.clone())?;
         linear_store.try_init_meta()?;
         Ok(linear_store)
     }
 
-    pub fn try_as_linear_store<T>(self: &Rc<Self>) -> Result<MappedArray<'info,'refs,T>> {
+    pub fn try_as_linear_store<T>(self: &Rc<Self>) -> Result<MappedArray<'info,'refs,T>> 
+    where T: Copy
+    {
         Ok(MappedArray::<T>::try_load_from_segment(self.clone())?)
     }
 
     // pub fn try_as_linear_store_slice_mut<'slice,T:'slice>(&'slice self) -> Result<&'slice mut [T]> {
-    pub fn try_as_linear_store_slice_mut<T>(&self) -> Result<&'refs mut [T]> where T : 'info {
+    pub fn try_as_linear_store_slice_mut<T>(&self) -> Result<&'refs mut [T]> where T : Copy + 'info {
         Ok(MappedArray::<T>::try_as_linear_store_slice_mut(
             self.store.account,
             self.try_get_offset()?,
@@ -843,7 +847,9 @@ log_trace!("ALLOC A");
         }
     }
 
-    pub fn try_create_linear_store<T>(&self, idx: usize) -> Result<MappedArray<'info,'refs,T>> {
+    pub fn try_create_linear_store<T>(&self, idx: usize) -> Result<MappedArray<'info,'refs,T>> 
+    where T: Copy
+    {
 
         let segment = self.try_get_segment_at(idx)?;
         let linear_store = MappedArray::try_load_from_segment(segment)?;
@@ -852,7 +858,9 @@ log_trace!("ALLOC A");
 
     }
 
-    pub fn try_get_linear_store<T>(&self, idx: usize) -> Result<MappedArray<'info,'refs,T>> {
+    pub fn try_get_linear_store<T>(&self, idx: usize) -> Result<MappedArray<'info,'refs,T>> 
+    where T: Copy
+    {
 
         let segment = self.try_get_segment_at(idx)?;
         // log_trace!("{:#?}", segment);
@@ -895,7 +903,7 @@ mod tests {
     use crate::container::linear::MAPPED_ARRAY_VERSION;
     use crate::container::linear::MappedArrayMeta;
 
-    fn check_lsv<T>(ls:&MappedArray<T>) {
+    fn check_lsv<T>(ls:&MappedArray<T>) where T: Copy {
         // {
         //     let data = ls.segment.store.account.data.borrow();
         //     log_trace!("data: {:?}\n---------------------------------\n",data);
@@ -904,7 +912,7 @@ mod tests {
         // log_trace!("list a meta: {:#?}",ls.get_meta());
 
 
-        assert_eq!(ls.get_meta().version, MAPPED_ARRAY_VERSION);
+        assert_eq!(ls.get_meta().get_version(), MAPPED_ARRAY_VERSION);
         assert!(ls.get_meta().records < 16);
     }
 
@@ -975,7 +983,7 @@ mod tests {
         let list_b = store.try_create_linear_store::<u8>(2)?;
         let list_c = store.try_create_linear_store::<u8>(3)?;
 
-        *(list_c.volatile_try_insert(false)?) = 10u8;
+        unsafe { *(list_c.try_allocate(false)?) = 10u8; }
 
         // {
         //     let data = store.account.data.borrow();
@@ -991,10 +999,12 @@ mod tests {
         check_lsv(&list_b);
         check_lsv(&list_c);
 
-        *(list_c.volatile_try_insert(false)?) = 20u8;
-        *(list_c.volatile_try_insert(false)?) = 30u8;
-        *(list_c.volatile_try_insert(false)?) = 40u8;
-        *(list_c.volatile_try_insert(false)?) = 50u8;
+        unsafe { 
+            *(list_c.try_allocate(false)?) = 20u8;
+            *(list_c.try_allocate(false)?) = 30u8;
+            *(list_c.try_allocate(false)?) = 40u8;
+            *(list_c.try_allocate(false)?) = 50u8;
+        }
 // log_trace!("A");
 // let slice = list_c.as_slice();
 // log_trace!(":::::::::::::::::::::::: - {:#?}", slice);
@@ -1019,7 +1029,7 @@ mod tests {
         //     let data = store.account.data.borrow();
         //     log_trace!("---\nBEFORE: data: {:?}",data);
         // }
-        *(list_a.volatile_try_insert(false)?) = 177u8;
+        unsafe { *(list_a.try_allocate(false)?) = 177u8; }
         // {
         //     let data = store.account.data.borrow();
         //     log_trace!(" AFTER: data: {:?}\n---",data);
@@ -1041,15 +1051,18 @@ mod tests {
         check_lsv(&list_b);
         check_lsv(&list_c);
 
+        unsafe {
 
-        *(list_a.volatile_try_insert(false)?) = 2u8;
-        // log_trace!("list b2 meta: {:#?}",list_b.get_meta());
-        *(list_a.volatile_try_insert(false)?) = 3u8;
-// log_trace!("B");
-        *(list_b.volatile_try_insert(false)?) = 4u8;
-        // log_trace!("list b3 meta: {:#?}",list_b.get_meta());
-        *(list_b.volatile_try_insert(false)?) = 5u8;
-        *(list_b.volatile_try_insert(false)?) = 6u8;
+            *(list_a.try_allocate(false)?) = 2u8;
+            // log_trace!("list b2 meta: {:#?}",list_b.get_meta());
+            *(list_a.try_allocate(false)?) = 3u8;
+    // log_trace!("B");
+            *(list_b.try_allocate(false)?) = 4u8;
+            // log_trace!("list b3 meta: {:#?}",list_b.get_meta());
+            *(list_b.try_allocate(false)?) = 5u8;
+            *(list_b.try_allocate(false)?) = 6u8;
+
+        }
 
 //        list_c.try_remove_at(2,true,false)?;
         // let list_x = store.try_get_linear_store::<u8>(2)?;
