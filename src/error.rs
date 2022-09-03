@@ -73,6 +73,9 @@ pub enum ErrorCode {
 
     CollectionMetaSegmentSizeTooSmall,
     CollectionCollision,
+    CollectionNotFound,
+    CollectionDataTypeNotFound,
+    CollectionAccountNotFound,
     MappedArrayBounds,
     MappedArrayMetaNotBlank,
     MappedArrayRemoveAtError,

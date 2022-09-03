@@ -489,7 +489,8 @@ impl super::Interface for Transport {
 
     }
 
-    async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 
+    // async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 
+    async fn execute(&self, instruction : &Instruction) -> Result<()> { 
         log_trace!("transport execute");
         // match &self.emulator {
         match self.mode {
@@ -604,7 +605,8 @@ impl super::Interface for Transport {
     }
     
     
-    async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    // async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let reference = self.clone().lookup_local(pubkey).await?;
         match reference {
             Some(reference) => Ok(Some(reference)),
@@ -614,13 +616,15 @@ impl super::Interface for Transport {
         }
     }
 
-    async fn lookup_local(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    // async fn lookup_local(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let pubkey = Arc::new(pubkey.clone());
         Ok(self.cache.lookup(&pubkey).await?)
     }
 
 
-    async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    // async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         let request_type = self.clone().lookup_handler.queue(pubkey);
         match request_type {

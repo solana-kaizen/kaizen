@@ -118,6 +118,10 @@ mod client {
             }
         }
 
+        pub fn pubkey<'key>(&'key self) -> &'key Pubkey {
+            &*self.key
+        }
+
         pub async fn lamports(&self) -> u64 {
             self.account_data.read().await.lamports
         }
@@ -125,6 +129,12 @@ mod client {
         pub async fn clone_for_program(&self) -> AccountData {
             self.account_data.read().await.clone_for_program()
         }
+
+        pub async fn clone_for_storage(&self) -> AccountData {
+            self.account_data.read().await.clone_for_storage()
+        }
+
+
     }
 
     impl From<&AccountDataStore> for AccountDataReference {

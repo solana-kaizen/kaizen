@@ -175,6 +175,8 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             let mut ctx_result = workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data));
             // solana_program::msg!("XXX:ctx_result: {:?}", ctx_result);
             if ctx_result.is_err(){
+                #[cfg(not(target_arch = "bpf"))]
+                workflow_log::log_error!("Fatal: unable to load Context: {:?}", ctx_result);
                 return Err(solana_program::program_error::ProgramError::InvalidInstructionData);
             }
 

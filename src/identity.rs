@@ -73,6 +73,21 @@ pub enum Instr {
     Ops(Vec<Op>)
 }
 
+impl Instr {
+    pub fn get_collection_count(&self) -> usize {
+        let mut count = 0;
+        match self {
+            Instr::Ops(ops) => {
+                for op in ops.iter() {
+                    if let Op::CreateCollections(vec) = op {
+                        count += vec.len();
+                    }
+                }
+            }
+        }
+        count
+    }
+}
 // impl Instr {
 //     pub fn get_records<'instr>(&'instr self) -> Vec<&'instr IdentityRecordStore> {
 //         let mut records = Vec::new();
@@ -122,7 +137,7 @@ pub struct Identity<'info,'refs> {
     // ---
     #[segment(reserve(MappedArray::<IdentityRecord>::calculate_data_len(5)))]
     pub records : MappedArray<'info,'refs, IdentityRecord>,
-    pub collections : MappedArray<'info,'refs, Collection>,
+    pub collections : MappedArray<'info,'refs, CollectionMeta>,
 }
 
 impl<'info,'refs> std::fmt::Debug for Identity<'info,'refs> {
@@ -181,7 +196,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
                 if entry.flags & FLAG_READONLY != 0 {
                     return Err(program_error_code!(ErrorCode::ReadOnlyAccess));
                 }
-                self.records.try_remove_at(idx,true,true)?;
+                self.records.try_remove_at(idx,true)?;
             }
         }
 
@@ -237,7 +252,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
         let data_len = 
             (1 + records.len()) * std::mem::size_of::<IdentityRecord>() +
-            collections.len() * std::mem::size_of::<Collection>();
+            collections.len() * std::mem::size_of::<CollectionMeta>();
         let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
         
         identity.init()?;
@@ -259,6 +274,31 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         }
 
         Ok(())
+    }
+
+    // pub fn locate_collection
+
+    pub fn locate_collection_pubkeys(&self, data_type : u32) -> Option<Vec<Pubkey>> {
+        for idx in 0..self.collections.len() {
+            let collection = &self.collections[idx];
+            if collection.get_data_type() == data_type {
+                return Some(vec![collection.get_pubkey()]);
+            }
+        }
+        None
+    }
+
+    pub fn locate_collection(&self, ctx:&'refs Rc<Context<'info,'refs,'_,'_>>, data_type : u32) -> Result<CollectionStore<'info,'refs, Pubkey>> {
+        for idx in 0..self.collections.len() {
+            let collection = &self.collections[idx];
+            if collection.get_data_type() == data_type {
+                let pubkey = collection.get_pubkey();
+                let collection_account = ctx.locate_index_account(&pubkey).ok_or(program_error_code!(ErrorCode::CollectionAccountNotFound))?;
+                let collection_store = CollectionStore::<Pubkey>::try_load(collection_account)?;
+                return Ok(collection_store);
+            }
+        }
+        Err(program_error_code!(ErrorCode::CollectionDataTypeNotFound))
     }
 
     // TODO: testing sandbox
@@ -292,7 +332,8 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 pub fn find_identity_proxy_pubkey(program_id: &Pubkey, authority: &Pubkey) -> Result<Pubkey> {
     let bytes = "proxy".as_bytes();
     let seed_suffix = bytes.to_vec();
-    let seeds = vec![program_id.as_ref(), authority.as_ref(), seed_suffix.as_ref()];
+    // let seeds = vec![program_id.as_ref(), authority.as_ref(), seed_suffix.as_ref()];
+    let seeds = vec![authority.as_ref(), seed_suffix.as_ref()];
     let (address, _bump_seed) = Pubkey::find_program_address(
         &seeds[..],
         program_id
@@ -307,18 +348,26 @@ declare_handlers!(Identity::<'info,'refs>,[
 
 #[cfg(not(target_arch = "bpf"))]
 pub mod client {
+    use crate::emulator::Simulator;
+
     use super::*;
 
     pub async fn locate_identity_pubkey(transport : &Arc<Transport>, program_id : &Pubkey, authority : &Pubkey) -> Result<Option<Pubkey>> {
 
         let proxy_pubkey = super::find_identity_proxy_pubkey(program_id, authority)?;
+        log_trace!("proxy_pubkey: {}", proxy_pubkey);
         if let Some(proxy_ref) = transport.lookup(&proxy_pubkey).await? {
+            log_trace!("got proxy account {}", proxy_pubkey);
+
             let mut proxy_account_data = proxy_ref.account_data.write().await;
             let proxy_account_info = proxy_account_data.into_account_info();
             let proxy = IdentityProxy::try_load(&proxy_account_info)?;
             let identity_pubkey = proxy.meta.borrow().get_identity_pubkey();
+            log_trace!("got identity pubkey {}", identity_pubkey);
+
             Ok(Some(identity_pubkey))
         } else {
+            log_trace!("can not lookup proxy account {}", proxy_pubkey);
             Ok(None)
         }
         
@@ -327,23 +376,35 @@ pub mod client {
     // pub async fn load_identity(program_id: &Pubkey, authority : &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     pub async fn load_identity(program_id: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let transport = workflow_allocator::transport::Transport::global()?;
-        let authority = transport.get_authority_pubkey_impl()?;
+        let authority = transport.get_authority_pubkey()?;
+        log_trace!("found authority: {}", authority);
         if let Some(identity_pubkey) = locate_identity_pubkey(&transport, program_id, &authority).await? {
+            log_trace!("found identity pubkey: {}", identity_pubkey);
             Ok(transport.lookup(&identity_pubkey).await?)
         } else {
+            log_trace!("ERROR: identity pubkey not found!");
             Ok(None)
         }
     }
 
-    pub async fn create_identity(program_id: &Pubkey, authority: &Pubkey, interface_id: usize, handler_id : usize) -> Result<Arc<AccountDataReference>> {
+    pub async fn create_identity(
+        program_id: &Pubkey,
+        authority: &Pubkey,
+        interface_id: usize,
+        handler_id : usize,
+        instructions : Instr,
+    ) -> Result<Arc<AccountDataReference>> {
+
+        let instruction_data = instructions.try_to_vec()?;
 
         let transport = workflow_allocator::transport::Transport::global()?;
 
         let builder = InstructionBuilder::new(program_id, interface_id, handler_id as u16)
             .with_authority(authority)
             .with_account_templates_with_custom_suffixes(&["proxy"]) 
-            .with_account_templates(1)
+            .with_account_templates(1 + instructions.get_collection_count())
             .with_sequence(0u64) 
+            .with_instruction_data(&instruction_data)
             .seal()?;
 
         let instruction : Instruction = builder.try_into()?;
@@ -355,6 +416,45 @@ pub mod client {
             Some(identity) => Ok(identity),
             None => Err(workflow_allocator::error!("Error creating identity").into())
         }
+
+    }
+
+
+    pub async fn create_identity_for_unit_tests(
+        // transport : &Arc<Transport>,
+        simulator : &Simulator,
+        authority : &Pubkey,
+        program_id : &Pubkey,
+
+    ) -> Result<Pubkey> {
+
+        // Identity::min
+        // AccountData::new_static_with_size(key,owner, )
+        // let emulator = transport.emulator();
+        // let simulator = emulator.clone().downcast_arc::<Simulator>().unwrap();
+
+        let config = InstructionBuilderConfig::new(program_id.clone())
+            .with_authority(authority)
+            .with_sequence(0u64);
+
+        let builder = InstructionBuilder::new_with_config_for_testing(&config)
+            .with_account_templates_with_custom_suffixes(&["proxy"])
+            .with_account_templates(2)
+            .seal()?;
+
+        let accounts = builder.template_accounts();
+        // let proxy = accounts[0].clone(); // PDA0
+        let identity = accounts[1].clone();
+
+    
+        simulator.execute_handler(builder,|ctx:&Rc<Context>| {
+            log_trace!("create identity");
+            Identity::create(ctx)?;
+            Ok(())
+        }).await?;
+
+        Ok(identity.pubkey)
+
 
     }
 
@@ -375,7 +475,8 @@ mod tests {
     async fn identity_init() -> Result<()> {
         workflow_allocator::container::registry::init()?;
 
-        let simulator = Simulator::try_new_for_testing()?.with_mock_accounts().await?;
+        let program_id = generate_random_pubkey();
+        let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id).await?;
 
         let config = InstructionBuilderConfig::new(simulator.program_id())
             .with_authority(&simulator.authority())

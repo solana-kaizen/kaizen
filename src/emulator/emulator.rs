@@ -115,36 +115,38 @@ impl Emulator {
         // let store = self.store();
         let ec: Instruction = builder.try_into()?;
         let mut account_data = self.program_local_load(&ec.program_id, &ec.accounts).await?;
-        let accounts = Arc::new(Mutex::new(Vec::new()));
-        for (pubkey, account_data) in account_data.iter_mut() {
-            let is_signer = account_data.is_signer;
-            let is_writable = account_data.is_writable;
-            let mut account_info = (&*pubkey, account_data).into_account_info();
+        {
+            let accounts = Arc::new(Mutex::new(Vec::new()));
+            for (pubkey, account_data) in account_data.iter_mut() {
+                let is_signer = account_data.is_signer;
+                let is_writable = account_data.is_writable;
+                let mut account_info = (&*pubkey, account_data).into_account_info();
 
-            // pass signer and writer flags from the source account
-            account_info.is_signer = is_signer;
-            account_info.is_writable = is_writable;
+                // pass signer and writer flags from the source account
+                account_info.is_signer = is_signer;
+                account_info.is_writable = is_writable;
 
-            accounts.lock().unwrap().push(account_info);
-        }
-        let accounts = accounts.lock().unwrap();
-        let ctx: Context = (
-            &ec.program_id,
-            &accounts[..],
-            ec.data.as_slice(),
-        )
-            .try_into()
-            .expect("Unable to create context");
-        match handler(&Rc::new(ctx)) {
-            //?;//.map_err(|err| format!("(handler) program error: {:?}", err).to_string())?;
-            Ok(_) => {}
-            Err(err) => {
-                log_trace!("{}", err);
-                return Err(err);
-                // return Err(err.message());
+                accounts.lock().unwrap().push(account_info);
+            }
+            let accounts = accounts.lock().unwrap();
+            let ctx: Context = (
+                &ec.program_id,
+                &accounts[..],
+                ec.data.as_slice(),
+            )
+                .try_into()
+                .expect("Unable to create context");
+            match handler(&Rc::new(ctx)) {
+                //?;//.map_err(|err| format!("(handler) program error: {:?}", err).to_string())?;
+                Ok(_) => {}
+                Err(err) => {
+                    log_trace!("{}", err);
+                    return Err(err);
+                    // return Err(err.message());
+                }
             }
         }
-        // self.program_local_store(&accounts).await?;
+        self.program_local_store(account_data).await?;
 
         Ok(())
     }
@@ -198,7 +200,7 @@ impl Emulator {
                 },
                 None => {
 
-                    log_trace!("*\n*\n*\n*\n*\nCLONING ACCOUNT {}\n*\n*\n*\n*",pubkey);
+                    // log_trace!("*\n*\n*\n*\n*\nCLONING ACCOUNT {}\n*\n*\n*\n*",pubkey);
 
                     let account_data = AccountData::new_template_for_program(
                     // let account_data = AccountData::new_allocated_for_program(
@@ -415,8 +417,10 @@ impl EmulatorInterface for Emulator {
                 Ok(ExecutionResponse::new(None, logs))
             },
             Err(err) => {
-                Ok(ExecutionResponse::new(Some(err.to_string()), logs))
-                // Err(err)
+                log_trace!("Emulator error: {:?}", err);
+                // TODO refactor to return error
+                // Ok(ExecutionResponse::new(Some(err.to_string()), logs))
+                Err(err)
             }
         }
 

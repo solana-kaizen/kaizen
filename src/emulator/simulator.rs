@@ -6,6 +6,9 @@ use workflow_allocator::result::Result;
 use workflow_allocator::accounts::{ AccountData, AccountDataReference };
 use workflow_allocator::builder::{ InstructionBuilder, InstructionBuilderConfig };
 use workflow_allocator::context::SimulationHandlerFn;
+use workflow_log::log_trace;
+use crate::generate_random_pubkey;
+
 use super::interface::{EmulatorInterface, ExecutionResponse};
 use super::mockdata::InProcMockData;
 use super::emulator::Emulator;
@@ -43,40 +46,63 @@ impl Simulator {
     pub fn try_new_for_testing() -> Result<Simulator> {
         let store = Arc::new(store::MemoryStore::new_local()?);
         let emulator = Arc::new(Emulator::new(store.clone()));
-        let inproc_mock_data = Some(InProcMockData::new());
+        // let inproc_mock_data = Some(InProcMockData::new());
 
         let simulator = Simulator {//}::new_with_inner(SimulatorInner {
             store,
             emulator,
-            inproc_mock_data,
+            inproc_mock_data : None,
         };
 
+        // simulator.with_mock_accounts()
+        
         Ok(simulator)
     }
 
     
-    pub async fn with_mock_accounts(mut self) -> Result<Self> {
+    pub async fn with_mock_accounts(mut self, program_id : Pubkey) -> Result<Self> {
 
         let lamports = crate::utils::u64sol_to_lamports(500_000_000);
 
-        let mock_data = InProcMockData::new();
+        // let program_id = generate_random_pubkey(); //Pubkey::default();
+        let authority = generate_random_pubkey(); 
+        // let mut mock_data = InProcMockData::new();
 
         // let mock = self.inproc.as_ref().unwrap().expect("inproc mock data not initialized").cloned();
         
-        let authority = AccountData::new_static(
-            mock_data.authority.clone(),
-            mock_data.program_id.clone(),
+        let authority_account_data = AccountData::new_static(
+            authority.clone(),
+            program_id.clone(),
         ).with_lamports(lamports);
-        self.store.store(&Arc::new(AccountDataReference::new(authority))).await?;//.await?;
+
+        self.store.store(&Arc::new(AccountDataReference::new(authority_account_data))).await?;//.await?;
         // let authority_account_data = Arc::new(RwLock::new(authority_account_data));
         //map.write()?.insert(authority.clone(),authority_account_data);
         
-        let identity = AccountData::new_static(
-            mock_data.identity.clone(),
-            mock_data.program_id.clone(),
+        // let identity = AccountData::new_static(
+        //     mock_data.identity.clone(),
+        //     mock_data.program_id.clone(),
+        // );
+log_trace!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        // let identity = workflow_allocator::identity::client::create_identity_for_unit_tests(
+        //     //transport, 
+        //     &self,
+        //     &authority,
+        //     &program_id,
+        // ).await?;
+
+        // mock_data.identity = identity;
+        log_trace!("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+
+        let mock_data = InProcMockData::new(
+            &authority,
+            // &identity,
+            &program_id,
         );
+
+        // Identity::try_create()
         // .with_lamports(lamports);
-        self.store.store(&Arc::new(AccountDataReference::new(identity))).await?;//map.write()?.insert(identity.clone(),identity_account_data);
+        // self.store.store(&Arc::new(AccountDataReference::new(identity))).await?;//map.write()?.insert(identity.clone(),identity_account_data);
         self.inproc_mock_data = Some(mock_data);
         Ok(self)
 
@@ -102,23 +128,23 @@ impl Simulator {
         self.inproc_mock_data().authority
     }
 
-    pub fn identity(&self) -> Pubkey {
-        self.inproc_mock_data().identity
-    }
+    // pub fn identity(&self) -> Pubkey {
+    //     self.inproc_mock_data().identity
+    // }
 
     pub fn new_instruction_builder_config(
         &self,
     ) -> InstructionBuilderConfig {
 
-        let InProcMockData { program_id, authority, identity} = self.inproc_mock_data();
+        let InProcMockData { program_id, authority} = self.inproc_mock_data();
         // self.inproc.expect("simulator is missing inproc mock data");
 
         // let inner = self.inner().unwrap();
         let config = InstructionBuilderConfig::new(
             program_id.clone(),
         )
-        .with_authority(authority)
-        .with_identity(identity);
+        .with_authority(authority);
+        // .with_identity(identity);
 
         config
     }
@@ -126,7 +152,7 @@ impl Simulator {
     pub fn new_instruction_builder(
         &self,
     ) -> InstructionBuilder {
-        let InProcMockData { program_id, authority, identity} = self.inproc_mock_data();
+        let InProcMockData { program_id, authority} = self.inproc_mock_data();
 
         // let inner = self.inner().unwrap();
 
@@ -135,8 +161,8 @@ impl Simulator {
             0,
             0u16,
         )
-        .with_authority(authority)
-        .with_identity(identity);
+        .with_authority(authority);
+        // .with_identity(identity);
 
         builder
     }

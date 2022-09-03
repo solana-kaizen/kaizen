@@ -3,6 +3,13 @@ use workflow_allocator::result::Result;
 use workflow_allocator::error::ErrorCode;
 use solana_program::account_info::AccountInfo;
 
+pub trait Container<'info,'refs> {
+    type T;
+
+    fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self::T>; 
+
+}
+
 #[repr(packed)]
 pub struct ContainerHeader {
     pub container_type : u32,

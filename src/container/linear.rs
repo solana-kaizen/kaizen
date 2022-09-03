@@ -235,7 +235,8 @@ where T: Copy
 
 
     // pub fn as_slice<'slice>(&'slice self) -> &'slice [T] {
-    pub fn as_slice(&self) -> &[T] where T : 'info {
+    // pub fn as_slice(&self) -> &'refs [T] where T : 'info {
+    pub fn as_slice(&self) -> &'refs [T] where T : 'info {
         utils::account_buffer_as_slice(self.account,self.get_data_offset(),self.len())
     }
 
@@ -353,7 +354,7 @@ where T: Copy
         self.try_get_mut_at(idx)
     }
 
-    pub unsafe fn try_remove_at(&self, idx: usize, realloc: bool, zero_init:bool) -> Result<()> {
+    pub unsafe fn try_remove_at(&self, idx: usize, realloc: bool) -> Result<()> {
         if idx >= self.len() {
             return Err(ErrorCode::MappedArrayBounds.into());
         }
@@ -379,7 +380,7 @@ where T: Copy
 
         if realloc {
             log_trace!("try_remove_at");
-            self.segment.try_resize(new_len,zero_init)
+            self.segment.try_resize(new_len,false)
         } else {
             Ok(())
         }

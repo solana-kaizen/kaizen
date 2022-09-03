@@ -1097,13 +1097,13 @@ where
 
             if values.data.len() < threshold {
 
-                unsafe { values.data.try_remove_at(idx,false,false)?; }
+                unsafe { values.data.try_remove_at(idx,false)?; }
 
                 // ^ TODO: MERGE
 
                 // ^ GO UPWARDS
             } else {
-                unsafe { values.data.try_remove_at(idx,true,false)?; }
+                unsafe { values.data.try_remove_at(idx,true)?; }
 
             }
 

@@ -73,9 +73,12 @@ pub fn account_buffer_as_struct_mut_ref<'refs,'info, T>(
 }
 
 pub fn account_buffer_as_slice<'refs, 'info, T>(
+    // account: &'refs AccountInfo<'info>,
     account: &'refs AccountInfo<'info>,
     byte_offset: usize,
     elements: usize
+// ) -> &'refs [T] { // } where T : 'info {
+// ) -> &'refs [T] where T : 'info {
 ) -> &'refs [T] where T : 'info {
     let data = account.data.borrow();
     unsafe {

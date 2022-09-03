@@ -717,7 +717,8 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let init_offset = if let Some(type_path) = &meta_type_path {
         quote!{
             let container_meta_offset = std::mem::size_of::<workflow_allocator::container::ContainerHeader>();
-            let segment_store_offset = std::mem::size_of::<workflow_allocator::container::ContainerHeader>() + std::mem::size_of::<#type_path>();
+            let segment_store_offset = std::mem::size_of::<workflow_allocator::container::ContainerHeader>() 
+                + std::mem::size_of::<#type_path>();
         }
     } else {
         //            let meta_offset = std::mem::size_of::<workflow_allocator::container::ContainerHeader>();
@@ -911,6 +912,7 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             // pub 
             // fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self> {
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             pub fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
 
                 #init_offset
@@ -941,6 +943,8 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
                 Ok(#loads_create)
             }
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
             #try_create_with_meta
 
@@ -1012,6 +1016,47 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
 
+        impl #struct_params workflow_allocator::container::Container<'info,'refs> for #struct_name #struct_params #where_clause {
+            type T = Self;
+            // type T = #struct_name #struct_params;
+
+           // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //    pub 
+           fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+
+                #struct_name :: #struct_params :: try_load(account)
+
+                // #init_offset
+                // let container_type : u32 = #container_type as u32;
+                // let layout = Self::layout();
+                // let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_load(
+                //     &account, segment_store_offset,
+                // // ).unwrap();
+                // )?;
+
+                // {
+                //     let data = account.data.borrow_mut();
+                //     let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
+                //         data.as_ptr()
+                //     )};
+
+                //     if header.container_type != container_type {
+                //         return Err(
+                //             workflow_allocator::error::Error::new()
+                //                 .with_program_code(workflow_allocator::error::ErrorCode::ContainerTypeMismatch as u32)
+                //                 .with_source(file!(),line!())
+                //         );
+                //         // return Err(workflow_allocator::error::ErrorCode::ContainerTypeMismatch.into());
+                //     }
+                // }
+
+                // #loads_ts2
+
+                // Ok(#loads_create)
+            }
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        }
 /* 
         impl #struct_params workflow_allocator::container::Container<'info,'refs> 
         for #struct_name #struct_params 

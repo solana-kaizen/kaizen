@@ -72,58 +72,79 @@ impl Transport {
         }
     }
 
-    pub async fn try_new_for_unit_tests(config : TransportConfig) -> Result<Arc<Transport>> {
-        let mut transport_env_var = std::env::var("TRANSPORT").unwrap_or("simulator".into());
-        if transport_env_var.starts_with("local") || transport_env_var.starts_with("native") {
-            transport_env_var = "http://127.0.0.1:8899".into();
+    // pub async fn try_new_for_unit_tests(config : TransportConfig) -> Result<Arc<Transport>> {
+    // pub async fn try_new_for_unit_tests_inproc(config : TransportConfig) -> Result<Arc<Transport>> {
+    //     let mut transport_env_var = std::env::var("TRANSPORT").unwrap_or("inproc".into());
+    //     if transport_env_var.starts_with("local") || transport_env_var.starts_with("native") {
+    //         transport_env_var = "http://127.0.0.1:8899".into();
+    //     }
+    //     Self::try_new(transport_env_var.as_str(), config).await
+    // }
+
+    pub async fn try_new_for_unit_tests(program_id : Pubkey, config : TransportConfig) -> Result<Arc<Transport>> {
+        let mut network = std::env::var("TRANSPORT").unwrap_or("inproc".into());
+        if network.starts_with("local") {
+            network = "http://127.0.0.1:8899".into();
         }
-        Self::try_new(transport_env_var.as_str(), config)//.await
+
+        if network == "inproc" {
+            let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id).await?;
+            let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
+            Transport::try_new_with_args(Mode::Inproc, None, Some(emulator), config).await
+        } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(&network) {
+            let emulator = EmulatorRpcClient::new(&network)?;
+            let emulator: Arc<dyn EmulatorInterface> = Arc::new(emulator);
+            Transport::try_new_with_args(Mode::Emulator, None, Some(emulator), config).await
+        } else {
+            panic!("Unabel to create transport for network '{}'", network);
+        }
+
     }
 
-    pub fn try_new(network: &str, config : TransportConfig) -> Result<Arc<Transport>> {
+    pub async fn try_new(network: &str, config : TransportConfig) -> Result<Arc<Transport>> {
+
+        // let (mode, rpc_client, emulator) = // match network {
+
+        // if network == "inproc" {
+        //     // let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
+        //     let simulator = Simulator::try_new_for_testing()?.with_mock_accounts().await?;
+        //     let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
+        //     Transport::try_new_with_args(Mode::Inproc, None, Some(emulator), config).await
+        //     // (Mode::Inproc, None, Some(emulator))
+        // } else 
+        if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
+            let emulator = EmulatorRpcClient::new(network)?;
+            let emulator: Arc<dyn EmulatorInterface> = Arc::new(emulator);
+            Transport::try_new_with_args(Mode::Emulator, None, Some(emulator), config).await
+            // (Mode::Emulator, None, Some(emulator))
+        } else {
+
+            let url = network;
+            let commitment_config = CommitmentConfig::confirmed();
+            let client = RpcClient::new_with_timeouts_and_commitment(
+                url,
+                config.timeout,
+                commitment_config,
+                config.confirm_transaction_initial_timeout,
+            );
+        
+            Transport::try_new_with_args(Mode::Validator, Some(client), None, config).await
+            // (Mode::Validator, Some(client), None)
+        }
+    }
+
+    pub async fn try_new_with_args(
+        mode : Mode,
+        rpc_client : Option<RpcClient>,
+        emulator : Option<Arc<dyn EmulatorInterface>>,
+        config : TransportConfig,
+    ) -> Result<Arc<Transport>> {
 
         let wallet = Arc::new(native::Wallet::try_new()?);
-
-        let (mode, rpc_client, emulator) = // match network {
-
-            if network == "inproc" {
-                let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
-                (Mode::Inproc, None, Some(emulator))
-            } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
-                let emulator = EmulatorRpcClient::new(network)?;
-                let emulator: Arc<dyn EmulatorInterface> = Arc::new(emulator);
-                (Mode::Emulator, None, Some(emulator))
-            } else {
-
-                let url = network;
-                let commitment_config = CommitmentConfig::confirmed();
-                let client = RpcClient::new_with_timeouts_and_commitment(
-                    url,
-                    config.timeout,
-                    commitment_config,
-                    config.confirm_transaction_initial_timeout,
-                );
-            
-                // authority is the local pk
-                // let home = home::home_dir().expect("unable to get home directory");
-                // let home = Path::new(&home);
-                // let payer_kp_path = home.join(".config/solana/id.json");
-            
-                // let payer_kp =
-                //     read_keypair_file(payer_kp_path).expect("Couldn't read authority keypair");
-                // let payer_pk = payer_kp.pubkey();
-            
-                // log_trace!("User authority: {}", payer_pk.to_string());
-
-
-                (Mode::Validator, Some(client), None)
-            };
-
 
         // TODO implement transaction queue support
         let queue = None;
         let cache = Arc::new(Cache::new_with_default_capacity());
-
         let config = Arc::new(RwLock::new(config));
         let lookup_handler = LookupHandler::new();
 
@@ -268,7 +289,8 @@ impl Transport {
     }
     
 
-    async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    // async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         match &self.emulator {
             Some(emulator) => {
@@ -294,7 +316,8 @@ impl super::Interface for Transport {
         self.get_authority_pubkey_impl()
     }
 
-    async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 
+    // async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 
+    async fn execute(&self, instruction : &Instruction) -> Result<()> { 
         match &self.emulator {
             Some(emulator) => {
                 emulator.clone().execute(
@@ -350,7 +373,8 @@ impl super::Interface for Transport {
         Ok(())
     }
  
-    async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    // async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let account_data = self.clone().lookup_local(pubkey).await?;
         match account_data {
             Some(account_data) => Ok(Some(account_data.clone())),
@@ -360,16 +384,16 @@ impl super::Interface for Transport {
         }
     }
 
-    async fn lookup_local(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         Ok(self.cache.lookup(pubkey).await?)
     }
 
-    async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         let request_type = self.clone().lookup_handler.queue(pubkey);
         match request_type {
             RequestType::New(future) => {
-                let response = self.clone().lookup_remote_impl(pubkey).await;
+                let response = self.lookup_remote_impl(pubkey).await;
                 self.clone().lookup_handler.complete(pubkey, response).await;
                 future.await
             },
