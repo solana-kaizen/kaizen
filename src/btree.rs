@@ -280,8 +280,8 @@ where
 
     // v : u32,
     // #[segment(reserve = 1024)]
-    #[segment(flex, reserve(MappedArray::<BPTreeIndexCell<K>>::calculate_data_len(1)))]
-    pub data : MappedArray<'info,'refs, BPTreeIndexCell::<K>>,
+    #[segment(flex, reserve(Array::<BPTreeIndexCell<K>>::calculate_data_len(1)))]
+    pub data : Array<'info,'refs, BPTreeIndexCell::<K>>,
 }
 
 impl<'info,'refs, K> BPTreeIndex<'info,'refs,K> 
@@ -411,8 +411,8 @@ where
     // v : u32,
     // #[segment(reserve = 1024)]
     // TODO: SWITCH DEFAULT RECORD COUNT TO 0
-    #[segment(flex, reserve(MappedArray::<BPTreeValueCell<K,V>>::calculate_data_len(1)))]
-    pub data : MappedArray<'info,'refs, BPTreeValueCell::<K,V>>,
+    #[segment(flex, reserve(Array::<BPTreeValueCell<K,V>>::calculate_data_len(1)))]
+    pub data : Array<'info,'refs, BPTreeValueCell::<K,V>>,
 }
 
 
@@ -691,7 +691,7 @@ where
         // ^ #################################################################
         // ? FIXME
         let mut _right_layout = BPTreeValues::<K,V>::layout();
-        let _right_data_segment = MappedArray::<BPTreeValueCell::<K,V>>::calculate_data_len(right_alloc_records);
+        let _right_data_segment = Array::<BPTreeValueCell::<K,V>>::calculate_data_len(right_alloc_records);
         // ^ #################################################################
         // * #################################################################
         // ^ #################################################################

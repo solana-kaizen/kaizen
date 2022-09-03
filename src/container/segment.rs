@@ -7,7 +7,7 @@ use crate::realloc::account_info_realloc;
 use solana_program::account_info::AccountInfo;
 use crate::result::Result;
 use crate::error::*;
-use crate::container::linear::MappedArray;
+use crate::container::array::Array;
 use crate::utils;
 use workflow_core::enums::u16_try_from;
 use num::Integer;
@@ -165,23 +165,23 @@ impl<'info, 'refs> Segment<'info, 'refs> {
         utils::account_buffer_as_slice_mut(self.store.account,self.get_offset(),elements)
     }
 
-    pub fn try_create_linear_store<T>(self: &Rc<Self>) -> Result<MappedArray<'info,'refs,T>> 
+    pub fn try_create_linear_store<T>(self: &Rc<Self>) -> Result<Array<'info,'refs,T>> 
     where T: Copy
     {
-        let linear_store = MappedArray::try_load_from_segment(self.clone())?;
+        let linear_store = Array::try_load_from_segment(self.clone())?;
         linear_store.try_init_meta()?;
         Ok(linear_store)
     }
 
-    pub fn try_as_linear_store<T>(self: &Rc<Self>) -> Result<MappedArray<'info,'refs,T>> 
+    pub fn try_as_linear_store<T>(self: &Rc<Self>) -> Result<Array<'info,'refs,T>> 
     where T: Copy
     {
-        Ok(MappedArray::<T>::try_load_from_segment(self.clone())?)
+        Ok(Array::<T>::try_load_from_segment(self.clone())?)
     }
 
     // pub fn try_as_linear_store_slice_mut<'slice,T:'slice>(&'slice self) -> Result<&'slice mut [T]> {
     pub fn try_as_linear_store_slice_mut<T>(&self) -> Result<&'refs mut [T]> where T : Copy + 'info {
-        Ok(MappedArray::<T>::try_as_linear_store_slice_mut(
+        Ok(Array::<T>::try_as_linear_store_slice_mut(
             self.store.account,
             self.try_get_offset()?,
         )?)
@@ -847,24 +847,24 @@ log_trace!("ALLOC A");
         }
     }
 
-    pub fn try_create_linear_store<T>(&self, idx: usize) -> Result<MappedArray<'info,'refs,T>> 
+    pub fn try_create_linear_store<T>(&self, idx: usize) -> Result<Array<'info,'refs,T>> 
     where T: Copy
     {
 
         let segment = self.try_get_segment_at(idx)?;
-        let linear_store = MappedArray::try_load_from_segment(segment)?;
+        let linear_store = Array::try_load_from_segment(segment)?;
         linear_store.try_init_meta()?;
         Ok(linear_store)
 
     }
 
-    pub fn try_get_linear_store<T>(&self, idx: usize) -> Result<MappedArray<'info,'refs,T>> 
+    pub fn try_get_linear_store<T>(&self, idx: usize) -> Result<Array<'info,'refs,T>> 
     where T: Copy
     {
 
         let segment = self.try_get_segment_at(idx)?;
         // log_trace!("{:#?}", segment);
-        let linear_store = MappedArray::try_load_from_segment(segment)?;
+        let linear_store = Array::try_load_from_segment(segment)?;
         Ok(linear_store)
 
     }
@@ -900,10 +900,10 @@ log_trace!("ALLOC A");
 mod tests {
     use super::*;
     use crate::accounts::*;
-    use crate::container::linear::MAPPED_ARRAY_VERSION;
-    use crate::container::linear::MappedArrayMeta;
+    use crate::container::array::MAPPED_ARRAY_VERSION;
+    use crate::container::array::ArrayMeta;
 
-    fn check_lsv<T>(ls:&MappedArray<T>) where T: Copy {
+    fn check_lsv<T>(ls:&Array<T>) where T: Copy {
         // {
         //     let data = ls.segment.store.account.data.borrow();
         //     log_trace!("data: {:?}\n---------------------------------\n",data);
@@ -932,16 +932,16 @@ mod tests {
     fn allocator_segment_init() -> Result<()> {
 
         let layout = Layout::<u16>::from(&[
-            MappedArray::<u8>::calculate_data_len(1),
-            MappedArray::<u16>::calculate_data_len(2),
-            MappedArray::<u32>::calculate_data_len(3),
+            Array::<u8>::calculate_data_len(1),
+            Array::<u16>::calculate_data_len(2),
+            Array::<u32>::calculate_data_len(3),
         ]);
         let data_len = layout.data_len();
         assert_eq!(data_len,89);
         assert_eq!(layout.user_segment_sizes,[
-            mem::size_of::<MappedArrayMeta>()+mem::size_of::<u8>()*1,
-            mem::size_of::<MappedArrayMeta>()+mem::size_of::<u16>()*2,
-            mem::size_of::<MappedArrayMeta>()+mem::size_of::<u32>()*3
+            mem::size_of::<ArrayMeta>()+mem::size_of::<u8>()*1,
+            mem::size_of::<ArrayMeta>()+mem::size_of::<u16>()*2,
+            mem::size_of::<ArrayMeta>()+mem::size_of::<u32>()*3
         ]);
 
         Ok(())
@@ -951,9 +951,9 @@ mod tests {
     fn allocator_segment_test() -> Result<()> {
 
         let layout = Layout::<u16>::from(&[
-            MappedArray::<u8>::calculate_data_len(0),
-            MappedArray::<u8>::calculate_data_len(0),
-            MappedArray::<u8>::calculate_data_len(0),
+            Array::<u8>::calculate_data_len(0),
+            Array::<u8>::calculate_data_len(0),
+            Array::<u8>::calculate_data_len(0),
         ]);
 
         // let data_len = layout.data_len();

@@ -13,26 +13,26 @@ pub const MAPPED_ARRAY_VERSION: u32 = 27;//0xfe;
 
 #[repr(packed)]
 #[derive(Meta)]
-pub struct MappedArrayMeta {
+pub struct ArrayMeta {
     pub version: u32,
     pub records : u32
 }
 
-impl MappedArrayMeta {
-    pub fn from_buffer<'refs>(data: &'refs [u8], offset : usize) -> &'refs MappedArrayMeta {
-        unsafe { & *((data[offset..]).as_ptr() as *const MappedArrayMeta) }
+impl ArrayMeta {
+    pub fn from_buffer<'refs>(data: &'refs [u8], offset : usize) -> &'refs ArrayMeta {
+        unsafe { & *((data[offset..]).as_ptr() as *const ArrayMeta) }
     }
-    pub fn from_buffer_mut(data: &mut [u8], offset : usize) -> &mut MappedArrayMeta {
-        unsafe { &mut *((data[offset..]).as_ptr() as *mut MappedArrayMeta) }
+    pub fn from_buffer_mut(data: &mut [u8], offset : usize) -> &mut ArrayMeta {
+        unsafe { &mut *((data[offset..]).as_ptr() as *mut ArrayMeta) }
     }
-    pub fn from_account_buffer_mut<'refs,'info>(account: &'refs AccountInfo<'info>, offset : usize) -> &'info mut MappedArrayMeta {
+    pub fn from_account_buffer_mut<'refs,'info>(account: &'refs AccountInfo<'info>, offset : usize) -> &'info mut ArrayMeta {
         let data = account.data.borrow_mut();
-        unsafe { &mut *((data[offset..]).as_ptr() as *mut MappedArrayMeta) }
+        unsafe { &mut *((data[offset..]).as_ptr() as *mut ArrayMeta) }
     }
 }
 
 #[derive(Debug)]
-pub struct MappedArray<'info, 'refs, T> 
+pub struct Array<'info, 'refs, T> 
 where T : Copy
 {
     pub account : &'refs AccountInfo<'info>,
@@ -41,13 +41,13 @@ where T : Copy
     // TODO: realloc_on_remove : bool,
 }
 
-impl<'info, 'refs, T> MappedArray<'info, 'refs, T> 
+impl<'info, 'refs, T> Array<'info, 'refs, T> 
 where T: Copy
 {
 
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<MappedArray<'info, 'refs, T>> {
+    ) -> Result<Array<'info, 'refs, T>> {
         let store = Self::try_load_from_segment(segment)?;
 
         store.try_init_meta()?;
@@ -57,13 +57,13 @@ where T: Copy
 
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<MappedArray<'info, 'refs, T>> {
+    ) -> Result<Array<'info, 'refs, T>> {
 
-        if segment.get_data_len() < mem::size_of::<MappedArrayMeta>() {
+        if segment.get_data_len() < mem::size_of::<ArrayMeta>() {
             return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
-        let store = MappedArray {
+        let store = Array {
             account : segment.store.account,
             segment : segment.clone(),
             phantom : PhantomData,
@@ -74,12 +74,12 @@ where T: Copy
     }
 
     pub fn data_len_min() -> usize {
-        std::mem::size_of::<MappedArrayMeta>()
+        std::mem::size_of::<ArrayMeta>()
     }
 
     #[inline(always)]
-    pub fn get_meta(&self) -> &'info mut MappedArrayMeta {
-        MappedArrayMeta::from_account_buffer_mut(
+    pub fn get_meta(&self) -> &'info mut ArrayMeta {
+        ArrayMeta::from_account_buffer_mut(
             self.account, 
             self.get_offset()
         )
@@ -93,10 +93,10 @@ where T: Copy
     ) -> Result<&'info [T]> {
         let elements = {
             let data = account.data.borrow_mut();
-            let meta = MappedArrayMeta::from_buffer(&data, byte_offset);
+            let meta = ArrayMeta::from_buffer(&data, byte_offset);
             meta.records as usize
         };
-        let data_offset = byte_offset + mem::size_of::<MappedArrayMeta>();
+        let data_offset = byte_offset + mem::size_of::<ArrayMeta>();
         let slice = utils::account_buffer_as_slice_mut(account,data_offset,elements);
         Ok(slice)
     }
@@ -108,15 +108,15 @@ where T: Copy
     ) -> Result<&'info mut [T]> {
         let elements = {
             let data = account.data.borrow_mut();
-            let meta = MappedArrayMeta::from_buffer(&data, byte_offset);
+            let meta = ArrayMeta::from_buffer(&data, byte_offset);
             meta.records as usize
         };
-        let data_offset = byte_offset + mem::size_of::<MappedArrayMeta>();
+        let data_offset = byte_offset + mem::size_of::<ArrayMeta>();
         let slice = utils::account_buffer_as_slice_mut(account,data_offset,elements);
         Ok(slice)
     }
 
-    pub fn try_init_meta(&self) -> Result<&'info mut MappedArrayMeta> {
+    pub fn try_init_meta(&self) -> Result<&'info mut ArrayMeta> {
         // let offset = self.get_offset();
         let meta = self.get_meta();
         if meta.version != 0u32 {
@@ -127,10 +127,10 @@ where T: Copy
     }
 
     pub fn try_init_meta_with_templates(&self, records: usize)
-        -> Result<&mut MappedArrayMeta>
+        -> Result<&mut ArrayMeta>
     {
         #[cfg(feature = "check-buffer-sizes")]
-        if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records) {
+        if self.segment.get_data_len() < Array::<T>::calculate_data_len(records) {
             return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
@@ -140,10 +140,10 @@ where T: Copy
     }
 
     pub fn try_init_meta_with_records(&self, records : &[T])
-        -> Result<&'info mut MappedArrayMeta> where T : 'info + Copy
+        -> Result<&'info mut ArrayMeta> where T : 'info + Copy
     {
         #[cfg(feature = "check-buffer-sizes")]
-        if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records.len()) {
+        if self.segment.get_data_len() < Array::<T>::calculate_data_len(records.len()) {
             return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
@@ -163,10 +163,10 @@ where T: Copy
     }
 
     pub fn try_init_meta_with_refs(&self, records : &[&T]) 
-        -> Result<&mut MappedArrayMeta> where T : 'info + Copy
+        -> Result<&mut ArrayMeta> where T : 'info + Copy
     {
         #[cfg(feature = "check-buffer-sizes")]
-        if self.segment.get_data_len() < MappedArray::<T>::calculate_data_len(records.len()) {
+        if self.segment.get_data_len() < Array::<T>::calculate_data_len(records.len()) {
             return Err(ErrorCode::MappedArraySegmentSizeTooSmall.into());
         }
 
@@ -204,11 +204,11 @@ where T: Copy
     }
 
     pub fn get_data_offset(&self) -> usize {
-        self.get_offset() + mem::size_of::<MappedArrayMeta>()
+        self.get_offset() + mem::size_of::<ArrayMeta>()
     }
 
     pub fn calculate_data_len(records:usize) -> usize {
-        mem::size_of::<MappedArrayMeta>() + records * mem::size_of::<T>()
+        mem::size_of::<ArrayMeta>() + records * mem::size_of::<T>()
     }
 
     #[inline(always)]
@@ -265,7 +265,7 @@ where T: Copy
 
         // TODO review potential capacity problem - memory is available but segment is not sized correctly
 
-        let new_byte_len = MappedArray::<T>::calculate_data_len(records);
+        let new_byte_len = Array::<T>::calculate_data_len(records);
         log_trace!("***########### resize for items -  capacity: {}  new_byte_len: {}", capacity, new_byte_len);
         // panic!("***");
         if new_byte_len > capacity {
@@ -298,7 +298,7 @@ where T: Copy
     }
 
     pub fn get_byte_offset_at_idx(&self, idx: usize) -> usize {
-        mem::size_of::<MappedArrayMeta>() + idx * mem::size_of::<T>()
+        mem::size_of::<ArrayMeta>() + idx * mem::size_of::<T>()
     }
 
     pub unsafe fn try_allocate_at(&self, idx : usize, zero_init:bool) -> Result<&'refs mut T> {
@@ -375,7 +375,7 @@ where T: Copy
 
             records -= 1;
             meta.records = records as u32;
-            mem::size_of::<MappedArrayMeta>() + records * mem::size_of::<T>()
+            mem::size_of::<ArrayMeta>() + records * mem::size_of::<T>()
         };
 
         if realloc {
@@ -417,7 +417,7 @@ where T: Copy
 
         records -= 1;
         meta.records = records as u32;
-        let new_len = mem::size_of::<MappedArrayMeta>() + records * mem::size_of::<T>();
+        let new_len = mem::size_of::<ArrayMeta>() + records * mem::size_of::<T>();
         // };
 
         if realloc {
@@ -445,7 +445,7 @@ where T: Copy
     }
 }
 
-impl<'info, 'refs, T> Index<usize> for MappedArray<'info, 'refs, T> 
+impl<'info, 'refs, T> Index<usize> for Array<'info, 'refs, T> 
 where T: Copy
 {
     type Output = T;
@@ -454,7 +454,7 @@ where T: Copy
     }
 }
 
-impl<'info, 'refs, T> IndexMut<usize> for MappedArray<'info, 'refs, T> 
+impl<'info, 'refs, T> IndexMut<usize> for Array<'info, 'refs, T> 
 where T: Copy
 {
     fn index_mut(&mut self, idx : usize) -> &mut Self::Output {
@@ -489,7 +489,7 @@ impl<'info, 'refs, T> MappedArrayIterator<'info, T> {
     #[inline(always)]
     fn get_at(&self, idx: usize) -> &'refs mut T {
         let data = self.data.borrow();
-        let data_offset = self.offset + mem::size_of::<MappedArrayMeta>();
+        let data_offset = self.offset + mem::size_of::<ArrayMeta>();
         unsafe { &mut *((data[(data_offset + idx*mem::size_of::<T>())..]).as_ptr() as *mut T) }
     }
 }

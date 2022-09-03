@@ -135,9 +135,9 @@ pub struct Identity<'info,'refs> {
     pub meta : RefCell<&'info mut IdentityMeta>,
     pub store : SegmentStore<'info,'refs>,
     // ---
-    #[segment(reserve(MappedArray::<IdentityRecord>::calculate_data_len(5)))]
-    pub records : MappedArray<'info,'refs, IdentityRecord>,
-    pub collections : MappedArray<'info,'refs, CollectionMeta>,
+    #[segment(reserve(Array::<IdentityRecord>::calculate_data_len(5)))]
+    pub records : Array<'info,'refs, IdentityRecord>,
+    pub collections : Array<'info,'refs, CollectionMeta>,
 }
 
 impl<'info,'refs> std::fmt::Debug for Identity<'info,'refs> {

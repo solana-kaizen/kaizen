@@ -380,7 +380,7 @@ pub struct CollectionStoreMeta {
 #[container(Containers::Collection)]
 pub struct CollectionStore<'info, 'refs, T> where T : Copy + Eq + PartialEq {
     pub meta : RefCell<&'info mut CollectionStoreMeta>,
-    records : MappedArray<'info, 'refs, T>,
+    records : Array<'info, 'refs, T>,
     // _t_ : std::marker::PhantomData<T>,
 
 }
