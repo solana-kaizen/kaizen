@@ -53,12 +53,15 @@ pub enum SeedSuffix {
 #[cfg(not(target_arch = "bpf"))]
 mod client {
 
+    use crate::container::Container;
     use crate::generate_random_pubkey;
 
     use super::*;
-    use std::sync::{ Arc, Mutex };
+    use std::cell::UnsafeCell;
+    use std::sync::{ Arc, Mutex, MutexGuard };
     // use async_std::sync::RwLock;
     use borsh::{BorshDeserialize, BorshSerialize};
+    use owning_ref::OwningHandle;
     use serde::{Deserialize, Serialize};
     use std::time::Instant;
     use solana_program::account_info::IntoAccountInfo;
@@ -133,6 +136,100 @@ mod client {
         pub fn clone_for_storage(&self) -> Result<AccountData> {
             Ok(self.account_data.lock()?.clone_for_storage())
         }
+
+
+
+
+
+
+        pub async fn try_load_container<'lock:'info+'refs, 'info:'refs,'refs:'info,'this,T> (&'this self) 
+        -> 
+        Result<
+            OwningHandle<
+                OwningHandle<
+                    OwningHandle::<
+                        OwningHandle::<
+                            &'this AccountDataReference,
+                            Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>, 
+                        Box<UnsafeCell<&'refs mut AccountData>>>,
+                    Box<AccountInfo<'info>>>, 
+                Box<<T as Container<'info,'refs>>::T>
+            >
+        > 
+        where T: workflow_allocator::container::Container<'info,'refs>
+        {
+            // let transport = Transport::global()?;
+            // let account_data_reference = match transport.lookup(pubkey).await? {
+            //     Some(account_data_reference) => account_data_reference,
+            //     None => return Ok(None)
+            // };
+        
+            let account_data_ref_account_data_lock = 
+                OwningHandle::<&AccountDataReference,Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>::new_with_fn(self, |x| {
+                    Box::new( unsafe { 
+                        let r = x.as_ref().unwrap();
+                        UnsafeCell::new(r.account_data.lock().unwrap())
+                    })
+                });
+        
+            let account_data_lock_ref = 
+                OwningHandle::<
+                    OwningHandle::<
+                        &AccountDataReference,
+                        Box<UnsafeCell<MutexGuard<'lock,AccountData>>>>
+                
+                ,Box<UnsafeCell<&mut AccountData>>>::new_with_fn(account_data_ref_account_data_lock, |x| {
+                    Box::new( unsafe { 
+                        let r = x.as_ref().unwrap();
+                        let m = r.get().as_mut().unwrap();
+                        UnsafeCell::new(&mut *m)
+                    })
+                });
+        
+            let account_data_account_info = 
+                OwningHandle::<
+                    OwningHandle::<
+                            OwningHandle::<&AccountDataReference,Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>
+                    ,Box<UnsafeCell<&mut AccountData>>>
+                ,Box<AccountInfo>>::new_with_fn(account_data_lock_ref, |x| {
+                    Box::new( unsafe { 
+                        let r = x.as_ref().unwrap();
+                        let m = (*r).get().as_mut().unwrap();
+                        m.into_account_info() 
+                    })
+                });
+        
+            let container = 
+            OwningHandle::<
+                OwningHandle::<
+                    OwningHandle::<
+                        OwningHandle::<&AccountDataReference,Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>,
+                        Box<UnsafeCell<&'refs mut AccountData>>>,
+                    Box<AccountInfo<'info>>
+                >,
+                Box<<T as Container<'info,'refs>>::T>
+            >::new_with_fn(account_data_account_info, |x| {
+                Box::new( unsafe { 
+                    let account_info : &'refs AccountInfo<'info> = x.as_ref().unwrap();
+                    let t = T::try_load(account_info).unwrap(); // ^ TODO
+                    t
+                })
+            });
+        
+            Ok(container)
+        }
+        
+
+
+
+
+
+
+
+
+
+
+
 
 
     }
