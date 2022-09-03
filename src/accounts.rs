@@ -57,7 +57,7 @@ mod client {
 
     use super::*;
     use std::sync::{ Arc, Mutex };
-    use async_std::sync::RwLock;
+    // use async_std::sync::RwLock;
     use borsh::{BorshDeserialize, BorshSerialize};
     use serde::{Deserialize, Serialize};
     use std::time::Instant;
@@ -94,7 +94,7 @@ mod client {
         pub container_type : u32,
         pub data_type : AccountType,
         pub data_len : usize,
-        pub account_data : Arc<RwLock<AccountData>>
+        pub account_data : Arc<Mutex<AccountData>>
     }
 
     impl AccountDataReference {
@@ -114,7 +114,7 @@ mod client {
                 container_type,
                 data_type,
                 data_len,
-                account_data : Arc::new(RwLock::new(account_data))
+                account_data : Arc::new(Mutex::new(account_data))
             }
         }
 
@@ -122,16 +122,16 @@ mod client {
             &*self.key
         }
 
-        pub async fn lamports(&self) -> u64 {
-            self.account_data.read().await.lamports
+        pub fn lamports(&self) -> Result<u64> {
+            Ok(self.account_data.lock()?.lamports)
         }
 
-        pub async fn clone_for_program(&self) -> AccountData {
-            self.account_data.read().await.clone_for_program()
+        pub fn clone_for_program(&self) -> Result<AccountData> {
+            Ok(self.account_data.lock()?.clone_for_program())
         }
 
-        pub async fn clone_for_storage(&self) -> AccountData {
-            self.account_data.read().await.clone_for_storage()
+        pub fn clone_for_storage(&self) -> Result<AccountData> {
+            Ok(self.account_data.lock()?.clone_for_storage())
         }
 
 

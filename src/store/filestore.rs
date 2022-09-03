@@ -153,7 +153,7 @@ impl Store for FileStore {
             cache.store(&reference).await?;
         }
 
-        let data = AccountDataStore::from(&*reference.account_data.read().await).try_to_vec()?;
+        let data = AccountDataStore::from(&*reference.account_data.lock()?).try_to_vec()?;
 
 {
             log_trace!("################## STORE {}",reference.key);

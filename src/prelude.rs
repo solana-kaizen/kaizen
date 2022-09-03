@@ -21,7 +21,7 @@ pub use crate::container::segment::{Segment, SegmentStore, Layout};
 pub use crate::container::linear::MappedArray;
 pub use crate::container::collection::{CollectionMeta, CollectionStore};
 pub use crate::container::ContainerHeader;
-pub use crate::transport::{Transport,Interface};
+pub use crate::transport::*;//{Transport,Interface};
 
 pub use workflow_log::log_trace;
 

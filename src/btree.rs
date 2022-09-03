@@ -1376,7 +1376,7 @@ pub mod client {
             //     }
             // };
             // let mut account_data = account_data_ref_cell.borrow_mut();
-            let mut account_data = reference.account_data.write().await;
+            let mut account_data = reference.account_data.lock()?;
             let account_key = key.clone();
             let account_info = (&account_key, &mut *account_data).into_account_info();
 
@@ -1494,7 +1494,7 @@ pub mod client {
                 }
             };
 
-            let mut values_account_data = values_account_data.account_data.write().await;
+            let mut values_account_data = values_account_data.account_data.lock()?;
 
             // let mut values_account_data = values_account_data_ref_cell.borrow_mut();
             let pubkey_ = pubkey.clone();
@@ -1586,7 +1586,7 @@ pub mod client {
             //     }
             // };
 
-            let mut values_account_data = values_account_data_ref_cell.account_data.write().await;
+            let mut values_account_data = values_account_data_ref_cell.account_data.lock()?;
             let pubkey_ = pubkey.clone();
             let values_account_info = (&pubkey_, &mut *values_account_data).into_account_info();
             let values = BPTreeValues::<K,V>::try_load(&values_account_info)?;
@@ -1716,7 +1716,7 @@ mod tests {
             // load test container
             let mut test_container_account_data = simulator.store.lookup(&test_container_pubkey).await?
                 // .ok_or(error!("missing test_container"))?
-                .unwrap().account_data.read().await.clone();
+                .unwrap().account_data.lock()?.clone();
             let test_container_account_info = (&test_container_pubkey, &mut test_container_account_data).into_account_info();
             let test_container = TestContainer::try_load(&test_container_account_info)?;
 
@@ -1784,7 +1784,7 @@ mod tests {
 
         let mut test_container_account_data = simulator.store.lookup(&test_container_pubkey).await?
         // .ok_or(error!("missing test_container"))?.read()?.clone();
-        .unwrap().account_data.read().await.clone();
+        .unwrap().account_data.lock()?.clone();
         let test_container_account_info = (&test_container_pubkey, &mut test_container_account_data).into_account_info();
         let test_container = TestContainer::try_load(&test_container_account_info)?;
         

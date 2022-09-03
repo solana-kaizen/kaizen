@@ -65,7 +65,7 @@ impl RpcHandler<EmulatorOps> for Server
                 let reference = self.emulator.clone().lookup(&req.pubkey).await?;
                 let resp = match reference {
                     Some(reference) => {
-                        let account_data_store = AccountDataStore::from(&*reference.account_data.read().await);
+                        let account_data_store = AccountDataStore::from(&*reference.account_data.lock()?);
                         // let account_data = AccountData::from(&account_data_store);
                         LookupResp { account_data_store : Some(account_data_store) };
                     },

@@ -39,6 +39,9 @@ downcast_sync!(dyn Interface);
 mod config;
 pub use config::*;
 
+mod loaders;
+pub use loaders::*;
+
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 #[cfg(target_arch = "wasm32")]

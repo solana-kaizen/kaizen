@@ -186,7 +186,7 @@ impl Emulator {
 
             let mut account_data = match self.lookup(&pubkey).await? {
                 Some(reference) => {
-                    let account_data = reference.clone_for_program().await;//account_data.clone_for_prog//read().await.ok_or(error!("account read lock failed"))?.clone_for_program();
+                    let account_data = reference.clone_for_program()?;//account_data.clone_for_prog//read().await.ok_or(error!("account read lock failed"))?.clone_for_program();
 
                     log_trace!("[store] ...  loading: {}", account_data.info()?);
 
@@ -249,7 +249,7 @@ impl Emulator {
         // let accounts = accounts.lock().unwrap();
         for (pubkey, account_data) in accounts.iter() {
             if let Some(existing_account_data) = self.store.lookup(&account_data.key).await? {
-                let existing_account_data = existing_account_data.account_data.read().await;//.ok_or(error!("account read lock failed"))?;
+                let existing_account_data = existing_account_data.account_data.lock()?;//.ok_or(error!("account read lock failed"))?;
                 if !account_data.is_writable {
                     if account_data.data[..] != existing_account_data.data[..] {
                         log_error!("ERROR: non-mutable account has been modified: {}",pubkey);
@@ -443,32 +443,37 @@ impl EmulatorInterface for Emulator {
         lamports : u64
     ) -> Result<()> {
         
-        let from = self.store.lookup(&Pubkey::default()).await?;
-        let to = self.store.lookup(key).await?;
+        
+        let (ref_from,ref_to) = {
+            let from = self.store.lookup(&Pubkey::default()).await?;
+            let to = self.store.lookup(key).await?;
 
-        let ref_from = if let Some(from) = from {
-            from
-        } else {
-            return Err(error_code!(ErrorCode::LookupErrorSource));
+            let ref_from = if let Some(from) = from {
+                from
+            } else {
+                return Err(error_code!(ErrorCode::LookupErrorSource));
+            };
+
+            let mut from = ref_from.account_data.lock()?;
+            if from.lamports < lamports {
+                return Err(program_error_code!(ErrorCode::InsufficientBalance));
+            }
+
+            let ref_to = if let Some(to) = to {
+                to
+            } else {
+                Arc::new(AccountDataReference::new(AccountData::new_static(key.clone(), owner.clone())))
+            };
+
+            let mut to = ref_to.account_data.lock()?;
+
+            from.lamports = from.lamports.saturating_sub(lamports);
+            // drop(from);
+            to.lamports = to.lamports.saturating_add(lamports);
+            // drop(to);
+
+            (ref_from.clone(),ref_to.clone())
         };
-
-        let mut from = ref_from.account_data.write().await;
-        if from.lamports < lamports {
-            return Err(program_error_code!(ErrorCode::InsufficientBalance));
-        }
-
-        let ref_to = if let Some(to) = to {
-            to
-        } else {
-            Arc::new(AccountDataReference::new(AccountData::new_static(key.clone(), owner.clone())))
-        };
-
-        let mut to = ref_to.account_data.write().await;
-
-        from.lamports = from.lamports.saturating_sub(lamports);
-        drop(from);
-        to.lamports = to.lamports.saturating_add(lamports);
-        drop(to);
 
 
         self.store.store(&ref_from).await?;

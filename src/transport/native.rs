@@ -189,7 +189,7 @@ impl Transport {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.emulator().lookup(&pubkey).await?;
                 match result {
-                    Some(reference) => Ok(reference.lamports().await),
+                    Some(reference) => Ok(reference.lamports()?),
                     None => {
                         return Err(error!("[Emulator] - Transport::balance() unable to lookup account: {}", pubkey)); 
                     }

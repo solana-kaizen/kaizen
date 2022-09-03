@@ -359,7 +359,7 @@ pub mod client {
         if let Some(proxy_ref) = transport.lookup(&proxy_pubkey).await? {
             log_trace!("got proxy account {}", proxy_pubkey);
 
-            let mut proxy_account_data = proxy_ref.account_data.write().await;
+            let mut proxy_account_data = proxy_ref.account_data.lock()?;
             let proxy_account_info = proxy_account_data.into_account_info();
             let proxy = IdentityProxy::try_load(&proxy_account_info)?;
             let identity_pubkey = proxy.meta.borrow().get_identity_pubkey();
