@@ -162,6 +162,9 @@ pub struct Transport {
 
 }
 
+unsafe impl Send for Transport {}
+unsafe impl Sync for Transport {}
+
 impl Transport {
 
 
@@ -196,7 +199,7 @@ impl Transport {
         Ok(js_sys::Reflect::get(&Self::solana()?,&JsValue::from("PublicKey"))?)
     }
 
-    pub async fn try_new_for_unit_tests(config : TransportConfig) -> Result<Arc<Transport>> {
+    pub async fn try_new_for_unit_tests(_program_id : Pubkey, config : TransportConfig) -> Result<Arc<Transport>> {
         // let mut transport_env_var = std::env::var("TRANSPORT").unwrap_or("simulator".into());
         // if transport_env_var.starts_with("local") || transport_env_var.starts_with("native") {
         //     transport_env_var = "http://127.0.0.1:8899".into();
@@ -225,7 +228,7 @@ impl Transport {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.emulator().lookup(&pubkey).await?;
                 match result {
-                    Some(reference) => Ok(reference.lamports().await),
+                    Some(reference) => Ok(reference.lamports()?),
                     None => {
                         return Err(error!("[Emulator] - WASM::Transport::balance() unable to lookup account: {}", pubkey)); 
                     }
@@ -245,7 +248,7 @@ impl Transport {
                 let result = self.lookup_remote_impl(&pubkey).await?;
                 match result{
                     Some(reference)=>{
-                        Ok(reference.lamports().await)
+                        Ok(reference.lamports()?)
                         // match Arc::try_unwrap(data_arc){
                         //     Ok(data_rwlock)=>{
                         //         let account_data = data_rwlock.read().await;
@@ -468,8 +471,6 @@ impl Transport {
     }
 
 }
-
-
 
 #[async_trait(?Send)]
 impl super::Interface for Transport {
