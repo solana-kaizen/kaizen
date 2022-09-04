@@ -55,6 +55,7 @@ pub enum ErrorCode {
     AuthorityMustSign,
     InsufficientBalance,
     InsufficientAllocBalance,
+    InsufficientBalanceForRent,
     InsufficientBalanceForRentSync,
     ContextAccounts,
     AccountOwnership,

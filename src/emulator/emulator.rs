@@ -257,37 +257,36 @@ impl Emulator {
                     }
                 }
             }
+
+            let rent = Rent::default();
+            let minimum_balance = rent.minimum_balance(account_data.data_len());//_data_len);
+            // if **lamports < minimum_balance {
+            if account_data.lamports < minimum_balance && *pubkey != Pubkey::default(){
+                log_trace!("[store] ...  failure: {}", account_data.info()?);
+                log_trace!("{} {}",style("purging account (below minimum balance):").white().on_red(),pubkey.to_string());
+                log_trace!("data len: {} balance needed: {}  balance in the account: {}", account_data.data_len(), minimum_balance, account_data.lamports);
+                log_trace!("account type: 0x{:08x}",account_data.container_type().unwrap_or(0));
+                // self.store.purge(pubkey).await?;
+                return Err(ErrorCode::InsufficientBalanceForRent.into());
+            }
+
         }
         // for account_info in accounts.lock().unwrap().iter() {
         for (pubkey, account_data) in accounts.iter() {
             // if false 
             {
-                let rent = Rent::default();
+                // let rent = Rent::default();
                 // let account_data_len = account.space;//.data_len();
                 // let lamports = account_info.lamports.borrow();
 
                 // if account_data_len == 0 && account.lamports == 0u64 { //**lamports == 0u64 {
-                if account_data.data_len() == 0 && account_data.lamports == 0u64 { //**lamports == 0u64 {
+                if account_data.data_len() == 0 && account_data.lamports == 0u64  && *pubkey != Pubkey::default() {
                     log_trace!("{} {}",style("purging account (no data, no balance):").white().on_red(),pubkey.to_string());
                     // self.store.purge(account_info.key).await?;
                     self.store.purge(pubkey).await?;
                     continue;
                 }
 
-                let minimum_balance = rent.minimum_balance(account_data.data_len());//_data_len);
-                // if **lamports < minimum_balance {
-                if account_data.lamports < minimum_balance {
-                    // if *account_info.key != Pubkey::default() {
-                    if *pubkey != Pubkey::default() {
-                        log_trace!("{} {}",style("purging account (below minimum balance):").white().on_red(),pubkey.to_string());
-                        // log_trace!("data len: {} balance needed: {}  balance in the account: {}", account.space, minimum_balance, **lamports);
-                        log_trace!("data len: {} balance needed: {}  balance in the account: {}", account_data.data_len(), minimum_balance, account_data.lamports);
-                        log_trace!("account type: 0x{:08x}",account_data.container_type().unwrap_or(0));
-                        self.store.purge(pubkey).await?;
-                    }
-                    // log_trace!("[store] skipping store for blank account {}", account_info.key.to_string());
-                    continue;
-                }
             }
             let account_data_for_storage = account_data.clone_for_storage();
             // let account_data = AccountData::clone_from_account_info(account_info);
