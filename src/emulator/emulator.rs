@@ -136,7 +136,7 @@ impl Emulator {
             )
                 .try_into()
                 .expect("Unable to create context");
-            match handler(&Rc::new(ctx)) {
+            match handler(&Rc::new(Box::new(ctx))) {
                 //?;//.map_err(|err| format!("(handler) program error: {:?}", err).to_string())?;
                 Ok(_) => {}
                 Err(err) => {

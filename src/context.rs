@@ -61,13 +61,14 @@ impl<'info,'refs> AccountAllocationArgs<'info,'refs> {
 }
 
 
-pub type SimulationHandlerFn = fn(ctx: &Rc<Context>) -> Result<()>;
-// pub type HandlerFn = fn(ctx: &Rc<Context>) -> Result<()>;
-// pub type HandlerFnCPtr = *const fn(ctx: &Rc<Context>) -> Result<()>;
-// pub type ProgramHandlerFn = fn(ctx: &Rc<Context>) -> ProgramResult;
-// pub type ProgramHandlerFnCPtr = *const fn(ctx: &Rc<Context>) -> ProgramResult;
-pub type HandlerFn = fn(ctx: &Rc<Context>) -> ProgramResult;
-pub type HandlerFnCPtr = *const fn(ctx: &Rc<Context>) -> ProgramResult;
+// pub type HandlerFn = fn(ctx: &ContextReference) -> Result<()>;
+// pub type HandlerFnCPtr = *const fn(ctx: &ContextReference) -> Result<()>;
+// pub type ProgramHandlerFn = fn(ctx: &ContextReference) -> ProgramResult;
+// pub type ProgramHandlerFnCPtr = *const fn(ctx: &ContextReference) -> ProgramResult;
+pub type ContextReference<'info,'refs,'pid,'instr> = Rc<Box<Context<'info,'refs,'pid,'instr>>>;
+pub type SimulationHandlerFn = fn(ctx: &ContextReference) -> Result<()>;
+pub type HandlerFn = fn(ctx: &ContextReference) -> ProgramResult;
+pub type HandlerFnCPtr = *const fn(ctx: &ContextReference) -> ProgramResult;
 
 
 #[derive(Debug)]

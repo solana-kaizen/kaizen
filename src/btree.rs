@@ -600,7 +600,7 @@ where
 
     fn try_split_index<'pid,'instr,'idx>(
         &self, 
-        ctx : &Rc<Context<'info,'refs,'pid,'instr>>,
+        ctx : &Rc<Box<Context<'info,'refs,'pid,'instr>>>,
         index : &'idx BPTreeIndex<'info,'refs,K>,
         // ???????
         _parent : Option<BPTreeIndex<'info,'refs,K>>,
@@ -652,7 +652,7 @@ where
 
     fn try_split_values_with_insert<'pid,'instr>(
         &self,
-        ctx : &Rc<Context<'info,'refs,'pid,'instr>>,
+        ctx : &Rc<Box<Context<'info,'refs,'pid,'instr>>>,
         values : BPTreeValues<'info,'refs,K,V>,
         insert_cell : BPTreeValueCell<K,V>,
         allocation_args : &AccountAllocationArgs<'info,'refs>,
@@ -779,7 +779,7 @@ where
     pub fn insert<'pid,'instr>(
         &self,
         path: &'refs [AccountInfo<'info>],
-        ctx : &Rc<Context<'info,'refs,'pid,'instr>>,
+        ctx : &Rc<Box<Context<'info,'refs,'pid,'instr>>>,
         key: &K,
         value : &V,
         allocation_args: &AccountAllocationArgs<'info,'refs>,
@@ -1012,7 +1012,7 @@ where
 
     // TODO
     pub fn merge_indexes<'pid,'instr>(
-        ctx : &Rc<Context<'info,'refs,'pid,'instr>>,
+        ctx : &Rc<Box<Context<'info,'refs,'pid,'instr>>>,
         left: BPTreeIndex<'info,'refs,K>,
         right: BPTreeIndex<'info,'refs,K>
     )
@@ -1036,7 +1036,7 @@ where
 
     // TODO
     pub fn merge_values<'pid,'instr>(
-        ctx : &Rc<Context<'info,'refs,'pid,'instr>>,
+        ctx : &Rc<Box<Context<'info,'refs,'pid,'instr>>>,
         left: BPTreeValues<'info,'refs,K,V>,
         right: BPTreeValues<'info,'refs,K,V>
     )
@@ -1655,7 +1655,7 @@ pub mod client {
     //     Ok(account_data)
     // }
 
-    // pub type HandlerFn = fn(ctx: &Rc<Context>) -> ProgramResult;
+    // pub type HandlerFn = fn(ctx: &ContextReference) -> ProgramResult;
 
     // pub fn handler_execute(cache:&Cache, builder: &InstructionBuilder) -> std::result::Result<(),String> {
 
@@ -1699,7 +1699,7 @@ mod tests {
         let accounts = builder.template_accounts().clone();
         let test_container_pubkey = accounts.first().unwrap().pubkey;
 
-        simulator.execute_handler(builder,|ctx:&Rc<Context>| {
+        simulator.execute_handler(builder,|ctx:&ContextReference| {
             // log_trace!("ctx.template_accounts[0].key.to_string()1111: {:?}", ctx.template_accounts[0].key.to_string());
             let allocation_args = AccountAllocationArgs::default();
             let account = ctx.create_pda(TestContainer::initial_data_len(), &allocation_args)?;
@@ -1753,7 +1753,7 @@ mod tests {
                 .seal()?;
             
             sequence = builder.sequence();
-            simulator.execute_handler(builder,|ctx:&Rc<Context>| {
+            simulator.execute_handler(builder,|ctx:&ContextReference| {
                 let test_container_account = &ctx.handler_accounts[0];
                 let test_container = TestContainer::try_load(test_container_account)?;
                 let allocation_args = AccountAllocationArgs::default();

@@ -226,7 +226,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     // }
 
     /// Create a new identity container and the corresponding identity proxy account
-    pub fn create(ctx:&Rc<Context>) -> ProgramResult { //Result<()> {
+    pub fn create(ctx:&ContextReference) -> ProgramResult { //Result<()> {
 
         let mut records : Vec<IdentityRecordStore> = Vec::new();
         let mut collections : Vec<u32> = Vec::new();
@@ -289,7 +289,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         None
     }
 
-    pub fn locate_collection(&self, ctx:&'refs Rc<Context<'info,'refs,'_,'_>>, data_type : u32) -> Result<CollectionStore<'info,'refs, Pubkey>> {
+    pub fn locate_collection(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<CollectionStore<'info,'refs, Pubkey>> {
         for idx in 0..self.collections.len() {
             let collection = &self.collections[idx];
             if collection.get_data_type() == data_type {
@@ -304,7 +304,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
     // TODO: testing sandbox
     /// Register a separate authority with an identity and create a new proxy account for the authority being registered
-    pub fn try_register_authority_with_identity(ctx:&Rc<Context>) -> Result<()> {
+    pub fn try_register_authority_with_identity(ctx:&ContextReference) -> Result<()> {
 
 
         let identity = ctx.try_identity()?;
@@ -448,7 +448,7 @@ pub mod client {
         let identity = accounts[1].clone();
 
     
-        simulator.execute_handler(builder,|ctx:&Rc<Context>| {
+        simulator.execute_handler(builder,|ctx:&ContextReference| {
             log_trace!("create identity");
             Identity::create(ctx)?;
             Ok(())
@@ -494,7 +494,7 @@ mod tests {
         let proxy = accounts[0].clone(); // PDA0
         let identity = accounts[1].clone();
 
-        simulator.execute_handler(builder,|ctx:&Rc<Context>| {
+        simulator.execute_handler(builder,|ctx:&ContextReference| {
             log_trace!("create identity");
             Identity::create(ctx)?;
             Ok(())
@@ -517,7 +517,7 @@ mod tests {
             //.with_account_templates(1)
             .seal()?;
         
-        simulator.execute_handler(builder,|ctx:&Rc<Context>| {
+        simulator.execute_handler(builder,|ctx:&ContextReference| {
             log_trace!("testing authority presense in the identity");
             let identity = ctx.try_identity()?;
             assert!(identity.try_has_authority(ctx.authority.key)?);

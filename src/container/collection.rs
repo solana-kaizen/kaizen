@@ -1,5 +1,6 @@
 use solana_program::pubkey::Pubkey;
 use workflow_allocator_macros::{Meta, container};
+use crate::context::ContextReference;
 // use std::rc::Rc;
 // use crate::error::ErrorCode;
 // use borsh::{BorshDeserialize, BorshSerialize};
@@ -74,7 +75,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info
         // Ok(())
     }
 
-    pub fn try_create(&self, ctx: &Rc<Context<'info,'refs,'_,'_>>, data_type : u32) -> Result<()> {
+    pub fn try_create(&self, ctx: &ContextReference<'info,'refs,'_,'_>, data_type : u32) -> Result<()> {
         // let data_type = self.meta().get_data_type();
         self.meta().set_data_type(data_type);
         let allocation_args = AccountAllocationArgs::default();
@@ -83,7 +84,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info
         Ok(())
     }
 
-    pub fn try_load(&mut self, ctx:&Rc<Context<'info,'refs,'_,'_>>) -> Result<()> {   //Result<CollectionStore<'_,'_,T>> {
+    pub fn try_load(&mut self, ctx:&ContextReference<'info,'refs,'_,'_>) -> Result<()> {   //Result<CollectionStore<'_,'_,T>> {
 
         let meta = self.meta();
         if let Some(idx) = ctx.index_accounts.iter().position(|r|r.key==&meta.pubkey) {
@@ -387,7 +388,7 @@ pub struct CollectionStore<'info, 'refs, T> where T : Copy + Eq + PartialEq {
 
 impl<'info, 'refs, T> CollectionStore<'info, 'refs, T> where T : Copy + Eq + PartialEq + Ord + 'info {
 
-    // pub fn new(ctx:&Rc<Context>, data_type : u32) -> Result<CollectionStore<'info, 'refs, T>> {
+    // pub fn new(ctx:&ContextReference, data_type : u32) -> Result<CollectionStore<'info, 'refs, T>> {
         
 
     // }

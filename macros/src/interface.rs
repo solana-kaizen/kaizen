@@ -112,7 +112,7 @@ pub fn declare_handlers(input: TokenStream) -> TokenStream {
                 as u16
             }
 
-            pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> solana_program::entrypoint::ProgramResult {
+            pub fn program(ctx:&workflow_allocator::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
             // pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> workflow_allocator::result::Result<()> {
                 if ctx.handler_id >= #handler_struct_path::PRIMITIVE_HANDLERS.len() {
                     println!("Error - invalid argument in program handler");

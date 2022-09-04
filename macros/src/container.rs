@@ -836,7 +836,7 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             // }
         
             pub fn try_allocate_default<'pid,'instr>(
-                ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
+                ctx: &std::rc::Rc<std::boxed::Box<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>>,
                 allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
             ) -> workflow_allocator::result::Result<Self> {
                 
@@ -844,7 +844,7 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         
             pub fn try_allocate<'pid,'instr>(
-                ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
+                ctx: &std::rc::Rc<std::boxed::Box<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>>,
                 allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
                 reserve_data_len : usize
             ) -> workflow_allocator::result::Result<Self> {
@@ -963,7 +963,7 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             #[inline]
             pub fn sync_rent<'pid,'instr>(
                 &self,
-                ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
+                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'pid,'instr>,
                 rent_collector : &workflow_allocator::rent::RentCollector<'info,'refs>,
             ) -> workflow_allocator::result::Result<()> {
                 // TODO: @alpha - transfer out excess rent
@@ -974,7 +974,8 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             #[inline]
             pub fn purge<'pid,'instr>(
                 &self,
-                ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
+                // ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,
+                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'pid,'instr>,
                 rent_collector : &workflow_allocator::rent::RentCollector<'info,'refs>,
             ) -> workflow_allocator::result::Result<()> {
                 // TODO: move out lamports from the account

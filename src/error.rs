@@ -452,7 +452,7 @@ impl Error {
     //     self
     // }
 
-    // pub fn with_context(mut self, ctx : &Rc<Context>) -> Self {
+    // pub fn with_context(mut self, ctx : &ContextReference) -> Self {
     //     self.context = Some(ctx.clone());
     //     self
     // }

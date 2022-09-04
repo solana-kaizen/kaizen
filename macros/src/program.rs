@@ -153,7 +153,8 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             .expect("Unknown interface handler! (check declare_program!())")
         }
 
-        pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> solana_program::entrypoint::ProgramResult {
+        // pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> solana_program::entrypoint::ProgramResult {
+        pub fn program(ctx:&workflow_allocator::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
             if ctx.interface_id >= PROGRAM_HANDLERS.len() {
                 println!("Error - invalid interface id");
                 return Err(solana_program::program_error::ProgramError::InvalidArgument);
@@ -172,18 +173,25 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             // solana_program::msg!("XXX:accounts: {:?}", accounts);
             // solana_program::msg!("XXX:instruction_data: {:?}", instruction_data);
             //let mut ctx : workflow_allocator::context::Context = (program_id,accounts,instruction_data).try_into().ok().unwrap();
-            let mut ctx_result = workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data));
+            // let mut ctx_result = workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data));
             // solana_program::msg!("XXX:ctx_result: {:?}", ctx_result);
-            if ctx_result.is_err(){
-                #[cfg(not(target_arch = "bpf"))]
-                workflow_log::log_error!("Fatal: unable to load Context: {:?}", ctx_result);
-                return Err(solana_program::program_error::ProgramError::InvalidInstructionData);
+            match workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data)) {
+                Err(err) => {
+                    #[cfg(not(target_arch = "bpf"))]
+                    workflow_log::log_error!("Fatal: unable to load Context: {}", err);
+                    return Err(err.into());
+                    // return Err(solana_program::program_error::ProgramError::InvalidInstructionData);
+                },
+                Ok(mut ctx) => {
+                    PROGRAM_HANDLERS[ctx.interface_id](&mut std::rc::Rc::new(std::boxed::Box::new(ctx)))?;
+                }
             }
+            // if ctx_result.is_err(){
+            // }
 
-            let ctx = ctx_result.ok().unwrap();
+            // let ctx = ctx_result.ok().unwrap();
             
             // println!("processing instruction for primitive id: {}", ctx.interface_id);
-            PROGRAM_HANDLERS[ctx.interface_id](&std::rc::Rc::new(ctx))?;
             Ok(())
 
         }
