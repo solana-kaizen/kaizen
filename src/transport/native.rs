@@ -292,17 +292,38 @@ impl Transport {
     // async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        match &self.emulator {
-            Some(emulator) => {
-                Ok(emulator.clone().lookup(pubkey).await?)
+        self.cache.purge(pubkey).await?;
+
+        match self.mode {
+            Mode::Inproc | Mode::Emulator => {
+
+                let reference = self.emulator().lookup(pubkey).await?;
+                match reference {
+                    Some(reference) => {
+                        self.cache.store(&reference).await?;
+                        Ok(Some(reference))
+                    },
+                    None => Ok(None)
+                }
             },
-            None => {
+            Mode::Validator => {
 
                 let rpc_client = self.rpc_client.as_ref().expect("Missing RPC Client");
-                let mut account = rpc_client.get_account(pubkey)?;
-                let account_info = (pubkey, &mut account).into_account_info();
-                let account_data = AccountData::clone_from_account_info(&account_info);
-                Ok(Some(Arc::new(AccountDataReference::new(account_data))))
+                // let mut account = rpc_client.get_account(pubkey)?;
+                let commitment_config = CommitmentConfig::processed();
+                let response = rpc_client.get_account_with_commitment(pubkey, commitment_config)?;
+                match response.value {
+                    Some(mut account) => {
+                        let account_info = (pubkey, &mut account).into_account_info();
+                        let account_data = AccountData::clone_from_account_info(&account_info);
+                        let reference = Arc::new(AccountDataReference::new(account_data));
+                        self.cache.store(&reference).await?;
+                        Ok(Some(reference))
+                    },
+                    None => {
+                        return Ok(None);
+                    }
+                }
             }
         }
     }
@@ -314,6 +335,10 @@ impl Transport {
 impl super::Interface for Transport {
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
         self.get_authority_pubkey_impl()
+    }
+
+    async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+        Ok(self.cache.purge(pubkey).await?)
     }
 
     // async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 

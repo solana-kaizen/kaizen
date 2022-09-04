@@ -420,13 +420,26 @@ impl Transport {
     }
 
     pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+
+        self.cache.purge(pubkey).await?;
         
-        match self.mode { //&self.emulator {
+        match self.mode {
             Mode::Inproc | Mode::Emulator => {
                 // let emulator = self.emulator.as_ref().unwrap();
-                self.emulator().lookup(pubkey).await
+                // self.emulator().lookup(pubkey).await
             // Some(emulator) => {
             //     Ok(emulator.lookup(&pubkey).await?)
+
+
+                let reference = self.emulator().lookup(pubkey).await?;
+                match reference {
+                    Some(reference) => {
+                        self.cache.store(&reference).await?;
+                        Ok(Some(reference))
+                    },
+                    None => Ok(None)
+                }
+
             },
             Mode::Validator => {
 
@@ -451,7 +464,9 @@ impl Transport {
                 let data = utils::try_get_vec_from_prop(&response,"data")?;
                 let _executable = utils::try_get_bool_from_prop(&response,"executable")?;
 
-                Ok(Some(Arc::new(AccountDataReference::new(AccountData::new_static_with_args(pubkey.clone(), owner, lamports, &data, rent_epoch)))))
+                let reference = Arc::new(AccountDataReference::new(AccountData::new_static_with_args(pubkey.clone(), owner, lamports, &data, rent_epoch)));
+                self.cache.store(&reference).await?;
+                Ok(Some(reference))
             }
         }
     }
@@ -488,6 +503,10 @@ impl super::Interface for Transport {
         //     }
         // }
 
+    }
+
+    async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+        Ok(self.cache.purge(pubkey).await?)
     }
 
     // async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 

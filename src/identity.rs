@@ -165,7 +165,8 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     pub fn advance_pda_sequence(&self) -> Result<()> {
         let mut meta = self.meta.try_borrow_mut()?;
         // TODO: handle eventual overflow using second element
-        meta.pda_sequence = meta.pda_sequence + 1;
+        let seq = meta.get_pda_sequence();
+        meta.set_pda_sequence(seq + 1);
         Ok(())
     }
 
