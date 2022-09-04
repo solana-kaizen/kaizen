@@ -51,23 +51,10 @@ pub enum Containers {
     Collection,
     PGPPubkey,
 
-    // Statistics,
-    // Root,
-    // Channel,
-    // Offer,
-    // Proposal,
-    // Contract,
-
     IndexContainers = Ranges::Indexes as u32,
     BPTreeIndex,
     BPTreeValues,
 }
-
-
-// pub trait Container<'refs,'info> : Sized {
-//     fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self>;
-//     fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self>;
-// }
 
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
@@ -79,6 +66,7 @@ cfg_if! {
         use workflow_allocator::accounts::*;
         
         pub type ContainerReference<'this,T> =
+        OwningHandle<
             OwningHandle<
                 OwningHandle<
                     OwningHandle::<
@@ -87,32 +75,20 @@ cfg_if! {
                             Box<UnsafeCell<MutexGuard<'this, AccountData>>>>, 
                         Box<UnsafeCell<&'this mut AccountData>>>,
                     Box<AccountInfo<'this>>>, 
-                Box<<T as Container<'this,'this>>::T>
-            >;
-        
-        // pub type ContainerReference<'info,'refs,'lock,T> =
-        //     OwningHandle<
-        //         OwningHandle<
-        //             OwningHandle::<
-        //                 OwningHandle::<
-        //                     Arc<AccountDataReference>,
-        //                     Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>, 
-        //                 Box<UnsafeCell<&'refs mut AccountData>>>,
-        //             Box<AccountInfo<'info>>>, 
-        //         Box<<T as Container<'info,'refs>>::T>
-        //     >;
+                // Box<<T as Container<'this,'this>>::T>
+                Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>>,
+            Box<<T as Container<'this,'this>>::T>
+        >;
         
         pub type AccountDataContainer<'this,T> = 
             OwningHandle<
-                OwningHandle<Box<UnsafeCell<AccountData>>,Box<AccountInfo<'this>>>,
+                OwningHandle<
+                    OwningHandle<
+                        Box<UnsafeCell<AccountData>>,
+                        Box<AccountInfo<'this>>>,
+                    Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>>,
                 Box<<T as Container<'this,'this>>::T>
             >;
-
-        // pub type AccountDataContainer<'info,'refs,T> = 
-        //     OwningHandle<
-        //         OwningHandle<Box<UnsafeCell<AccountData>>,Box<AccountInfo<'info>>>,
-        //         Box<<T as Container<'info,'refs>>::T>
-        //     >;
 
         pub mod registry {
             use super::*;

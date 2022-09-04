@@ -137,146 +137,95 @@ mod client {
             Ok(self.account_data.lock()?.clone_for_storage())
         }
 
-
-
-
-
-
-        // pub fn try_load_container<'lock:'info+'refs, 'info:'refs,'refs:'info,T> (self : &Arc<Self>) 
-        pub fn try_load_container<'this,T> (self : &Arc<Self>) 
-        -> 
-        Result<
-            ContainerReference<'this, T>
-        > 
+        pub fn try_load_container<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
         where T: workflow_allocator::container::Container<'this,'this>
         {
             let account_data_ref_account_data_lock = 
-                OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>::new_with_fn(self.clone(), |x| {
+                OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>::new_with_fn(self.clone(), |reference| {
                     Box::new( unsafe { 
-                        let r = x.as_ref().unwrap();
-                        UnsafeCell::new(r.account_data.lock().unwrap())
+                        let reference = reference.as_ref().unwrap();
+                        UnsafeCell::new(reference.account_data.lock().unwrap())
                     })
                 });
         
-            let account_data_lock_ref = 
+            let account_data_guard = 
                 OwningHandle::<
                     OwningHandle::<
                         Arc<AccountDataReference>,
                         Box<UnsafeCell<MutexGuard<'this,AccountData>>>>
                 
-                ,Box<UnsafeCell<&mut AccountData>>>::new_with_fn(account_data_ref_account_data_lock, |x| {
+                ,Box<UnsafeCell<&mut AccountData>>>::new_with_fn(account_data_ref_account_data_lock, |cell| {
                     Box::new( unsafe { 
-                        let r = x.as_ref().unwrap();
-                        let m = r.get().as_mut().unwrap();
-                        UnsafeCell::new(&mut *m)
+                        let cell = cell.as_ref().unwrap();
+                        let guard = cell.get().as_mut().unwrap();
+                        UnsafeCell::new(&mut *guard)
                     })
                 });
         
-            let account_data_account_info = 
+            let account_info = 
                 OwningHandle::<
                     OwningHandle::<
                             OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>
                     ,Box<UnsafeCell<&mut AccountData>>>
-                ,Box<AccountInfo>>::new_with_fn(account_data_lock_ref, |x| {
+                ,Box<AccountInfo>>::new_with_fn(account_data_guard, |x| {
                     Box::new( unsafe { 
-                        let r = x.as_ref().unwrap();
-                        let m = (*r).get().as_mut().unwrap();
-                        m.into_account_info() 
+                        let cell = x.as_ref().unwrap();
+                        let account_data = (*cell).get().as_mut().unwrap();
+                        account_data.into_account_info() 
                     })
                 });
         
-            let container = 
+            let container_result = 
             OwningHandle::<
                 OwningHandle::<
                     OwningHandle::<
                         OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>,
                         Box<UnsafeCell<&'this mut AccountData>>>,
-                    Box<AccountInfo<'this>>
-                >,
-                Box<<T as Container<'this,'this>>::T>
-            >::new_with_fn(account_data_account_info, |x| {
+                    Box<AccountInfo<'this>>>,
+                Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>
+            >::new_with_fn(account_info, |x| {
                 Box::new( unsafe { 
                     let account_info : &'this AccountInfo<'this> = x.as_ref().unwrap();
-                    let t = T::try_load(account_info).unwrap(); // ^ TODO
-                    t
+                    let t = T::try_load(account_info);
+                    UnsafeCell::new(Some(t))
                 })
             });
-        
+
+            if unsafe { container_result.get().as_ref().unwrap().as_ref().unwrap().is_err() } {
+                let err = unsafe { container_result.get().as_mut().unwrap().take().unwrap().err().unwrap() };
+                return Err(err);
+            }
+
+            let container = 
+            OwningHandle::<
+                OwningHandle::<
+                    OwningHandle::<
+                        OwningHandle::<
+                            OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>,
+                            Box<UnsafeCell<&'this mut AccountData>>>,
+                        Box<AccountInfo<'this>>>,
+                    Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>>,
+                Box<<T as Container<'this,'this>>::T>
+            >::new_with_fn(container_result, |x| {
+                Box::new( unsafe {
+                    let cell = x.as_ref().unwrap();
+                    let option = cell.get().as_mut().unwrap();
+                    let result = option.take().unwrap();
+                    result.ok().unwrap()
+                })
+            });
+
             Ok(container)
+
         }
         
-        // pub fn try_load_container_v1<'lock:'info+'refs, 'info:'refs,'refs:'info,T> (self : &Arc<Self>) 
-        // -> 
-        // Result<
-        //     ContainerReference<'info,'refs,'lock,T>
-        // > 
-        // where T: workflow_allocator::container::Container<'info,'refs>
-        // {
-        //     let account_data_ref_account_data_lock = 
-        //         OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>::new_with_fn(self.clone(), |x| {
-        //             Box::new( unsafe { 
-        //                 let r = x.as_ref().unwrap();
-        //                 UnsafeCell::new(r.account_data.lock().unwrap())
-        //             })
-        //         });
-        
-        //     let account_data_lock_ref = 
-        //         OwningHandle::<
-        //             OwningHandle::<
-        //                 Arc<AccountDataReference>,
-        //                 Box<UnsafeCell<MutexGuard<'lock,AccountData>>>>
-                
-        //         ,Box<UnsafeCell<&mut AccountData>>>::new_with_fn(account_data_ref_account_data_lock, |x| {
-        //             Box::new( unsafe { 
-        //                 let r = x.as_ref().unwrap();
-        //                 let m = r.get().as_mut().unwrap();
-        //                 UnsafeCell::new(&mut *m)
-        //             })
-        //         });
-        
-        //     let account_data_account_info = 
-        //         OwningHandle::<
-        //             OwningHandle::<
-        //                     OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>
-        //             ,Box<UnsafeCell<&mut AccountData>>>
-        //         ,Box<AccountInfo>>::new_with_fn(account_data_lock_ref, |x| {
-        //             Box::new( unsafe { 
-        //                 let r = x.as_ref().unwrap();
-        //                 let m = (*r).get().as_mut().unwrap();
-        //                 m.into_account_info() 
-        //             })
-        //         });
-        
-        //     let container = 
-        //     OwningHandle::<
-        //         OwningHandle::<
-        //             OwningHandle::<
-        //                 OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'lock, AccountData>>>>,
-        //                 Box<UnsafeCell<&'refs mut AccountData>>>,
-        //             Box<AccountInfo<'info>>
-        //         >,
-        //         Box<<T as Container<'info,'refs>>::T>
-        //     >::new_with_fn(account_data_account_info, |x| {
-        //         Box::new( unsafe { 
-        //             let account_info : &'refs AccountInfo<'info> = x.as_ref().unwrap();
-        //             let t = T::try_load(account_info).unwrap(); // ^ TODO
-        //             t
-        //         })
-        //     });
-        
-        //     Ok(container)
-        // }
-        
-
-
-        pub fn try_load_container_clone<'this,T> (self : &Arc<Self>) 
-        -> Result<AccountDataContainer<'this,T>> 
+        pub fn try_load_container_clone<'this,T> (self : &Arc<Self>) -> Result<AccountDataContainer<'this,T>> 
         where T: workflow_allocator::container::Container<'this,'this>
         {
             let account_data = self.clone_for_storage()?;
 
             let cell = UnsafeCell::new(account_data);
-            let account_data_account_info = 
+            let account_info = 
                 OwningHandle::<Box<UnsafeCell<AccountData>>,Box<AccountInfo>>::new_with_fn(Box::new(cell), |x| {
                     Box::new( unsafe { 
                         let r = x.as_ref().unwrap();
@@ -285,64 +234,43 @@ mod client {
                     })
                 });
         
-            let container = 
+            let container_result = 
             OwningHandle::<
                 OwningHandle::<Box<UnsafeCell<AccountData>>,Box<AccountInfo<'this>>>,
-                Box<<T as Container<'this,'this>>::T>
-            >::new_with_fn(account_data_account_info, |x| {
+                Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>
+            >::new_with_fn(account_info, |x| {
                 Box::new( unsafe { 
                     let account_info : &'this AccountInfo<'this> = x.as_ref().unwrap();
-                    let t = T::try_load(account_info).unwrap(); // ^ TODO
-                    t
+                    let t = T::try_load(account_info);
+                    UnsafeCell::new(Some(t))
+                })
+            });
+
+            if unsafe { container_result.get().as_ref().unwrap().as_ref().unwrap().is_err() } {
+                let err = unsafe { container_result.get().as_mut().unwrap().take().unwrap().err().unwrap() };
+                return Err(err);
+            }
+
+            let container = 
+            OwningHandle::<
+                OwningHandle::<
+                    OwningHandle::<
+                        Box<UnsafeCell<AccountData>>,
+                        Box<AccountInfo<'this>>>,
+                    Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>>,
+                Box<<T as Container<'this,'this>>::T>
+            >::new_with_fn(container_result, |x| {
+                Box::new( unsafe {
+                    let cell = x.as_ref().unwrap();
+                    let option = cell.get().as_mut().unwrap();
+                    let result = option.take().unwrap();
+                    result.ok().unwrap()
                 })
             });
         
             Ok(container)
         }
         
-
-        // pub fn try_load_container_clone_v1<'info:'refs,'refs:'info,T> (self : &Arc<Self>) 
-        // -> Result<AccountDataContainer<'info,'refs,T>> 
-        // where T: workflow_allocator::container::Container<'info,'refs>
-        // {
-        //     let account_data = self.clone_for_storage()?;
-
-        //     let cell = UnsafeCell::new(account_data);
-        //     let account_data_account_info = 
-        //         OwningHandle::<Box<UnsafeCell<AccountData>>,Box<AccountInfo>>::new_with_fn(Box::new(cell), |x| {
-        //             Box::new( unsafe { 
-        //                 let r = x.as_ref().unwrap();
-        //                 let m = r.get().as_mut().unwrap();
-        //                 m.into_account_info() 
-        //             })
-        //         });
-        
-        //     let container = 
-        //     OwningHandle::<
-        //         OwningHandle::<Box<UnsafeCell<AccountData>>,Box<AccountInfo<'info>>>,
-        //         Box<<T as Container<'info,'refs>>::T>
-        //     >::new_with_fn(account_data_account_info, |x| {
-        //         Box::new( unsafe { 
-        //             let account_info : &'refs AccountInfo<'info> = x.as_ref().unwrap();
-        //             let t = T::try_load(account_info).unwrap(); // ^ TODO
-        //             t
-        //         })
-        //     });
-        
-        //     Ok(container)
-        // }
-        
-
-
-
-
-
-
-
-
-
-
-
     }
 
     impl From<&AccountDataStore> for AccountDataReference {
