@@ -6,7 +6,6 @@ use crate::accounts::{
     SeedSuffix
 };
 use crate::result::*;
-// use crate::error::*;
 use crate::error;
 use crate::payload::Payload;
 use solana_program::pubkey::Pubkey;
@@ -55,15 +54,9 @@ impl InstructionBuilderConfig {
         self
     }
 
-    // pub fn update_sequence(&self, sequence : u64) {
-    //     let mut suffix_seed_seq = self.suffix_seed_seq.borrow_mut();
-    //     *suffix_seed_seq = Some(sequence);
-    // }
 }
 
 
-
-// pub type AccountTemplateInfo = (IsSigner,Access);
 pub type TemplateAccessDescriptor = (IsSigner,Access,SeedSuffix);
 
 /// # Helper for creating a structured program Instruction 
@@ -84,7 +77,7 @@ pub struct InstructionBuilder {
     /// Program handler functoin receiving the instruction (should be `SomeStruct::handler_fn`)
     pub handler_id : u16,
 
-    /// List of system accounts
+    /// List of included system accounts (if templates exist System Program account is added automatically)
     system_accounts : Vec<AccountMeta>,
     /// List of accounts used for token operations (SOL/SPL token accounts)
     token_accounts : Vec<AccountMeta>,
@@ -204,20 +197,7 @@ impl InstructionBuilder {
 
     pub fn payload(&self) -> Payload {
 
-        // let program_address_data_len : usize = 0;
-
-        // let mut template_address_data = Vec::new();
-        // for data in self.template_address_data.iter() {
-        //     let bytes = data.to_vec();
-        //     let len = bytes.len();
-        //     assert!(len < 0xff);
-        //     template_address_data.push(len as u8);
-        //     template_address_data.extend(bytes);
-        // }
-
         let instruction_data_offset = std::mem::size_of::<Payload>() + self.template_instruction_data.len();
-            //self.template_address_data.len();
-
         //  log_trace!("* * * INSTRUCTION DATA OFFSET {}", instruction_data_offset);
 
         let mut flags: u16 = 0;
@@ -225,25 +205,17 @@ impl InstructionBuilder {
             flags |= crate::payload::PAYLOAD_HAS_IDENTITY_ACCOUNT;
         }
 
-        // if self.template_accounts.len() > 0 {
-        //     if self.system_accounts.contains(&solana_sdk::system_program::id()) == false {
-        //         self.system_accounts.push(solana_sdk::system_program::id());
-        //     }
-        //     // flags |= crate::payload::PAYLOAD_HAS_SYSTEM_ACCOUNT;
-        // }
-
         Payload {
             version : Payload::version(),
             system_accounts_len : self.system_accounts.len() as u8,
             token_accounts_len : self.token_accounts.len() as u8,
             index_accounts_len : self.index_accounts.len() as u8,
-            // handler_accounts_len : self.handler_accounts.len() as u8,
             template_accounts_len : self.template_accounts.len() as u8,
+
+            // NOTE: handler accounts are the remaining accounts supplied to the program
 
             flags,
 
-            // template_address_data_len: self.template_address_data.len() as u8,
-            // reserved: 0u8,
             instruction_data_offset : instruction_data_offset as u16,
 
             interface_id : self.interface_id,
@@ -276,18 +248,6 @@ impl InstructionBuilder {
         self
     }
 
-    // pub fn with_template_accounts(mut self, template_accounts: &[(AccountMeta, ProgramAddressData)]) -> Self {
-
-    //     for (descriptor, address_data) in template_accounts {
-    //         self.template_accounts.push(descriptor.clone());
-    //         // let address_data_vec = address_data.to_vec();
-    //         // self.template_address_data.push(address_data_vec.len());
-    //         self.template_address_data.push(address_data.clone());
-    //         // self.template_address_data.extend(address_data_vec);
-    //     }
-    //     self
-    // }
-
     pub fn with_instruction_data(mut self, instruction_data : &[u8]) -> Self {
         self.handler_instruction_data.extend(instruction_data);
         self
@@ -313,6 +273,7 @@ impl InstructionBuilder {
             let bytes = data.to_vec();
             let len = bytes.len();
             // log_trace!(" - - - > processing address data len: {}", len);
+            // TODO remove address check
             assert!(len < 0xff);
             // log_trace!("{}:{}",style("TPL DATA PACKET LEN:").white().on_red(),len);
             template_address_data.push(len as u8);
@@ -326,7 +287,6 @@ impl InstructionBuilder {
     pub fn instruction_data(&self) -> Vec<u8> {
 
         let mut data = Vec::new();
-        // let template_address_data = self.template_instruction_data();
         data.extend(&self.template_instruction_data);
         data.extend(&self.handler_instruction_data);
         data
@@ -334,10 +294,6 @@ impl InstructionBuilder {
     
     pub fn try_accounts(&self) -> Result<Vec<AccountMeta>> {
         let mut vec = Vec::new();
-
-        // if self.template_accounts.len() > 0 {
-        //     vec.push(AccountMeta::new(solana_sdk::system_program::id(), false));
-        // }
 
         if let Some(authority) = &self.authority {
             vec.push(authority.clone());
@@ -433,8 +389,6 @@ impl InstructionBuilder {
             }
         };
 
-        // let mut suffix_seed_seq: u64 = 0;
-
         for (is_signer,is_writable, seed_suffix) in self.template_access_descriptors.iter() {
         
             // @seeds
@@ -457,11 +411,8 @@ impl InstructionBuilder {
                             _ => break
                         }
                     }
-                    // seeds.push(bytes.clone());
 
-                    bytes //.clone()
-                    // let suffix_seed_seq_str = format!("{}", suffix_seed_seq).to_string();
-                    // seeds.push(suffix_seed_seq_str.as_bytes());
+                    bytes
                 },
                 SeedSuffix::Custom(seed_suffix_str) => {
                     let bytes = seed_suffix_str.as_bytes();
@@ -474,9 +425,6 @@ impl InstructionBuilder {
 
             let (pda, seed_bump) = Pubkey::find_program_address(
                 &seeds[..],
-                // &[&seeds[..]],
-                // &[self.program_id.as_ref(), seed_siffix_str.as_bytes()],
-                // &[seed_siffix_str.as_bytes(), self.program_id.as_ref()], // ???
                 &self.program_id
             );
 
@@ -485,32 +433,15 @@ impl InstructionBuilder {
                 Access::Read => { AccountMeta::new_readonly(pda,(*is_signer).into()) },
             };
 
-            // let descriptor = AccountMeta::new(pda, (*is_signer).into(), (*is_writable).into());
             let seed_bump = &[seed_bump];
-            seeds.push(seed_bump);
-            // let seeds = seeds.concat();
-            
-            // let test_seeds = [user_seed, seeds].concat();
-            // let _seeds_hex = crate::utils::hex(&seeds.concat()[..]);
-            // log_trace!("* * * client pda seeds:\n{}\n", seeds_hex);
-            
+            seeds.push(seed_bump);            
             seeds.remove(0);
-            // seeds.pu
-
-            // // let custom_seed_suffix_str = seed_suffix_str.clone().unwrap_or("".into());
-            // let address_data = ProgramAddressData::new(
-            //     // self.program_id.to_bytes(),
-            //     &seeds.concat()[..],
-            //     // &seed_suffix[..],
-            //     // seed_bump,
-            //     // custom_seed_suffix_str
-            // );
 
             self.template_accounts.push(descriptor);
             self.template_address_data.push(seeds.concat());
         }
 
-        self.template_instruction_data = self.template_instruction_data();//.iter().cloned().collect();
+        self.template_instruction_data = self.template_instruction_data();
         
         match &self.track_suffix_seed_seq {
             None => {},
@@ -532,7 +463,7 @@ impl InstructionBuilder {
 
 
 impl TryFrom<InstructionBuilder> for solana_program::instruction::Instruction {
-    type Error = crate::error::Error; //String; //crate::error::Error;
+    type Error = crate::error::Error;
 
     fn try_from(builder: InstructionBuilder) -> std::result::Result<Self,Self::Error> {
 
@@ -541,21 +472,15 @@ impl TryFrom<InstructionBuilder> for solana_program::instruction::Instruction {
         }
 
         let program_id = builder.program_id();
-        // let template_address_data = builder.template_address_data_as_vec_u8();
-
 
         let mut instruction_data: Vec<u8> = Vec::new();
         instruction_data.extend(builder.payload().to_vec());
         instruction_data.extend(builder.instruction_data().to_vec());
-        // let payload = builder.payload();
-        // let instruction_data = builder.instruction_data();
         let accounts = builder.try_accounts()?;
 
-        // pub fn new_with_bytes(program_id: Pubkey, data: &[u8], accounts: Vec<AccountMeta>) -> Self {
-
-        let instruction = solana_program::instruction::Instruction { //}::new_with_bytes(
+        let instruction = solana_program::instruction::Instruction {
             program_id,
-            data : instruction_data,//.as_slice(),
+            data : instruction_data,
             accounts,                
         };
 

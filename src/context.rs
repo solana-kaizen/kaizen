@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -238,7 +239,7 @@ impl<'info, 'refs, 'pid, 'instr>
         // log_trace!("| template accounts: {}", template_accounts.len());
         // log_trace!("+---");
 
-        let mut marker = if has_identity { 2 } else { 1 };
+        let marker = if has_identity { 2 } else { 1 };
         // if has_system_account { marker += 1 };
         assert_eq!(payload_accounts_len+marker, offset); 
 
@@ -498,6 +499,15 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     }
 
     pub fn create_pda(&self, data_len : usize, allocation_args : &AccountAllocationArgs<'info,'refs>) -> Result<&'refs AccountInfo<'info>> {
+
+        // sanity check
+        cfg_if! {
+            if #[cfg(not(target_arch = "bpf"))] {
+                if self.system_accounts.iter().position(|account_info| account_info.key == &solana_sdk::system_program::id()).is_none() {
+                    return Err(error_code!(ErrorCode::SystemProgramAccountMissing));
+                }
+            }
+        }
 
         log_trace!("+ pda: ... create_pda() starting");
         let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;

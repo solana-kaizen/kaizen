@@ -44,6 +44,7 @@ pub enum ErrorCode {
     IdentityMissing,
     IdentityAccess,
     IdentityMissingForeignAuthority,
+    SystemProgramAccountMissing,
     PoisonError,
     BorrowError,
     BorrowMutError,
