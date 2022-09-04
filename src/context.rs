@@ -91,6 +91,7 @@ pub struct Context<'info, 'refs, 'pid, 'instr> {
     // pub identity : Option<&'refs AccountInfo<'info>>,
     pub identity : Option<Identity<'info,'refs>>,
 
+    pub system_accounts : &'refs [AccountInfo<'info>],
     pub token_accounts : &'refs [AccountInfo<'info>],
     pub index_accounts : &'refs [AccountInfo<'info>],
     pub handler_accounts : &'refs [AccountInfo<'info>],
@@ -137,7 +138,7 @@ impl<'info, 'refs, 'pid, 'instr>
 
         let flags = payload.flags;
         let has_identity = if flags & crate::payload::PAYLOAD_HAS_IDENTITY_ACCOUNT != 0 { true } else { false };
-        let has_system_account = if flags & crate::payload::PAYLOAD_HAS_SYSTEM_ACCOUNT != 0 { true } else { false };
+        // let has_system_account = if flags & crate::payload::PAYLOAD_HAS_SYSTEM_ACCOUNT != 0 { true } else { false };
         // let non_handler_accounts = payload.non_handler_accounts()+1;
         // if accounts.len() < non_handler_accounts {
         //     log_trace!("not enough accounts - len: {} need non-handler accounts: {}", accounts.len(), non_handler_accounts);
@@ -175,7 +176,8 @@ impl<'info, 'refs, 'pid, 'instr>
         //     return Err(ErrorCode::ContextAccounts.into())
         // }
 
-        let mut offset : usize = if has_system_account { 1 } else { 0 };
+        // let mut offset : usize = if has_system_account { 1 } else { 0 };
+        let mut offset = 0;
         let authority = &accounts[offset];
         if !authority.is_signer {
             return Err(error_code!(ErrorCode::AuthorityMustSign))
@@ -214,6 +216,10 @@ impl<'info, 'refs, 'pid, 'instr>
         offset += 1;
         // let identity = Identity::load(&accounts[offset])?;
 
+        let len = payload.system_accounts_len as usize;
+        let system_accounts = &accounts[offset..offset+len];
+        offset += len;
+
         let len = payload.token_accounts_len as usize;
         let token_accounts = &accounts[offset..offset+len];
         offset += len;
@@ -233,7 +239,7 @@ impl<'info, 'refs, 'pid, 'instr>
         // log_trace!("+---");
 
         let mut marker = if has_identity { 2 } else { 1 };
-        if has_system_account { marker += 1 };
+        // if has_system_account { marker += 1 };
         assert_eq!(payload_accounts_len+marker, offset); 
 
         // if has_system_account {
@@ -312,6 +318,7 @@ impl<'info, 'refs, 'pid, 'instr>
             accounts,
             authority,
             identity,
+            system_accounts,
             token_accounts,
             index_accounts,
             handler_accounts,

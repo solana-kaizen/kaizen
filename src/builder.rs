@@ -84,6 +84,8 @@ pub struct InstructionBuilder {
     /// Program handler functoin receiving the instruction (should be `SomeStruct::handler_fn`)
     pub handler_id : u16,
 
+    /// List of system accounts
+    system_accounts : Vec<AccountMeta>,
     /// List of accounts used for token operations (SOL/SPL token accounts)
     token_accounts : Vec<AccountMeta>,
     /// List of accounts for used for indexing purposes (BTree accounts)
@@ -147,6 +149,7 @@ impl InstructionBuilder {
 
             interface_id : interface_id as u16,
             handler_id : program_instruction.into(),
+            system_accounts : Vec::new(),
             token_accounts : Vec::new(),
             index_accounts : Vec::new(),
             handler_accounts : Vec::new(),
@@ -178,6 +181,7 @@ impl InstructionBuilder {
 
             interface_id : interface_id as u16,
             handler_id : handler_id.into(),
+            system_accounts : Vec::new(),
             token_accounts : Vec::new(),
             index_accounts : Vec::new(),
             handler_accounts : Vec::new(),
@@ -221,12 +225,16 @@ impl InstructionBuilder {
             flags |= crate::payload::PAYLOAD_HAS_IDENTITY_ACCOUNT;
         }
 
-        if self.template_accounts.len() > 0 {
-            flags |= crate::payload::PAYLOAD_HAS_SYSTEM_ACCOUNT;
-        }
+        // if self.template_accounts.len() > 0 {
+        //     if self.system_accounts.contains(&solana_sdk::system_program::id()) == false {
+        //         self.system_accounts.push(solana_sdk::system_program::id());
+        //     }
+        //     // flags |= crate::payload::PAYLOAD_HAS_SYSTEM_ACCOUNT;
+        // }
 
         Payload {
             version : Payload::version(),
+            system_accounts_len : self.system_accounts.len() as u8,
             token_accounts_len : self.token_accounts.len() as u8,
             index_accounts_len : self.index_accounts.len() as u8,
             // handler_accounts_len : self.handler_accounts.len() as u8,
@@ -241,6 +249,16 @@ impl InstructionBuilder {
             interface_id : self.interface_id,
             handler_id : self.handler_id,
         }
+    }
+
+    pub fn with_system_program_account(mut self) -> Self {
+        self.system_accounts.push(AccountMeta::new(solana_sdk::system_program::id(), false));
+        self
+    }
+
+    pub fn with_system_accounts(mut self, system_accounts: &[AccountMeta]) -> Self {
+        self.system_accounts.extend_from_slice(system_accounts);
+        self
     }
 
     pub fn with_token_accounts(mut self, token_accounts: &[AccountMeta]) -> Self {
@@ -317,9 +335,9 @@ impl InstructionBuilder {
     pub fn try_accounts(&self) -> Result<Vec<AccountMeta>> {
         let mut vec = Vec::new();
 
-        if self.template_accounts.len() > 0 {
-            vec.push(AccountMeta::new(solana_sdk::system_program::id(), false));
-        }
+        // if self.template_accounts.len() > 0 {
+        //     vec.push(AccountMeta::new(solana_sdk::system_program::id(), false));
+        // }
 
         if let Some(authority) = &self.authority {
             vec.push(authority.clone());
@@ -333,6 +351,7 @@ impl InstructionBuilder {
             }
         }
 
+        vec.extend_from_slice(&self.system_accounts);
         vec.extend_from_slice(&self.token_accounts);
         vec.extend_from_slice(&self.index_accounts);
         vec.extend_from_slice(&self.template_accounts);
@@ -394,6 +413,11 @@ impl InstructionBuilder {
 
         if self.template_access_descriptors.is_empty() {
             return Ok(self);
+        }
+
+        // if we have templates, automatically include system account if not added by the user
+        if self.system_accounts.iter().position(|meta| meta.pubkey == solana_sdk::system_program::id()).is_none() {
+            self.system_accounts.insert(0, AccountMeta::new(solana_sdk::system_program::id(), false));
         }
 
         // @seeds

@@ -1,13 +1,14 @@
 use workflow_allocator::result::Result;
 // use workflow_allocator::error::*;
 
-pub const PAYLOAD_HAS_SYSTEM_ACCOUNT : u16      = 0x0001;
-pub const PAYLOAD_HAS_IDENTITY_ACCOUNT : u16    = 0x0002;
+// pub const PAYLOAD_HAS_SYSTEM_ACCOUNT : u16      = 0x0001;
+pub const PAYLOAD_HAS_IDENTITY_ACCOUNT : u16    = 0x0001;
 
 #[derive(Copy, Clone)]
 #[repr(packed)]
 pub struct Payload {
     pub version : u8,
+    pub system_accounts_len : u8,      
     pub token_accounts_len : u8,      
     pub index_accounts_len : u8,      
     pub template_accounts_len : u8,   
@@ -26,7 +27,8 @@ impl Payload {
     pub fn version() -> u8 { 1u8 }
 
     pub fn total_accounts(&self) -> usize {
-        self.token_accounts_len as usize
+        self.system_accounts_len as usize
+        + self.token_accounts_len as usize
         + self.index_accounts_len as usize
         + self.template_accounts_len as usize
     }
@@ -45,6 +47,7 @@ impl Payload {
     pub fn new<T : Into<u16>>(interface_id: usize, program_instruction: T) -> Self {
         Payload {
             version : 1,
+            system_accounts_len : 0,
             token_accounts_len : 0,
             index_accounts_len : 0,
             template_accounts_len: 0,
