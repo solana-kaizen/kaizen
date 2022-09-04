@@ -23,7 +23,8 @@ pub trait Interface : AnySync {
     async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
-    async fn purge(&self, pubkey:&Pubkey) -> Result<()>;
+    
+    fn purge(&self, pubkey:&Pubkey) -> Result<()>;
 
     // async fn lookup_container<T>(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
 

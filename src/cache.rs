@@ -6,7 +6,7 @@ use crate::result::Result;
 use workflow_log::log_trace;
 
 #[cfg(target_arch = "wasm32")]
-use async_std::sync::Mutex;
+use std::sync::Mutex;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -58,34 +58,34 @@ impl Cache {
         if #[cfg(target_arch = "wasm32")] {
 
             #[inline(always)]
-            pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-                Ok(self.cache_impl.lock().await.get(pubkey).cloned())
+            pub fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+                Ok(self.cache_impl.lock()?.get(pubkey).cloned())
             }
             
             #[inline(always)]
-            pub async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
-                Ok(self.cache_impl.lock().await.insert(*reference.key,reference.clone()))
+            pub fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
+                Ok(self.cache_impl.lock()?.insert(*reference.key,reference.clone()))
             }
 
             #[inline(always)]
-            pub async fn purge(&self, pubkey : &Pubkey) -> Result<()> {
-                Ok(self.cache_impl.lock().await.invalidate(pubkey))
+            pub fn purge(&self, pubkey : &Pubkey) -> Result<()> {
+                Ok(self.cache_impl.lock()?.invalidate(pubkey))
             }
 
         } else {
             
             #[inline(always)]
-            pub async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+            pub fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
                 Ok(self.cache_impl.get(pubkey))
             }
             
             #[inline(always)]
-            pub async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
+            pub fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
                 Ok(self.cache_impl.insert(*reference.key,reference.clone()))
             }
 
             #[inline(always)]
-            pub async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+            pub fn purge(&self, pubkey: &Pubkey) -> Result<()> {
                 Ok(self.cache_impl.invalidate(&pubkey))
             }
 

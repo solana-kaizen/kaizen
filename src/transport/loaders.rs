@@ -49,7 +49,7 @@ pub async fn reload_container<'this,T> (pubkey : &Pubkey)
 where T: workflow_allocator::container::Container<'this,'this>
 {
     let transport = Transport::global()?;
-    transport.purge(pubkey).await?;
+    transport.purge(pubkey)?;
     load_container_with_transport::<T>(&transport,pubkey).await
 }
 

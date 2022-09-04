@@ -79,7 +79,7 @@ impl Store for FileStore {
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         if let Some(cache) = &self.cache {
-            if let Ok(Some(reference)) = cache.lookup(pubkey).await {
+            if let Ok(Some(reference)) = cache.lookup(pubkey) {
 
                 // {
                 //     log_trace!("################################### LOOKUP ");
@@ -125,7 +125,7 @@ impl Store for FileStore {
             let reference = Arc::new(AccountDataReference::new(account_data));
 
             if let Some(cache) = &self.cache {
-                cache.store(&reference).await?;
+                cache.store(&reference)?;
             }
 
             Ok(Some(reference))
@@ -150,7 +150,7 @@ impl Store for FileStore {
 
 
         if let Some(cache) = &self.cache {
-            cache.store(&reference).await?;
+            cache.store(&reference)?;
         }
 
         let data = AccountDataStore::from(&*reference.account_data.lock()?).try_to_vec()?;
@@ -169,7 +169,7 @@ impl Store for FileStore {
     }
     async fn purge(&self, pubkey : &Pubkey) -> Result<()> {
         if let Some(cache) = &self.cache {
-            cache.purge(pubkey).await?;
+            cache.purge(pubkey)?;
         }
 
         let filename = self.data_folder.join(pubkey.to_string());

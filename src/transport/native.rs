@@ -292,7 +292,7 @@ impl Transport {
     // async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        self.cache.purge(pubkey).await?;
+        self.cache.purge(pubkey)?;
 
         match self.mode {
             Mode::Inproc | Mode::Emulator => {
@@ -300,7 +300,7 @@ impl Transport {
                 let reference = self.emulator().lookup(pubkey).await?;
                 match reference {
                     Some(reference) => {
-                        self.cache.store(&reference).await?;
+                        self.cache.store(&reference)?;
                         Ok(Some(reference))
                     },
                     None => Ok(None)
@@ -317,7 +317,7 @@ impl Transport {
                         let account_info = (pubkey, &mut account).into_account_info();
                         let account_data = AccountData::clone_from_account_info(&account_info);
                         let reference = Arc::new(AccountDataReference::new(account_data));
-                        self.cache.store(&reference).await?;
+                        self.cache.store(&reference)?;
                         Ok(Some(reference))
                     },
                     None => {
@@ -337,8 +337,8 @@ impl super::Interface for Transport {
         self.get_authority_pubkey_impl()
     }
 
-    async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
-        Ok(self.cache.purge(pubkey).await?)
+    fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+        Ok(self.cache.purge(pubkey)?)
     }
 
     // async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 
@@ -410,7 +410,7 @@ impl super::Interface for Transport {
     }
 
     async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        Ok(self.cache.lookup(pubkey).await?)
+        Ok(self.cache.lookup(pubkey)?)
     }
 
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
