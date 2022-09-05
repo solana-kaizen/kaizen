@@ -102,9 +102,6 @@ pub fn declare_handlers(input: TokenStream) -> TokenStream {
 
             pub const PRIMITIVE_HANDLERS : [HandlerFn;#len] = #handler_methods;
 
-            pub fn bind() -> &'static str { #handler_struct_name }
-            // pub const fn handlers() -> &'static [HandlerFn] { &PRIMITIVE_HANDLERS[..] }
-
             pub fn handler_id(handler_fn: HandlerFn) -> u16 {
                 #handler_struct_path::PRIMITIVE_HANDLERS.iter()
                 .position(|&hfn| hfn as HandlerFnCPtr == handler_fn as HandlerFnCPtr )
