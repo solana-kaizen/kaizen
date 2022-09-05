@@ -565,7 +565,7 @@ where
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, 'refs>>
     ) -> Result<BPTree<'info,'refs,K,V>> {
-        let meta = Rc::new(RefCell::new(segment.try_as_struct_mut_ref::<BPTreeMeta>()?)); 
+        let meta = Rc::new(RefCell::new(segment.try_as_struct_mut::<BPTreeMeta>()?)); 
         Ok(BPTree {
             meta,
             segment,
@@ -579,7 +579,7 @@ where
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, 'refs>>
     ) -> Result<BPTree<'info,'refs,K,V>> {
-        let meta = Rc::new(RefCell::new(segment.try_as_struct_mut_ref::<BPTreeMeta>()?)); 
+        let meta = Rc::new(RefCell::new(segment.try_as_struct_mut::<BPTreeMeta>()?)); 
         Ok(BPTree {
             meta,
             segment,
