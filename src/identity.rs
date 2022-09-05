@@ -226,10 +226,11 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     // }
 
     /// Create a new identity container and the corresponding identity proxy account
+    // pub fn create(ctx:&ContextReference<'info,'refs,'_,'_>) -> ProgramResult { //Result<()> {
     pub fn create(ctx:&ContextReference) -> ProgramResult { //Result<()> {
 
         let mut records : Vec<IdentityRecordStore> = Vec::new();
-        let mut collections : Vec<u32> = Vec::new();
+        let mut collection_data_types : Vec<u32> = Vec::new();
         if ctx.instruction_data.len() > 0 {
             match Instr::try_from_slice(&ctx.instruction_data)? {
                 Instr::Ops(ops) => {
@@ -239,7 +240,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
                                 records.extend_from_slice(&src);
                             },
                             Op::CreateCollections(src) => {
-                                collections.extend_from_slice(&src);
+                                collection_data_types.extend_from_slice(&src);
                             },
                         }
                     }
@@ -253,7 +254,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
         let data_len = 
             (1 + records.len()) * std::mem::size_of::<IdentityRecord>() +
-            collections.len() * std::mem::size_of::<CollectionMeta>();
+            collection_data_types.len() * std::mem::size_of::<CollectionMeta>();
         let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
         
         identity.init()?;
@@ -265,19 +266,48 @@ impl<'info, 'refs> Identity<'info, 'refs> {
             unsafe { identity.records.try_insert(&record)?; }
         }
 
-        for idx in 0..collections.len() {
-            let collection_data_type = collections[idx];
-            let allocation_args = AccountAllocationArgs::default();
-            let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;
-            collection_store.try_init(collection_data_type)?;
-            let collection = unsafe { identity.collections.try_allocate(false)? };
-            collection.init(collection_store.pubkey(), collection_data_type);
+        // for idx in 0..collections.len() {
+        for data_type in collection_data_types.iter() {
+            // let collection_data_type = collections[idx];
+            // let allocation_args = AccountAllocationArgs::default();
+            // let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;
+            // collection_store.try_init(collection_data_type)?;
+            let collection_meta = unsafe { identity.collections.try_allocate(false)? };
+            let mut collection = Collection::<TsPubkey>::try_from_meta(collection_meta)?;
+            collection.try_create(ctx, *data_type)?;
+            // collection.init(collection_store.pubkey(), collection_data_type);
         }
 
         Ok(())
     }
 
     // pub fn locate_collection
+
+    pub fn locate_collection(&self, data_type : u32) -> Result<Collection<'info,'refs,Pubkey>> {
+        let collections = self.collections.as_slice_mut();
+        // for idx in 0..self.collections.len() {
+        for collection_meta in collections.iter_mut() {
+            // let collection_meta: &'refs mut CollectionMeta = &mut self.collections[idx];
+            // let collection_meta: &'refs mut CollectionMeta = &mut collections[idx];  //&mut self.collections[idx];
+            // let collection_meta = &mut collections[idx];  //&mut self.collections[idx];
+            // let mut collection_meta = &collections[idx];  //&mut self.collections[idx];
+            if collection_meta.get_data_type() == data_type {
+                let collection = Collection::try_from_meta(collection_meta)?;
+                return Ok(collection);
+            }
+        }
+        Err(program_error_code!(ErrorCode::CollectionDataTypeNotFound))
+    }
+
+    pub fn locate_collection_root(&self, data_type : u32) -> Option<Pubkey> {
+        for idx in 0..self.collections.len() {
+            let collection = &self.collections[idx];
+            if collection.get_data_type() == data_type {
+                return Some(collection.get_pubkey());
+            }
+        }
+        None
+    }
 
     pub fn locate_collection_pubkeys(&self, data_type : u32) -> Option<Vec<Pubkey>> {
         for idx in 0..self.collections.len() {
@@ -289,7 +319,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         None
     }
 
-    pub fn locate_collection(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<CollectionStore<'info,'refs, Pubkey>> {
+    pub fn locate_collection_v1(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<CollectionStore<'info,'refs, Pubkey>> {
         for idx in 0..self.collections.len() {
             let collection = &self.collections[idx];
             if collection.get_data_type() == data_type {
