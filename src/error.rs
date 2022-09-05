@@ -43,7 +43,10 @@ pub enum ErrorCode {
     RootAccess,
     IdentityMissing,
     IdentityAccess,
+    IdentityCollision,
     IdentityMissingForeignAuthority,
+    IdentityCollectionMissing,
+    IdentityCollectionLoadError,
     SystemProgramAccountMissing,
     PoisonError,
     BorrowError,
@@ -61,6 +64,7 @@ pub enum ErrorCode {
     ContextAccounts,
     AccountOwnership,
     AccountIsBlank,
+    AccountIsMissing,
     MaxPermittedAccountDataIncrease,
 
     PDAAddressMatch,
@@ -73,9 +77,11 @@ pub enum ErrorCode {
     ReallocFailure,
     NonMutableAccountChange,
 
+    CollectionMissingMeta,
     CollectionMetaSegmentSizeTooSmall,
     CollectionCollision,
     CollectionNotFound,
+    CollectionNotLoaded,
     CollectionDataTypeNotFound,
     CollectionAccountNotFound,
     MappedArrayBounds,
@@ -118,6 +124,7 @@ pub enum ErrorCode {
     RpcError,
     ChannelSendError,
     ChannelRecvError,
+    DataType,
 
     // WebSocketEncoding,
     // WebSocketDataType,
