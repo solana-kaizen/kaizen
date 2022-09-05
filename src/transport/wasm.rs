@@ -415,13 +415,13 @@ impl Transport {
     }
 
     #[inline(always)]
-    fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
+    pub fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
         self.emulator.as_ref().expect("missing emulator interface")
     }
 
     pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        self.cache.purge(pubkey).await?;
+        self.cache.purge(pubkey)?;
         
         match self.mode {
             Mode::Inproc | Mode::Emulator => {
@@ -434,7 +434,7 @@ impl Transport {
                 let reference = self.emulator().lookup(pubkey).await?;
                 match reference {
                     Some(reference) => {
-                        self.cache.store(&reference).await?;
+                        self.cache.store(&reference)?;
                         Ok(Some(reference))
                     },
                     None => Ok(None)
@@ -465,7 +465,7 @@ impl Transport {
                 let _executable = utils::try_get_bool_from_prop(&response,"executable")?;
 
                 let reference = Arc::new(AccountDataReference::new(AccountData::new_static_with_args(pubkey.clone(), owner, lamports, &data, rent_epoch)));
-                self.cache.store(&reference).await?;
+                self.cache.store(&reference)?;
                 Ok(Some(reference))
             }
         }
@@ -505,8 +505,8 @@ impl super::Interface for Transport {
 
     }
 
-    async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
-        Ok(self.cache.purge(pubkey).await?)
+    fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+        Ok(self.cache.purge(pubkey)?)
     }
 
     // async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 
@@ -639,7 +639,7 @@ impl super::Interface for Transport {
     // async fn lookup_local(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let pubkey = Arc::new(pubkey.clone());
-        Ok(self.cache.lookup(&pubkey).await?)
+        Ok(self.cache.lookup(&pubkey)?)
     }
 
 
