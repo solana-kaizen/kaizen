@@ -11,6 +11,11 @@ use crate::payload::Payload;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
+use workflow_allocator::container::AccountAggregator;
+use workflow_allocator::instruction::{
+    // readonly,
+    writable
+};
 
 pub fn find_interface_id(program_fn : HandlerFn, handlers: &[HandlerFn]) -> usize {
     handlers.iter()
@@ -359,6 +364,19 @@ impl InstructionBuilder {
     pub fn sequence(&self) -> u64 {
         self.suffix_seed_seq
     }
+
+    #[inline(always)]
+    pub async fn with_account_aggregator<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
+    where A: AccountAggregator
+    {
+
+        let list = aggregator.locate_account_pubkeys(key).await?;
+        let list : Vec<_> = list.iter().map(|pk| writable(*pk)).collect();
+        
+        // Ok(self)
+        Ok(self.with_index_accounts(&list))
+    }
+
 
     pub fn seal(mut self) -> Result<Self> {
 
