@@ -14,5 +14,12 @@ pub mod serialized;
 pub use serialized::*;
 pub mod string;
 pub use string::*;
+pub mod keys;
+pub use keys::*;
 
-
+cfg_if::cfg_if! {
+    if #[cfg(not(target_arch = "bpf"))] {
+        pub mod interfaces;
+        pub use interfaces::*;
+    }
+}
