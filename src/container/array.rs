@@ -233,16 +233,12 @@ where T: Copy
         Ok(unsafe { &mut *((data[(data_offset + idx*mem::size_of::<T>())..]).as_ptr() as *mut T) })
     }
 
-
-    // pub fn as_slice<'slice>(&'slice self) -> &'slice [T] {
-    // pub fn as_slice(&self) -> &'refs [T] where T : 'info {
-    pub fn as_slice(&self) -> &'refs [T] where T : 'info {
+    pub fn as_slice(&self) -> &'info [T] {
         utils::account_buffer_as_slice(self.account,self.get_data_offset(),self.len())
     }
 
-    // pub fn as_slice_mut<'slice>(&'slice self) -> &'slice mut [T] {
     pub fn as_slice_mut(&self) -> &'info mut [T] {
-        utils::account_buffer_as_slice_mut(self.account,self.get_data_offset(),self.len())
+            utils::account_buffer_as_slice_mut(self.account,self.get_data_offset(),self.len())
     }
 
     #[inline(always)]
@@ -443,6 +439,14 @@ where T: Copy
             phantom : PhantomData,
         }
     }
+}
+
+impl<'info,'refs,T> Array<'info,'refs,T> where T : Copy + Ord + 'info {
+    pub fn binary_search(&self, value: &T) -> std::result::Result<usize,usize> {
+        self.as_slice().binary_search(value)
+    }
+
+
 }
 
 impl<'info, 'refs, T> Index<usize> for Array<'info, 'refs, T> 
