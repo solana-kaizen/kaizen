@@ -60,7 +60,7 @@ pub fn account_buffer_as_struct_ref<'refs,'info, T>(
     }
 }
 
-pub fn account_buffer_as_struct_mut_ref<'refs,'info, T>(
+pub fn account_buffer_as_struct_mut<'refs,'info, T>(
     account: &'refs AccountInfo<'info>,
     byte_offset: usize,
 ) -> &'info mut T {
@@ -77,9 +77,7 @@ pub fn account_buffer_as_slice<'refs, 'info, T>(
     account: &'refs AccountInfo<'info>,
     byte_offset: usize,
     elements: usize
-// ) -> &'refs [T] { // } where T : 'info {
-// ) -> &'refs [T] where T : 'info {
-) -> &'refs [T] where T : 'info {
+) -> &'info [T] {
     let data = account.data.borrow();
     unsafe {
         std::slice::from_raw_parts::<T>(
@@ -90,11 +88,11 @@ pub fn account_buffer_as_slice<'refs, 'info, T>(
     }
 }
 
-pub fn account_buffer_as_slice_mut<'refs,'info, T> (
+pub fn account_buffer_as_slice_mut<'info, T> (
     account: &AccountInfo<'info>,
     byte_offset: usize,
     elements: usize
-) -> &'refs mut [T] where T: 'info {
+) -> &'info mut [T] {
     let mut data = account.data.borrow_mut();
     unsafe {
         std::slice::from_raw_parts_mut::<T>(
