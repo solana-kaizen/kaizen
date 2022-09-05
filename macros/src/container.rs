@@ -843,8 +843,10 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 Ok(Self::try_allocate(ctx,allocation_args,0)?)
             }
         
-            pub fn try_allocate<'pid,'instr>(
-                ctx: &std::rc::Rc<std::boxed::Box<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>>,
+            // pub fn try_allocate<'pid,'instr>(
+            pub fn try_allocate(
+                // ctx: &std::rc::Rc<std::boxed::Box<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>>,
+                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
                 allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
                 reserve_data_len : usize
             ) -> workflow_allocator::result::Result<Self> {
