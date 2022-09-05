@@ -117,19 +117,11 @@ impl<'info, 'refs> Segment<'info, 'refs> {
         self.store.get_segment_ref_mut_u8(self.idx)
     }
 
-    // pub fn try_as_ref_mut(&self) -> Result<&mut [u8]> {
-    //     self.store.try_get_segment_ref_mut(self.idx)
-    // }
-
-    // pub fn as_struct_ref<T>(&self) -> RefCell<&'info T> {
-    pub fn as_struct_ref<T>(&self) -> &T where T : 'info {
-        // let offset = self.get_offset();
+    pub fn as_struct_ref<T>(&self) -> &'info T {
         utils::account_buffer_as_struct_ref::<T>(self.store.account,self.get_offset())
     }
 
-    // pub fn try_as_struct_ref<T>(&self) -> Result<RefCell<&'info T>> {
     pub fn try_as_struct_ref<T>(&self) -> Result<&T> where T : 'info {
-        // let offset = self.get_offset();
         if self.get_data_len() != std::mem::size_of::<T>() {
             return Err(ErrorCode::SegmentStorageSize.into());
         }
@@ -137,55 +129,28 @@ impl<'info, 'refs> Segment<'info, 'refs> {
         Ok(struct_ref)
     }
 
-    // pub fn as_struct_mut_ref<T>(&self) -> RefCell<&'info mut T> {
-    pub fn as_struct_mut_ref<T>(&self) -> &mut T where T : 'info {
-        // let offset = self.get_offset();
-        utils::account_buffer_as_struct_mut_ref(self.store.account,self.get_offset())
+    pub fn as_struct_mut<T>(&self) -> &'info mut T {
+        utils::account_buffer_as_struct_mut(self.store.account,self.get_offset())
     }
 
-    // pub fn try_as_struct_mut_ref<T>(&self) -> Result<&mut T> where T : 'info {
-    pub fn try_as_struct_mut_ref<T>(&self) -> Result<&'info mut T> {
-        // let offset = self.get_offset();
+    pub fn try_as_struct_mut<T>(&self) -> Result<&'info mut T> {
         if self.get_data_len() != std::mem::size_of::<T>() {
             return Err(ErrorCode::SegmentStorageSize.into());
         }
-        let struct_mut_ref = utils::account_buffer_as_struct_mut_ref(self.store.account,self.get_offset());
+        let struct_mut_ref = utils::account_buffer_as_struct_mut(self.store.account,self.get_offset());
         Ok(struct_mut_ref)
     }
 
-    // pub fn as_slice<T>(&self) -> &'refs [T] where T : 'info {
     pub fn as_slice<T>(&self) -> &[T] where T : 'info {
         let elements = self.get_data_len() / mem::size_of::<T>();
         utils::account_buffer_as_slice(self.store.account,self.get_offset(),elements)
     }
 
-    // pub fn as_slice_mut<T>(&self) -> &'refs mut [T] where T : 'info {
     pub fn as_slice_mut<T>(&self) -> &mut [T] where T : 'info {
         let elements = self.get_data_len() / mem::size_of::<T>();
         utils::account_buffer_as_slice_mut(self.store.account,self.get_offset(),elements)
     }
 
-    pub fn try_create_linear_store<T>(self: &Rc<Self>) -> Result<Array<'info,'refs,T>> 
-    where T: Copy
-    {
-        let linear_store = Array::try_load_from_segment(self.clone())?;
-        linear_store.try_init_meta()?;
-        Ok(linear_store)
-    }
-
-    pub fn try_as_linear_store<T>(self: &Rc<Self>) -> Result<Array<'info,'refs,T>> 
-    where T: Copy
-    {
-        Ok(Array::<T>::try_load_from_segment(self.clone())?)
-    }
-
-    // pub fn try_as_linear_store_slice_mut<'slice,T:'slice>(&'slice self) -> Result<&'slice mut [T]> {
-    pub fn try_as_linear_store_slice_mut<T>(&self) -> Result<&'refs mut [T]> where T : Copy + 'info {
-        Ok(Array::<T>::try_as_linear_store_slice_mut(
-            self.store.account,
-            self.try_get_offset()?,
-        )?)
-    }
 }
 
 
