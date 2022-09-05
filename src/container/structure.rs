@@ -42,7 +42,7 @@ impl<'info,'refs,T> Struct<'info,'refs,T> {
     }
 
     pub fn try_as_mut_ref(&self) -> Result<&mut T> where T : 'info {
-        self.segment.try_as_struct_mut_ref()
+        self.segment.try_as_struct_mut()
     }
     // pub fn get_tree_chain(&self) -> Vec<BPTreeNode {
 
