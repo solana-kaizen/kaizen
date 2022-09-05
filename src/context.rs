@@ -612,21 +612,29 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     }
 
     #[inline(always)]
-    pub fn locate_token_account<'ctx>(&'ctx self, pubkey : &Pubkey) -> Option<&'ctx AccountInfo<'info>> {
+    pub fn locate_system_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
+        if let Some(index) = self.system_accounts.iter().position(|account| account.key == pubkey) {
+            Some(&self.system_accounts[index])
+        } else { None }
+    }
+
+    #[inline(always)]
+    pub fn locate_token_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
         if let Some(index) = self.token_accounts.iter().position(|account| account.key == pubkey) {
             Some(&self.token_accounts[index])
         } else { None } 
     }
 
     #[inline(always)]
-    pub fn locate_index_account<'ctx>(&'ctx self, pubkey : &Pubkey) -> Option<&'ctx AccountInfo<'info>> {
+    // pub fn locate_index_account<'ctx>(&'ctx self, pubkey : &Pubkey) -> Option<&'ctx AccountInfo<'info>> {
+    pub fn locate_index_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
         if let Some(index) = self.index_accounts.iter().position(|account| account.key == pubkey) {
             Some(&self.index_accounts[index])
         } else { None } 
     }
 
     #[inline(always)]
-    pub fn locate_handler_account<'ctx>(&'ctx self, pubkey : &Pubkey) -> Option<&'ctx AccountInfo<'info>> {
+    pub fn locate_handler_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
         if let Some(index) = self.handler_accounts.iter().position(|account| account.key == pubkey) {
             Some(&self.handler_accounts[index])
         } else { None } 
