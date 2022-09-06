@@ -6,7 +6,7 @@ use workflow_allocator::result::Result;
 use workflow_allocator::accounts::{ AccountData, AccountDataReference };
 use workflow_allocator::builder::{ InstructionBuilder, InstructionBuilderConfig };
 use workflow_allocator::context::SimulationHandlerFn;
-use workflow_log::log_trace;
+// use workflow_log::log_trace;
 use crate::generate_random_pubkey;
 
 use super::interface::{EmulatorInterface, ExecutionResponse};
@@ -46,16 +46,13 @@ impl Simulator {
     pub fn try_new_for_testing() -> Result<Simulator> {
         let store = Arc::new(store::MemoryStore::new_local()?);
         let emulator = Arc::new(Emulator::new(store.clone()));
-        // let inproc_mock_data = Some(InProcMockData::new());
 
-        let simulator = Simulator {//}::new_with_inner(SimulatorInner {
+        let simulator = Simulator {
             store,
             emulator,
             inproc_mock_data : None,
         };
 
-        // simulator.with_mock_accounts()
-        
         Ok(simulator)
     }
 
@@ -64,11 +61,7 @@ impl Simulator {
 
         let lamports = crate::utils::u64sol_to_lamports(500_000_000);
 
-        // let program_id = generate_random_pubkey(); //Pubkey::default();
         let authority = generate_random_pubkey(); 
-        // let mut mock_data = InProcMockData::new();
-
-        // let mock = self.inproc.as_ref().unwrap().expect("inproc mock data not initialized").cloned();
         
         let authority_account_data = AccountData::new_static(
             authority.clone(),
@@ -76,23 +69,6 @@ impl Simulator {
         ).with_lamports(lamports);
 
         self.store.store(&Arc::new(AccountDataReference::new(authority_account_data))).await?;//.await?;
-        // let authority_account_data = Arc::new(RwLock::new(authority_account_data));
-        //map.write()?.insert(authority.clone(),authority_account_data);
-        
-        // let identity = AccountData::new_static(
-        //     mock_data.identity.clone(),
-        //     mock_data.program_id.clone(),
-        // );
-log_trace!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-        // let identity = workflow_allocator::identity::client::create_identity_for_unit_tests(
-        //     //transport, 
-        //     &self,
-        //     &authority,
-        //     &program_id,
-        // ).await?;
-
-        // mock_data.identity = identity;
-        log_trace!("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
 
         let mock_data = InProcMockData::new(
             &authority,
@@ -100,9 +76,6 @@ log_trace!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
             &program_id,
         );
 
-        // Identity::try_create()
-        // .with_lamports(lamports);
-        // self.store.store(&Arc::new(AccountDataReference::new(identity))).await?;//map.write()?.insert(identity.clone(),identity_account_data);
         self.inproc_mock_data = Some(mock_data);
         Ok(self)
 
@@ -179,7 +152,19 @@ log_trace!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 #[async_trait]
 impl EmulatorInterface for Simulator {
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        self.emulator.lookup(pubkey).await
+        match self.emulator.lookup(pubkey).await? {
+            Some(reference) => {
+                // IMPORTANT:
+                // We intentionally return account replicas
+                // in order to decouple account_data mutexes
+                // which can create deadlocks if held by client
+                // while executing programs.
+                Ok(Some(reference.replicate()?))
+            },
+            None => {
+                return Ok(None);
+            }
+        }
     }
     async fn execute(
         &self,

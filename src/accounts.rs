@@ -137,6 +137,19 @@ mod client {
             Ok(self.account_data.lock()?.clone_for_storage())
         }
 
+        pub fn replicate(&self) -> Result<Arc<AccountDataReference>> {
+            let account_data = self.clone_for_storage()?;
+            let replica = AccountDataReference {
+                key : self.key.clone(),
+                timestamp : self.timestamp.clone(),
+                container_type : self.container_type,
+                data_type : self.data_type,
+                data_len : self.data_len,
+                account_data : Arc::new(Mutex::new(account_data))
+            };
+            Ok(Arc::new(replica))
+        }
+
         pub fn try_load_container<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
         where T: workflow_allocator::container::Container<'this,'this>
         {
