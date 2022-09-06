@@ -187,26 +187,13 @@ impl Emulator {
             let mut account_data = match self.lookup(&pubkey).await? {
                 Some(reference) => {
                     let account_data = reference.clone_for_program()?;//account_data.clone_for_prog//read().await.ok_or(error!("account read lock failed"))?.clone_for_program();
-
                     log_trace!("[store] ...  loading: {}", account_data.info()?);
-
-                    // log_trace!("... loading account: {} data len: {} lamports: {}", 
-                    //     account_data.key.to_string(),
-                    //     account_data.data.len(),
-                    //     account_data.lamports
-                    // );
-    
                     account_data
                 },
                 None => {
-
-                    // log_trace!("*\n*\n*\n*\n*\nCLONING ACCOUNT {}\n*\n*\n*\n*",pubkey);
-
                     let account_data = AccountData::new_template_for_program(
-                    // let account_data = AccountData::new_allocated_for_program(
                         pubkey.clone(),
                         program_id.clone(),
-                        //pubkey.clone(),
                         0
                     );
 
@@ -215,12 +202,6 @@ impl Emulator {
                     } else {
                         log_trace!("[store] ... template: {}", account_data.info()?);
                     }
-
-                    // log_trace!("... template account: {} data len: {} lamports: {}", 
-                    //     account_data.key.to_string(),
-                    //     account_data.data.len(),
-                    //     account_data.lamports
-                    // );
 
                     account_data
                 }
@@ -240,13 +221,8 @@ impl Emulator {
         Ok(account_data_vec)
     }
 
-
-    // pub async fn program_local_store<'t>(&self, accounts : &Arc<Mutex<Vec<AccountInfo<'t>>>>) -> Result<()> {
     pub async fn program_local_store<'t>(&self, accounts : Vec<(Pubkey,AccountData)>) -> Result<()> {
-        // pub async fn program_local_store(&self, accounts : Vec<AccountInfo>) -> Result<()> {
-        // pub async fn program_local_store<'info>(&self, accounts : Vec<AccountInfo>) -> Result<()> {
 
-        // let accounts = accounts.lock().unwrap();
         for (pubkey, account_data) in accounts.iter() {
             if let Some(existing_account_data) = self.store.lookup(&account_data.key).await? {
                 let existing_account_data = existing_account_data.account_data.lock()?;//.ok_or(error!("account read lock failed"))?;
@@ -257,94 +233,41 @@ impl Emulator {
                     }
                 }
             }
-
-            let rent = Rent::default();
-            let minimum_balance = rent.minimum_balance(account_data.data_len());//_data_len);
-            // if **lamports < minimum_balance {
-            if account_data.lamports < minimum_balance && *pubkey != Pubkey::default(){
-                log_trace!("[store] ...  failure: {}", account_data.info()?);
-                log_trace!("{} {}",style("purging account (below minimum balance):").white().on_red(),pubkey.to_string());
-                log_trace!("data len: {} balance needed: {}  balance in the account: {}", account_data.data_len(), minimum_balance, account_data.lamports);
-                log_trace!("account type: 0x{:08x}",account_data.container_type().unwrap_or(0));
-                // self.store.purge(pubkey).await?;
-                return Err(ErrorCode::InsufficientBalanceForRent.into());
-            }
-
         }
-        // for account_info in accounts.lock().unwrap().iter() {
-        for (pubkey, account_data) in accounts.iter() {
-            // if false 
-            {
-                // let rent = Rent::default();
-                // let account_data_len = account.space;//.data_len();
-                // let lamports = account_info.lamports.borrow();
 
-                // if account_data_len == 0 && account.lamports == 0u64 { //**lamports == 0u64 {
+        for (pubkey, account_data) in accounts.iter() {
+            {
+                // purge account immediately if it has insufficient balance
+                // the framework currently does not support epoch-based rent processing
+                let rent = Rent::default();
+                let minimum_balance = rent.minimum_balance(account_data.data_len());
+                if account_data.lamports < minimum_balance && *pubkey != Pubkey::default(){
+                    log_trace!("[store] ...  purging: {}", account_data.info()?);
+                    log_trace!("{} {}",style("purging account (below minimum balance):").white().on_red(),pubkey.to_string());
+                    log_trace!("data len: {} balance needed: {}  balance in the account: {}", account_data.data_len(), minimum_balance, account_data.lamports);
+                    log_trace!("account type: 0x{:08x}",account_data.container_type().unwrap_or(0));
+                    continue;
+                }
+        
                 if account_data.data_len() == 0 && account_data.lamports == 0u64  && *pubkey != Pubkey::default() {
                     log_trace!("{} {}",style("purging account (no data, no balance):").white().on_red(),pubkey.to_string());
-                    // self.store.purge(account_info.key).await?;
                     self.store.purge(pubkey).await?;
                     continue;
                 }
 
             }
+
             let account_data_for_storage = account_data.clone_for_storage();
-            // let account_data = AccountData::clone_from_account_info(account_info);
-            // log_trace!("... saving account: {} data len: {} lamports: {}  ... {}", 
-            //     account_data.key.to_string(),
-            //     account_data.data.len(),
-            //     account_data.lamports,
-            //     account_data.info(),
-            // );
             log_trace!("[store] ...   saving: {}", account_data.info()?);
             self.store.store(
                 &Arc::new(AccountDataReference::new(account_data_for_storage))
-                // Arc::new(RwLock::new(account_data))
             ).await?;
-// log_trace!("ACCOUNT DATA WRITAEABLE: {}", account_data.is_writable);
-            // log_trace!("... account data: {:#?}", account_data);
-            // match self.store.lookup(&account_data.key).await? {
-            //     Some(existing_account_data) => {
-            //         // let mut dest = account_data_reference.write()?;
-
-            //         // let mut save = true;
-            //         let existing_account_data = existing_account_data.account_data.read().await;//.ok_or(error!("account read lock failed"))?;
-            //         if !account_data.is_writable {
-            //             if account_data.data[..] != existing_account_data.data[..] {
-            //                 log_error!("ERROR: writing to non-mutable account");
-            //                 return Err(ErrorCode::NonMutableAccountChange.into())
-            //                 // save = false;
-            //             }
-            //             // TODO: check if account was changed
-            //         }
-            //         if save {
-            //             self.store.store(
-            //                 &Arc::new(AccountDataReference::new(account_data))
-            //                 // Arc::new(RwLock::new(account_data))
-            //             ).await?;
-            //             // self.store.store(Arc::new(RwLock::new(account_data))).await?;
-            //             // *dest = account_data;
-            //         }
-            //     },
-            //     None => {
-            //         self.store.store(
-            //             &Arc::new(AccountDataReference::new(account_data))
-            //             // Arc::new(RwLock::new(account_data))
-            //         ).await?;
-            //     }
-            // }
 
         }
 
         Ok(())
     }
     
-    // async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
-    //     self.store.store(reference).await?;
-    //     Ok(())
-    // }
-
-
     async fn execute_impl(
         &self,
         instruction : &solana_program::instruction::Instruction
@@ -379,13 +302,6 @@ impl Emulator {
             self.clone().execute_entrypoing_impl(&instruction.program_id, &accounts, &instruction.data, entrypoint)?;
         }
 
-        // for (_,account) in account_data_vec.iter_mut() {
-        //     // account.space = account.data_len();
-        //     account.update_data_len();
-        // }
-
-        // let accounts = accounts.into_inner().unwrap
-        // self.program_local_store(&accounts).await?;
         self.program_local_store(account_data_vec).await?;
 
         Ok(())
@@ -487,33 +403,3 @@ impl EmulatorInterface for Emulator {
         Ok(())
     }
 }
-
-
-/* 
-struct LogSink {
-    capturing : AtomicBool,
-    logs : Arc<Mutex<Vec<(Level,String)>>>
-}
-
-impl workflow_log::Sink for LogSink {
-    fn write(&self, level:Level, args : &std::fmt::Arguments<'_>) -> bool {
-        let text = args.to_string();
-        self.logs.lock().unwrap().push((level, text));
-        false
-    }
-}
-impl LogSink {
-    fn new() -> LogSink {
-        LogSink {
-            capturing: AtomicBool::new(false),
-            logs: Arc::new(Mutex::new(Vec::new()))
-        }
-    }
-    fn reset(&self) {
-        *self.logs.lock().unwrap() = Vec::new();
-    }
-    fn capture(&self) {
-        *self.logs.lock().unwrap() = Vec::new();
-    }
-}
-*/
