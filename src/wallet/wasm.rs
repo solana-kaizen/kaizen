@@ -7,6 +7,7 @@ use wasm_bindgen_futures::JsFuture;
 use crate::prelude::log_trace;
 use crate::transport::Transport;
 use crate::error;
+use workflow_allocator::error::{js_error, parse_js_error};
 
 pub struct Wallet {
 
@@ -79,7 +80,12 @@ impl super::Wallet for Wallet {
                 .expect("Wallet: Unable to get 'connect' method from WalletAdapter Object");
             let future = JsFuture::from(js_sys::Promise::from(promise_jsv));
             log_trace!("Wallet: WalletAdapter.connect() ........");
-            let res = future.await.expect("Wallet: WalletAdapter.connect() failed.");
+            let res = match future.await{
+                Ok(r)=>r,
+                Err(e)=>{
+                    return Err(js_error!{e, "Wallet: WalletAdapter.connect() failed"})
+                }
+            };
             log_trace!("Wallet: WalletAdapter.connect() future.await success: {:?}", res);
             Transport::global()?.with_wallet(adapter_jsv.clone())?;
             log_trace!("Wallet: WalletAdapter.connect() transport updated");

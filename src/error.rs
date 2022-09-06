@@ -484,6 +484,41 @@ impl Error {
 
 
 
+#[cfg(target_arch = "wasm32")]
+pub fn parse_js_error(e: wasm_bindgen::JsValue, msg:Option<&str>)->Error{
+    let mut err = match workflow_wasm::utils::try_get_string(&e, "message"){
+        Ok(msg) => {
+            Error::new().with_message(&msg)
+        }
+        Err(e)=>{
+            if let Some(msg) = msg{
+                Error::new().with_message(&format!("{}, Error:{:?}", msg, e))
+            }else{
+                Error::new().with_message(&format!("Error:{:?}", e))
+            }
+        }
+    };
+    match js_sys::Reflect::get(&e, &wasm_bindgen::JsValue::from("error")){
+        Ok(error_obj)=>{
+            //log_trace!("error code not error_obj###: {:?}", error_obj);
+            match js_sys::Reflect::get(&error_obj, &wasm_bindgen::JsValue::from("code")){
+                Ok(code) => {
+                    //log_trace!("found code:{:?}", code);
+                    err = err.with_variant(Variant::JsValue(format!("{:?}", code)));
+                }
+                Err(_e)=>{
+                    //skip code search error
+                    //log_trace!("error code not found: {:?}, error:{:?}", _e, e);
+                }
+            }
+        },
+        Err(_e)=>{
+            //skip code search error
+        }
+    }
+    
+    err
+}
 
 
 
@@ -830,6 +865,17 @@ macro_rules! error {
         )
 }
 pub use error;
+
+#[cfg(target_arch = "wasm32")]
+#[macro_export]
+macro_rules! js_error {
+    ($e:expr, $msg:literal) => ( 
+        parse_js_error($e, Some($msg))
+            .with_source(file!(),line!())
+    )
+}
+#[cfg(target_arch = "wasm32")]
+pub use js_error;
 
 #[macro_export]
 macro_rules! error_code {
