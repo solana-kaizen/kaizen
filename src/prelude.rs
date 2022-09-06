@@ -25,6 +25,9 @@ pub use crate::transport::*;//{Transport,Interface};
 
 pub use workflow_log::log_trace;
 
+pub use workflow_allocator::error_code;
+pub use workflow_allocator::error::ErrorCode;
+
 // #[cfg(not(target_arch = "bpf"))]
 // pub use crate::tokens::{get_tokens, get_tokens_info, get_tokens_info_array, TokenInfo};
 
