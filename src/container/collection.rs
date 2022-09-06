@@ -1,7 +1,10 @@
 use cfg_if::cfg_if;
 use solana_program::pubkey::Pubkey;
+use solana_program::instruction::AccountMeta;
 use workflow_allocator_macros::{Meta, container};
-use crate::context::ContextReference;
+// use crate::context::ContextReference;
+// use crate::error;
+// use crate::error_code;
 // use std::rc::Rc;
 // use crate::error::ErrorCode;
 // use borsh::{BorshDeserialize, BorshSerialize};
@@ -112,7 +115,8 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         // Ok(collection_store)
     }
 
-    pub fn try_load<'ctx>(&mut self, ctx:&'ctx ContextReference<'info,'refs,'_,'_>) -> Result<()> {
+    // pub fn try_load<'ctx>(&mut self, ctx:&'ctx ContextReference<'info,'refs,'_,'_>) -> Result<()> {
+    pub fn try_load(&mut self, ctx: &ContextReference<'info,'refs,'_,'_>) -> Result<()> {
 
         let meta = self.meta()?;
         if let Some(account_info) = ctx.locate_index_account(&meta.pubkey) {
@@ -121,7 +125,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
             self.container = Some(container);
             Ok(())
         } else {
-            Err(ErrorCode::CollectionNotFound.into())
+            Err(error_code!(ErrorCode::CollectionNotFound))
         }
     }
 
@@ -133,7 +137,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
             meta.set_count(count + 1);
             Ok(())
         } else {
-            Err(ErrorCode::CollectionNotLoaded.into())
+            Err(error_code!(ErrorCode::CollectionNotLoaded))
         }
     }
 
@@ -141,7 +145,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
     pub fn try_remove<'t : 'info>(&mut self, record: &'t T) -> Result<()> {
         {
             if self.container.is_none() {
-                return Err(ErrorCode::CollectionNotLoaded.into());
+                return Err(error_code!(ErrorCode::CollectionNotLoaded));
             }
 
             self.container.as_ref().unwrap().try_remove(record)?;
@@ -157,7 +161,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         if let Some(container) = &self.container {
             Ok(container.as_slice())
         } else {
-            Err(ErrorCode::CollectionNotLoaded.into())
+            Err(error_code!(ErrorCode::CollectionNotLoaded))
         }
     }
 
@@ -165,7 +169,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         if let Some(container) = &mut self.container {
             Ok(container.as_slice_mut())
         } else {
-            Err(ErrorCode::CollectionNotLoaded.into())
+            Err(error_code!(ErrorCode::CollectionNotLoaded))
         }
     }
 
@@ -179,7 +183,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
             ctx.sync_rent(container.account(),rent_collector)?;
             Ok(())
         } else {
-            Err(ErrorCode::CollectionNotLoaded.into())
+            Err(error_code!(ErrorCode::CollectionNotLoaded))
         }
     }
 
@@ -268,9 +272,20 @@ cfg_if! {
         where T : Copy + Eq + PartialEq + Ord + 'info
         {
             type Key = T;
-            async fn locate_account_pubkeys(&self, _: &Self::Key) -> Result<Vec<Pubkey>> {
+            async fn writable_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
+                if key.is_some() {
+                    return Err(error_code!(ErrorCode::NotImplemented));
+                }
                 let meta = self.meta()?;
-                Ok(vec![meta.get_pubkey()])
+                Ok(vec![AccountMeta::new(meta.get_pubkey(), false)])
+            }
+
+            async fn readonly_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
+                if key.is_some() {
+                    return Err(error_code!(ErrorCode::NotImplemented));
+                }
+                let meta = self.meta()?;
+                Ok(vec![AccountMeta::new_readonly(meta.get_pubkey(), false)])
             }
         
         }
