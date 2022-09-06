@@ -12,10 +12,10 @@ use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
 use workflow_allocator::container::AccountAggregator;
-use workflow_allocator::instruction::{
-    // readonly,
-    writable
-};
+// use workflow_allocator::instruction::{
+//     // readonly,
+//     // writable
+// };
 
 pub fn find_interface_id(program_fn : HandlerFn, handlers: &[HandlerFn]) -> usize {
     handlers.iter()
@@ -366,17 +366,52 @@ impl InstructionBuilder {
     }
 
     #[inline(always)]
-    pub async fn with_account_aggregator<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
+    pub async fn with_writable_account_aggregator<A>(self, aggregator : &A) -> Result<Self> 
     where A: AccountAggregator
     {
-
-        let list = aggregator.locate_account_pubkeys(key).await?;
-        let list : Vec<_> = list.iter().map(|pk| writable(*pk)).collect();
-        
-        // Ok(self)
+        let list = aggregator.writable_account_metas(None).await?;
         Ok(self.with_index_accounts(&list))
     }
 
+    #[inline(always)]
+    pub async fn with_readonly_account_aggregator<A>(self, aggregator : &A) -> Result<Self> 
+    where A: AccountAggregator
+    {
+        let list = aggregator.readonly_account_metas(None).await?;
+        Ok(self.with_index_accounts(&list))
+    }
+
+    #[inline(always)]
+    pub async fn with_account_aggregators<A>(self, aggregators : &[(bool,&A)]) -> Result<Self> 
+    where A: AccountAggregator
+    {
+        let mut list = Vec::new();
+        for (writable,aggregator) in aggregators.iter() {
+            let aggregator_list = if *writable {
+                aggregator.writable_account_metas(None).await?
+            } else {
+                aggregator.readonly_account_metas(None).await?
+            };
+            list.extend_from_slice(&aggregator_list);
+        }
+        Ok(self.with_index_accounts(&list))
+    }
+
+    #[inline(always)]
+    pub async fn with_writable_account_aggregator_for_key<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
+    where A: AccountAggregator
+    {
+        let list = aggregator.writable_account_metas(Some(key)).await?;
+        Ok(self.with_index_accounts(&list))
+    }
+
+    #[inline(always)]
+    pub async fn with_readonly_account_aggregator_for_key<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
+    where A: AccountAggregator
+    {
+        let list = aggregator.readonly_account_metas(Some(key)).await?;
+        Ok(self.with_index_accounts(&list))
+    }
 
     pub fn seal(mut self) -> Result<Self> {
 
