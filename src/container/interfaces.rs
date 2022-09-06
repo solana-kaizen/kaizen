@@ -1,5 +1,5 @@
-use solana_program::pubkey::Pubkey;
 use async_trait::async_trait;
+use solana_program::instruction::AccountMeta;
 use workflow_allocator::result::Result;
 
 
@@ -7,5 +7,6 @@ use workflow_allocator::result::Result;
 #[async_trait(?Send)]
 pub trait AccountAggregator {
     type Key;
-    async fn locate_account_pubkeys(&self,key : &Self::Key) -> Result<Vec<Pubkey>>;
+    async fn writable_account_metas(&self,key : Option<&Self::Key>) -> Result<Vec<AccountMeta>>;
+    async fn readonly_account_metas(&self,key : Option<&Self::Key>) -> Result<Vec<AccountMeta>>;
 }
