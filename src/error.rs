@@ -500,10 +500,8 @@ pub fn parse_js_error(e: wasm_bindgen::JsValue, msg:Option<&str>)->Error{
     };
     match js_sys::Reflect::get(&e, &wasm_bindgen::JsValue::from("error")){
         Ok(error_obj)=>{
-            //log_trace!("error code not error_obj###: {:?}", error_obj);
             match js_sys::Reflect::get(&error_obj, &wasm_bindgen::JsValue::from("code")){
                 Ok(code) => {
-                    //log_trace!("found code:{:?}", code);
                     err = err.with_variant(Variant::JsValue(format!("{:?}", code)));
                 }
                 Err(_e)=>{
