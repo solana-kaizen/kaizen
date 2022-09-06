@@ -28,13 +28,8 @@ pub fn allocate_pda<
     lamports : u64,
 ) -> Result<&'refs AccountInfo<'info>> {
 
-    msg!("| pda: inside solana allocate_pda()");
-
-
-    // let seed = &tpl_address_data.seed;
-    // let seed_suffix = tpl_address_data.seed_suffix;
-
-    msg!("| pda: executing create_program_address()");
+    // msg!("| pda: inside solana allocate_pda()");
+    // msg!("| pda: executing create_program_address()");
     match Pubkey::create_program_address(
         &[user_seed, tpl_address_data.seed],
         // &[seed, seed_suffix, &[tpl_address_data.bump]],
@@ -42,23 +37,23 @@ pub fn allocate_pda<
     ) {
         Ok(address)=>{
             if address != *tpl_account_info.key{
-                msg!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
+                // msg!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
                 return Err(error_code!(ErrorCode::PDAAddressMatch));
             }
 
-            msg!("| pda: PDA ADDRESS OK");
+            // msg!("| pda: PDA ADDRESS OK");
         },
         Err(_e)=>{
-            msg!("| pda: PDA ADDRESS MATCH failure");
+            // msg!("| pda: PDA ADDRESS MATCH failure");
             //TODO handle this pubkey error
             return Err(error_code!(ErrorCode::PDAAddressMatch));
         }
     };
-    msg!("creating: {:?}", tpl_account_info.key);
-    msg!("payer.key: {:?}", payer.key);
-    msg!("program_id: {:?}", program_id);
-    msg!("system_program id: {:?}", system_program::id());
-    msg!("seed: {:?}", tpl_address_data.seed);
+    // msg!("creating: {:?}", tpl_account_info.key);
+    // msg!("payer.key: {:?}", payer.key);
+    // msg!("program_id: {:?}", program_id);
+    // msg!("system_program id: {:?}", system_program::id());
+    // msg!("seed: {:?}", tpl_address_data.seed);
     // msg!("seed_suffix: {:?}", seed_suffix);
     // msg!("info.bump: {:?}", tpl_address_data.bump);
     let ins = create_account(
@@ -89,13 +84,13 @@ pub fn allocate_pda<
             ]
         ]
     );
-    msg!("invoke_signed:result: {:?}", result);
+    // msg!("invoke_signed:result: {:?}", result);
     match result {
         Ok(_r)=>{
             Ok(tpl_account_info)
         },
         Err(e)=>{
-            msg!("allocate_multiple_pda:AllocatorError");
+            // msg!("allocate_pda:AllocatorError");
             return Err(program_error!(e));
             //vec.push(Err(e));
         }
@@ -181,7 +176,7 @@ pub fn allocate_multiple_pda<
                 vec.push(tpl_account_info);//.clone());
             },
             Err(e)=>{
-                msg!("allocate_multiple_pda:AllocatorError");
+                // msg!("allocate_multiple_pda:AllocatorError");
                 return Err(program_error!(e));
                 //vec.push(Err(e));
             }

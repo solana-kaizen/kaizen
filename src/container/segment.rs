@@ -329,13 +329,9 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         layout : &Layout<T>
         // layout : &SegmentLayout
     ) -> Result<SegmentStore<'info, 'refs>> where T : 'info+Integer+Debug+IndexUnit+Copy {
-        // let segments = layout.user_segment_sizes.len()+1;
-
-        // log_trace!("%%%%%%% -> SegmetStore::try_create() offset: {:?}", offset);
-
 
         let index = layout.generate_index(offset);
-        log_trace!("| {} {:?}", style("segment store index entries:").green(), index);
+        // log_trace!("| {} {:?}", style("segment store index entries:").green(), index);
         #[cfg(feature = "check-buffer-sizes")] {
             let data_len_needed = index[index.len()-1].next_offset();// - index[0].offset as usize;
             if account.data_len() < data_len_needed {
@@ -532,7 +528,7 @@ log_trace!("ALLOC A");
                     return Err(error_code!(ErrorCode::SegmentSizeTooLargeForIndexUnitSize));
                 }
 
-                log_trace!("try_resize_segment");
+                // log_trace!("try_resize_segment");
 
                 self.try_resize_segment_impl::<u16>(idx,new_len,zero_init)
             },
@@ -618,6 +614,7 @@ log_trace!("ALLOC A");
             if new_account_data_len > account_data_len {
                 account_info_realloc(self.account, new_account_data_len, false,false)?;
             } else {
+                log_trace!("[segment store] capacity ok, skipping allocation...");
                 // log_trace!("{}",style("~ ~ ~ ~ ~ ~ ~ ~ SKIPPING ALLOCATION ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~").white().on_red());
             }
             // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS

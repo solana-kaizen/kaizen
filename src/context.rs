@@ -511,9 +511,9 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         }
 
-        log_trace!("+ pda: ... create_pda() starting");
+        log_trace!("[pda] ... create_pda() starting ...");
         let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;
-        log_trace!("+ pda: ... create_pda() for account {}", tpl_account_info.key.to_string());
+        log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
         
         // log_trace!(" CREATE PDA ACCOUNT DATA: ------------------------- * * *");
         // trace_hex(&*tpl_account_info.data.borrow());
@@ -535,8 +535,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         };
         
-        log_trace!("| pda: checking allocation args");
-        // log_trace!("C");
+        // log_trace!("| pda: checking allocation args");
         let payer = match allocation_args.payer {
             AllocationPayer::Authority => {
                 &self.authority
@@ -557,7 +556,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         };
             
-        log_trace!("| pda: executing allocate_pda()");
+        // log_trace!("| pda: executing allocate_pda()");
         let res = crate::allocate_pda(
             payer, //&self.authority,
             self.program_id,
@@ -603,7 +602,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             )?;
         }
 
-        // FIXME: implement rent collector
+        // FIXME implement rent collector
 
         Ok(())
     }

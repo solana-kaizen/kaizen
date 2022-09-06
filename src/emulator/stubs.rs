@@ -37,14 +37,14 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     ) {
         Ok(address)=>{
             if address != *tpl_account_info.key {
-                log_trace!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
+                // log_trace!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
                 return Err(error_code!(ErrorCode::PDAAddressMatch));
             }
 
             // log_trace!("| pda: PDA ADDRESS OK");
         },
         Err(_e)=>{
-            log_trace!("| pda: PDA ADDRESS MATCH failure");
+            // log_trace!("| pda: PDA ADDRESS MATCH failure");
             //TODO handle this pubkey error
             return Err(error_code!(ErrorCode::PDAAddressMatch));
         }
@@ -52,20 +52,19 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
 
     // ---
 
-    let buffer_size = unsafe {
-        let ptr = tpl_account_info
-            .try_borrow_mut_data()
-            .ok()
-            .unwrap()
-            .as_mut_ptr()
-            .offset(-8) as *mut u64;
-        *ptr
-    };
+    // let buffer_size = unsafe {
+    //     let ptr = tpl_account_info
+    //         .try_borrow_mut_data()
+    //         .ok()
+    //         .unwrap()
+    //         .as_mut_ptr()
+    //         .offset(-8) as *mut u64;
+    //     *ptr
+    // };
     
-    log_trace!("| pda: account realloc - buffer: {} slice: {} target: {}",buffer_size,tpl_account_info.data_len(),space);
+    // log_trace!("| pda: account realloc - buffer: {} slice: {} target: {}",buffer_size,tpl_account_info.data_len(),space);
     account_info_realloc(tpl_account_info, space, true, true)?;
-    log_trace!("+ pda: simulator realloc done");
-    // log_trace!("| TODO: adjust lamports");
+    // log_trace!("+ pda: simulator realloc done");
     
     let mut ref_payer_lamports = payer.lamports.borrow_mut();
     let mut payer_lamports = **ref_payer_lamports;
@@ -82,13 +81,6 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     **ref_tpl_account_info_lamports = (**ref_tpl_account_info_lamports).saturating_add(lamports);
 
     Ok(tpl_account_info)
-    // list.push(tpl.account_info);
-    //? TODO - replace lamports value
-    // let mut lamports_ref = tpl.account_info.lamports.borrow();
-    // *lamports_ref = lamports;
-    // }
-
-    // Ok(list)
 }
 
 pub fn allocate_multiple_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
@@ -169,7 +161,7 @@ pub fn transfer_sol<'info>(
 
     // TODO: validate authority authority
     log_trace!(
-        "\n--: transfer_sol:\nfrom: {}\n\tto: {}\n\tauthority: {}\n\tamount: {}\n\n",
+        "\ntransfer_sol:\n\tfrom: {}\n\tto: {}\n\tauthority: {}\n\tamount: {}\n\n",
         from.key,
         to.key,
         authority.key,
