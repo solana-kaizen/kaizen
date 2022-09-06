@@ -34,6 +34,7 @@ pub use workflow_allocator::error::ErrorCode;
 pub use workflow_allocator_macros::{
     // describe_enum,
     declare_handlers,
+    declare_interface,
     declare_program,
     container,
     Meta,
