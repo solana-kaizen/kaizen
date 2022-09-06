@@ -113,7 +113,7 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
             // type Output = wasm_bindgen_futures::JsFuture;
             fn handler_id(handler_fn: HandlerFn) -> usize {
 
-                #target_primitive_path::PRIMITIVE_HANDLERS.iter()
+                #target_primitive_path::INTERFACE_HANDLERS.iter()
                 .position(|&hfn| hfn as HandlerFnCPtr == handler_fn as HandlerFnCPtr )
                 .expect("invalid primitive handler")
             }

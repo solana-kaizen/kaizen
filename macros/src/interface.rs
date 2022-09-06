@@ -79,7 +79,7 @@ impl Parse for Primitive {
 
 
 // #[proc_macro]
-pub fn declare_handlers(input: TokenStream) -> TokenStream {
+pub fn declare_interface(input: TokenStream) -> TokenStream {
 
     let primitive = parse_macro_input!(input as Primitive);
     let handler_struct_name = primitive.handler_struct_decl.to_string();
@@ -100,10 +100,10 @@ pub fn declare_handlers(input: TokenStream) -> TokenStream {
 
         #impl_ts {
 
-            pub const PRIMITIVE_HANDLERS : [HandlerFn;#len] = #handler_methods;
+            pub const INTERFACE_HANDLERS : [HandlerFn;#len] = #handler_methods;
 
             pub fn handler_id(handler_fn: HandlerFn) -> u16 {
-                #handler_struct_path::PRIMITIVE_HANDLERS.iter()
+                #handler_struct_path::INTERFACE_HANDLERS.iter()
                 .position(|&hfn| hfn as HandlerFnCPtr == handler_fn as HandlerFnCPtr )
                 .expect("invalid primitive handler")
                 as u16
@@ -111,12 +111,12 @@ pub fn declare_handlers(input: TokenStream) -> TokenStream {
 
             pub fn program(ctx:&workflow_allocator::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
             // pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> workflow_allocator::result::Result<()> {
-                if ctx.handler_id >= #handler_struct_path::PRIMITIVE_HANDLERS.len() {
-                    println!("Error - invalid argument in program handler");
+                if ctx.handler_id >= #handler_struct_path::INTERFACE_HANDLERS.len() {
+                    workflow_log::log_error!("Error - invalid handler id {} for interface {}", ctx.handler_id, #handler_struct_name);
                     return Err(solana_program::program_error::ProgramError::InvalidArgument);
                 }
                 // println!("executing program ctx: {:#?}", ctx);
-                Ok(#handler_struct_path::PRIMITIVE_HANDLERS[ctx.handler_id](ctx)?)
+                Ok(#handler_struct_path::INTERFACE_HANDLERS[ctx.handler_id](ctx)?)
             }
         }
     };
