@@ -32,7 +32,7 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn container(attr: TokenStream, item: TokenStream) -> TokenStream {
-    container::macro_handler(attr, item)
+    container::container_attribute_handler(attr, item)
 }
 
 #[proc_macro_derive(Meta)]

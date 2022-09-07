@@ -236,7 +236,7 @@ impl Parse for ContainerAttributes {
 }
 
 // #[proc_macro_derive(Describe, attributes(segment))]
-pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     // println!("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
     // println!("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
     // println!("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
@@ -990,12 +990,12 @@ pub fn macro_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             // you forgot to include solana-program as a dependency
             // into Cargo.toml
             //
-            #[inline] 
+            #[inline(always)] 
             pub fn account(&self) -> &'refs solana_program::account_info::AccountInfo<'info> {
                 self.#store_field_name.account
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn pubkey(&self) -> &solana_program::pubkey::Pubkey {
                 self.#store_field_name.account.key//.clone()
             }
