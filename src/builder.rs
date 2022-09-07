@@ -196,9 +196,17 @@ impl InstructionBuilder {
         }
     }
 
-    pub fn template_accounts(&self) -> Vec<AccountMeta> {
-        self.template_accounts.clone()
+    pub fn template_accounts<'this>(&'this self) -> &'this Vec<AccountMeta> {
+        &self.template_accounts
     }
+
+    pub fn template_account_at<'this>(&'this self, idx : usize) -> &'this AccountMeta {
+        &self.template_accounts[idx]
+    }
+
+    // pub fn template_accounts(&self) -> Vec<AccountMeta> {
+    //     self.template_accounts.clone()
+    // }
 
     pub fn payload(&self) -> Payload {
 
@@ -330,6 +338,15 @@ impl InstructionBuilder {
     pub fn with_account_templates_with_custom_suffixes(mut self, suffixes : &[&str]) -> Self {
         for n in 0..suffixes.len() {
             self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,SeedSuffix::Custom(suffixes[n].to_string())))
+        }
+        self
+    }
+
+    pub fn with_account_templates_with_custom_suffixes_prefixed(mut self, prefix : &str, suffixes : &[&str]) -> Self {
+        for n in 0..suffixes.len() {
+            let mut suffix = prefix.to_string();
+            suffix.push_str(suffixes[n]);
+            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,SeedSuffix::Custom(suffix)))
         }
         self
     }
