@@ -102,6 +102,8 @@ pub enum ErrorCode {
     BPTreeUnknownContainerType,
     ContainerTypeMismatch,
     ContainerMetaVersionMismatch,
+    ContainerLoadFailureAfterCreation,
+    ContainerLoadFailure,
     BPTreePathEmpty,
     BPTreeCollision,
     BPTreeIndexCellCollision,
