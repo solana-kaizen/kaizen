@@ -283,7 +283,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
     // pub fn locate_collection
 
-    pub fn locate_collection(&self, data_type : u32) -> Result<Collection<'info,'refs,Pubkey>> {
+    pub fn locate_collection(&self, data_type : u32) -> Result<Collection<'info,'refs,TsPubkey>> {
         let collections = self.collections.as_slice_mut();
         // for idx in 0..self.collections.len() {
         for collection_meta in collections.iter_mut() {

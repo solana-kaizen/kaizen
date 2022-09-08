@@ -15,6 +15,7 @@ use workflow_allocator::prelude::*;
 use workflow_allocator::error::ErrorCode;
 use workflow_allocator::container::Containers;
 use workflow_allocator::container::AccountAggregator;
+// use workflow_allocator::container::keys::Ts;
 use async_trait::async_trait;
 
 // use super::TsPubkey;
@@ -129,7 +130,8 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         }
     }
 
-    pub fn try_insert<'t>(&mut self, record: &'t T) -> Result<()> {
+    // pub fn try_insert<'t>(&mut self, record: &'t T) -> Result<()> {
+    pub fn try_insert(&mut self, record: &T) -> Result<()> {
         if let Some(container) = &self.container {
             container.try_insert(record)?;
             let meta = self.meta_mut()?;
@@ -223,9 +225,23 @@ impl<'info, 'refs, T> CollectionStore<'info, 'refs, T> where T : Copy + Eq + Par
         self.meta.borrow().get_data_type()
     }
 
-    pub fn try_insert(&self, record: &T) -> Result<()> {
-        unsafe { self.records.try_insert(record)?; }
-        Ok(())
+    // pub fn try_insert(&self, record: &T) -> Result<()> {
+    //     unsafe { self.records.try_insert(record)?; }
+    //     Ok(())
+    // }
+
+    pub fn try_insert(&self, record: &T) -> Result<()> where T: 'info {
+        match self.records.binary_search(record) {
+            Ok(_) => {
+                Err(error_code!(ErrorCode::CollectionCollision))
+            },
+            Err(idx) => {
+                log_trace!("###################################### = idx {} / {}",idx,self.records.len());
+                // log_trace!("###################################### = rec {}",record);
+                Ok(unsafe { self.records.try_insert_at(idx,record)? })
+                // Ok(())
+            }
+        }
     }
 
     // pub fn try_remove_with_linear_search(&self, record: &'info T) -> Result<()> {

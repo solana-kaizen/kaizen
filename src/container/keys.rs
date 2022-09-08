@@ -1,8 +1,11 @@
+use std::cmp::Ordering;
+
 use solana_program::pubkey::Pubkey;
 use workflow_allocator::time::Instant;
 // use workflow_allocator::result::Result;
 
-#[derive(Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
+#[derive(Clone, Copy)]
+#[repr(packed)]
 pub struct TsPubkey {
     ts : u64,
     key : Pubkey,
@@ -20,3 +23,24 @@ impl From<(Instant, &Pubkey)> for TsPubkey {
     }
 }
 
+// ~
+
+impl Ord for TsPubkey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.ts, &self.key).cmp(&(other.ts, &other.key))
+    }
+}
+
+impl PartialOrd for TsPubkey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for TsPubkey {
+    fn eq(&self, other: &Self) -> bool {
+        (self.ts, &self.key) == (other.ts, &other.key)
+    }
+}
+
+impl Eq for TsPubkey { }
