@@ -199,7 +199,10 @@ impl Transport {
         Ok(js_sys::Reflect::get(&Self::solana()?,&JsValue::from("PublicKey"))?)
     }
 
-    pub async fn try_new_for_unit_tests(_program_id : Pubkey, config : TransportConfig) -> Result<Arc<Transport>> {
+    pub async fn try_new_for_unit_tests(
+        _program_id : Pubkey, 
+        _authority : Option<Pubkey>,
+        config : TransportConfig) -> Result<Arc<Transport>> {
         // let mut transport_env_var = std::env::var("TRANSPORT").unwrap_or("simulator".into());
         // if transport_env_var.starts_with("local") || transport_env_var.starts_with("native") {
         //     transport_env_var = "http://127.0.0.1:8899".into();
