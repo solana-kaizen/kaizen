@@ -81,14 +81,14 @@ impl Transport {
     //     Self::try_new(transport_env_var.as_str(), config).await
     // }
 
-    pub async fn try_new_for_unit_tests(program_id : Pubkey, config : TransportConfig) -> Result<Arc<Transport>> {
+    pub async fn try_new_for_unit_tests(program_id : Pubkey, authority : Option<Pubkey>, config : TransportConfig) -> Result<Arc<Transport>> {
         let mut network = std::env::var("TRANSPORT").unwrap_or("inproc".into());
         if network.starts_with("local") {
             network = "http://127.0.0.1:8899".into();
         }
 
         if network == "inproc" {
-            let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id).await?;
+            let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id, authority).await?;
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
             Transport::try_new_with_args(Mode::Inproc, None, Some(emulator), config).await
         } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(&network) {

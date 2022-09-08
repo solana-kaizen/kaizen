@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
@@ -7,7 +8,9 @@ use workflow_allocator::accounts::{ AccountData, AccountDataReference };
 use workflow_allocator::builder::{ InstructionBuilder, InstructionBuilderConfig };
 use workflow_allocator::context::SimulationHandlerFn;
 // use workflow_log::log_trace;
-use crate::generate_random_pubkey;
+// use crate::generate_random_pubkey;
+
+// use crate::generate_random_pubkey;
 
 use super::interface::{EmulatorInterface, ExecutionResponse};
 use super::mockdata::InProcMockData;
@@ -57,11 +60,15 @@ impl Simulator {
     }
 
     
-    pub async fn with_mock_accounts(mut self, program_id : Pubkey) -> Result<Self> {
+    pub async fn with_mock_accounts(mut self, program_id : Pubkey, authority : Option<Pubkey>) -> Result<Self> {
 
         let lamports = crate::utils::u64sol_to_lamports(500_000_000);
 
-        let authority = generate_random_pubkey(); 
+        let authority = match authority {
+            Some(authority) => authority,
+            None => { Pubkey::from_str("42bML5qB3WkMwfa2cosypjUrN7F2PLQm4qhxBdRDyW7f")? }
+             //generate_random_pubkey(); 
+        };
         
         let authority_account_data = AccountData::new_static(
             authority.clone(),
