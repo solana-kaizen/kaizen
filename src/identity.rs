@@ -380,7 +380,6 @@ declare_handlers!(Identity::<'info,'refs>,[
 #[cfg(not(target_arch = "bpf"))]
 pub mod client {
     use crate::emulator::Simulator;
-
     use super::*;
 
     pub async fn locate_identity_pubkey(transport : &Arc<Transport>, program_id : &Pubkey, authority : &Pubkey) -> Result<Option<Pubkey>> {

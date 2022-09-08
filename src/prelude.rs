@@ -21,7 +21,8 @@ pub use crate::container::segment::{Segment, SegmentStore, Layout};
 pub use crate::container::array::Array;
 pub use crate::container::collection::{CollectionMeta, CollectionStore};
 pub use crate::container::ContainerHeader;
-pub use crate::transport::*;//{Transport,Interface};
+pub use crate::identity::Identity;
+pub use crate::transport::*;
 
 pub use workflow_log::log_trace;
 
@@ -37,22 +38,23 @@ pub use workflow_allocator_macros::{
     declare_interface,
     declare_program,
     container,
+    // seal,
     Meta,
-    // seal
 };
 
-// #[cfg(not(target_arch = "bpf"))]
-// pub use crate::macros::declare_async_rwlock;
-#[cfg(not(target_arch = "bpf"))]
-pub use workflow_allocator::builder::{
-    InstructionBuilder,
-    InstructionBuilderConfig,
-};
-#[cfg(not(target_arch = "bpf"))]
-pub use workflow_allocator::utils::generate_random_pubkey;
-#[cfg(not(target_arch = "bpf"))]
-pub use workflow_allocator::accounts::{AccountData,AccountDataReference};
-#[cfg(not(target_arch = "bpf"))]
-pub use crate::client::Client;
-#[cfg(not(target_arch = "bpf"))]
-pub use workflow_allocator_macros::declare_client;
+cfg_if::cfg_if! {
+    if #[cfg(not(target_arch = "bpf"))] {
+        pub use workflow_allocator::builder::{
+            InstructionBuilder,
+            InstructionBuilderConfig,
+        };
+        pub use workflow_allocator::utils::generate_random_pubkey;
+        pub use workflow_allocator::accounts::{AccountData,AccountDataReference};
+        pub use workflow_allocator::sequencer::Sequencer;
+        // pub use workflow_allocator::identity::client::IdentityReference;
+        pub use crate::client::Client;
+        pub use workflow_allocator_macros::declare_client;
+        
+    }
+
+}

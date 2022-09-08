@@ -23,6 +23,7 @@ pub mod instruction;
 pub mod prelude;
 pub mod btree;
 pub mod identity;
+pub mod sequencer;
 pub mod user;
 pub mod pgp;
 

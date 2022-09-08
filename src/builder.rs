@@ -8,6 +8,7 @@ use crate::accounts::{
 use crate::result::*;
 use crate::error;
 use crate::payload::Payload;
+use crate::sequencer::Sequencer;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
@@ -32,6 +33,7 @@ pub struct InstructionBuilderConfig {
     pub identity : Option<AccountMeta>,
     pub program_id : Pubkey,
     pub suffix_seed_seq : Option<Rc<RefCell<u64>>>,
+    pub sequencer : Option<Sequencer>,
 }
 
 impl InstructionBuilderConfig {
@@ -41,6 +43,7 @@ impl InstructionBuilderConfig {
             identity : None,
             program_id,
             suffix_seed_seq : None,
+            sequencer : None,
         }
     }
 
@@ -56,6 +59,11 @@ impl InstructionBuilderConfig {
 
     pub fn with_sequence(mut self, sequence : u64) -> Self {
         self.suffix_seed_seq = Some(Rc::new(RefCell::new(sequence)));
+        self
+    }
+
+    pub fn with_sequencer(mut self, sequencer : &Sequencer) -> Self {
+        self.sequencer = Some(sequencer.clone());
         self
     }
 
@@ -103,6 +111,9 @@ pub struct InstructionBuilder {
     is_sealed : bool,
     // starting value for the PDA seed sequence used in this operation
     suffix_seed_seq : u64,
+
+    sequencer : Option<Sequencer>,
+
     // TODO
     template_access_descriptors : Vec<TemplateAccessDescriptor>,
 
@@ -158,6 +169,7 @@ impl InstructionBuilder {
             
             is_sealed : false,
             suffix_seed_seq, // : 0u64,
+            sequencer : config.sequencer.clone(),
             template_access_descriptors : Vec::new(),
 
             track_suffix_seed_seq
@@ -190,6 +202,7 @@ impl InstructionBuilder {
 
             is_sealed : false,
             suffix_seed_seq : 0u64,
+            sequencer : None,
             template_access_descriptors : Vec::new(),
 
             track_suffix_seed_seq : None
@@ -378,6 +391,12 @@ impl InstructionBuilder {
         self
     }
 
+    pub fn with_sequencer(mut self, sequencer : &Sequencer) -> Self {
+        self.suffix_seed_seq = sequencer.get();
+        self.sequencer = Some(sequencer.clone());
+        self
+    }
+
     pub fn sequence(&self) -> u64 {
         self.suffix_seed_seq
     }
@@ -439,6 +458,10 @@ impl InstructionBuilder {
 
         if self.template_access_descriptors.is_empty() {
             return Ok(self);
+        } else {
+            if let Some(sequencer) = &self.sequencer {
+                sequencer.advance(self.template_access_descriptors.len());
+            }
         }
 
         // if we have templates, automatically include system account if not added by the user

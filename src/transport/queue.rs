@@ -1,14 +1,14 @@
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use async_std::sync::RwLock;
+use std::sync::Mutex;
 use crate::prelude::*;
 use crate::transport::transaction::WorkflowTransaction;
 
 #[derive(Debug, Clone)]
 pub struct TransactionQueue {
-    pub pending : Vec<Arc<RwLock<WorkflowTransaction>>>,
-    pub map : BTreeMap<Pubkey, Arc<RwLock<WorkflowTransaction>>>,
+    pub pending : Vec<Arc<Mutex<WorkflowTransaction>>>,
+    pub map : BTreeMap<Pubkey, Arc<Mutex<WorkflowTransaction>>>,
 }
 
 impl TransactionQueue {

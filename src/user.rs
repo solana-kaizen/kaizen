@@ -1,4 +1,4 @@
-use async_std::sync::Mutex;
+use std::sync::Mutex;
 use workflow_allocator::prelude::*;
 use workflow_allocator::result::Result;
 
@@ -25,12 +25,14 @@ impl Inner {
 #[derive(Clone)]
 pub struct User {
     inner : Arc<Mutex<Inner>>,
+    sequencer : Sequencer,
 }
 
 impl User {
     pub fn new() -> Self {
         User {
-            inner : Arc::new(Mutex::new(Inner::new()))
+            inner : Arc::new(Mutex::new(Inner::new())),
+            sequencer : Sequencer::default(),
         }
     }
 
@@ -38,13 +40,14 @@ impl User {
     
         match workflow_allocator::identity::client::load_identity(program_id).await? {
             Some(identity) => {
-                let mut inner = self.inner.lock().await;
+                self.sequencer.load_from_identity(&identity)?;
+                let mut inner = self.inner.lock()?;
                 inner.identity_state = IdentityState::Present;
-                inner.identity_pubkey = Some(*identity.key);
+                inner.identity_pubkey = Some(*identity.pubkey());
                 Ok(Some(identity))
             },
             None => {
-                let mut inner = self.inner.lock().await;
+                let mut inner = self.inner.lock()?;
                 inner.identity_state = IdentityState::Missing;
                 inner.identity_pubkey = None;
                 Ok(None)
@@ -53,11 +56,11 @@ impl User {
 
     }
 
-    pub async fn is_present(&self) -> bool {
-        let inner = self.inner.lock().await;
+    pub fn is_present(&self) -> Result<bool> {
+        let inner = self.inner.lock()?;
         match inner.identity_state {
-            IdentityState::Present => true,
-            _ => false
+            IdentityState::Present => Ok(true),
+            _ => Ok(false)
         }
     }
 
