@@ -62,24 +62,41 @@ impl TransactionQueue {
         // self.pending.lock()?.push(transactoin_set);
 
         let observer = self.observer.lock()?.as_ref().cloned();
+
+        let (tx_set_created,tx_set) = if let Some(tx_set) = self.find_set(&transaction)? {
+            (false, tx_set)
+        } else {
+            let tx_set = Arc::new(TransactionSet::new());
+            (true, tx_set)
+        };
+
         if let Some(observer) = &observer {
-            observer.transaction_created(&transaction);
+            if tx_set_created {
+                observer.transaction_set_created(&tx_set.id);
+            }
+            observer.transaction_created(&tx_set.id, &transaction);
         }
+
+
 
         let transport = Transport::global()?;
         let result = transport.execute(&transaction.instruction).await;
         match result {
             Ok(_) => {
                 if let Some(observer) = &observer {
-                    observer.transaction_success(&transaction);
+                    observer.transaction_success(&tx_set.id, &transaction);
+                    if tx_set_created {
+                        observer.transaction_set_complete(&tx_set.id);
+                    }
                 }        
             },
             Err(err) => {
                 if let Some(observer) = &observer {
-                    observer.transaction_failure(&transaction, &err);
+                    observer.transaction_failure(&tx_set.id, &transaction, &err);
                 }
             }
         }
+
 
         Ok(())
     }

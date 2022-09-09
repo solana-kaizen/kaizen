@@ -90,14 +90,20 @@ impl Transaction {
 
 pub struct TransactionSet {
     // name : String,
-    transactions: Vec<Arc<Transaction>>,
+    pub id : Id,
+    pub transactions: Vec<Arc<Transaction>>,
 }
 
 impl TransactionSet {
-    pub fn new(transactions : &[Arc<Transaction>]) -> TransactionSet {
+    pub fn new() -> TransactionSet {
         TransactionSet {
-            transactions: transactions.to_vec()
+            id : Id::new(),
+            transactions: Vec::new()
         }
+    }
+    pub fn extend_with(&mut self, transactions : &[Arc<Transaction>]) -> Result<()> {
+        self.transactions.extend_from_slice(transactions);
+        Ok(())
     }
 
     pub fn gather_pubkeys(&self) -> Result<HashSet<Pubkey>> {
