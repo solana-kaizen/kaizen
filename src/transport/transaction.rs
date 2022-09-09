@@ -78,7 +78,14 @@ impl Transaction {
 }
 
 pub struct TransactionSet {
-    name : String,
-    transactions: Vec<Transaction>,
+    // name : String,
+    transactions: Vec<Arc<Transaction>>,
 }
 
+impl TransactionSet {
+    pub fn new(transactions : &[Arc<Transaction>]) -> TransactionSet {
+        TransactionSet {
+            transactions: transactions.to_vec()
+        }
+    }
+}

@@ -1,5 +1,6 @@
 // #![allow(unused_unsafe)]
 use std::*;
+// use std::sync::Mutex;
 use async_std::sync::RwLock;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -45,7 +46,7 @@ pub struct Transport
     pub wallet : Arc<dyn Wallet>,
     pub config : Arc<RwLock<TransportConfig>>,
     pub cache : Arc<Cache>,
-    pub queue : Option<TransactionQueue>,
+    pub queue : Option<Arc<TransactionQueue>>,
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
 }
 

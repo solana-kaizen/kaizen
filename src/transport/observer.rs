@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::transport::transaction::Transaction;
 
-pub trait Observer {
+pub trait Observer : Send + Sync {
     fn transaction_created(&self, transaction: &Transaction);
     fn transaction_success(&self, transaction: &Transaction);
     fn transaction_timeout(&self, transaction: &Transaction);
