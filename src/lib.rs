@@ -35,7 +35,6 @@ cfg_if! {
         pub mod client;
         pub mod wallet;
         pub mod transport;
-        pub mod transaction;
         pub mod store;
         pub mod cache;
         pub mod user;

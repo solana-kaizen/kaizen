@@ -1,6 +1,9 @@
-use crate::{prelude::*, generate_random_pubkey};
+use std::sync::Mutex;
 use serde::{ Serialize, Deserialize };
 use solana_sdk::signature::Signature;
+use workflow_core::id::Id;
+use workflow_allocator::prelude::*;
+use workflow_allocator::result::Result;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransactionStatus {
@@ -12,29 +15,70 @@ pub enum TransactionStatus {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionMeta {
-    descr : String,
-    // TODO: create timestamp?
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorkflowTransaction {
-    pub id : Pubkey,
-    pub status : TransactionStatus,
-    // pub status : RefCell<TransactionStatus>,
-    pub instruction : Instruction,
+    name : String,
     pub signature : Option<Signature>,
-    pub meta : TransactionMeta,
+    pub pubkey : Option<Pubkey>,
 }
 
-impl WorkflowTransaction {
-    pub fn new(instruction: Instruction, meta: TransactionMeta) -> WorkflowTransaction {
-        let signature : Option<Signature> = None;
-        WorkflowTransaction {
-            id : generate_random_pubkey(),
-            instruction,
-            meta,
-            status : TransactionStatus::Pending,
-            signature,
+impl TransactionMeta {
+    pub fn new_with_pubkey(name: &str, pubkey: &Pubkey) -> TransactionMeta {
+        TransactionMeta {
+            name: name.to_string(),
+            signature: None,
+            pubkey: Some(pubkey.clone())
         }
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Transaction {
+    pub id : Id,
+    pub instruction : Instruction,
+    pub status : Arc<Mutex<TransactionStatus>>,
+    pub meta : Arc<Mutex<TransactionMeta>>,
+
+    // ^ targets Vec<Pubkey> ???
+    // ^ targets Vec<Pubkey> ???
+    // ^ targets Vec<Pubkey> ???
+}
+
+impl Transaction {
+    pub fn new_with_pubkey(name: &str, pubkey: &Pubkey, instruction: Instruction) -> Transaction {
+
+        let meta = TransactionMeta::new_with_pubkey(name, pubkey);
+
+        Transaction {
+            id : Id::new(),
+            status : Arc::new(Mutex::new(TransactionStatus::Pending)),
+            meta : Arc::new(Mutex::new(meta)),
+            instruction,
+        }
+    }
+
+    pub async fn execute(&self) -> Result<()> {
+        let transport = Transport::global()?;
+        transport.execute(&self.instruction).await?;
+        Ok(())
+    }
+
+    pub async fn execute_and_load<'this,T> (&self) -> Result<Option<ContainerReference<'this,T>>> 
+    where T: workflow_allocator::container::Container<'this,'this> 
+    {
+        let pubkey = if let Some(pubkey) = self.meta.lock()?.pubkey.as_ref() {
+            pubkey.clone()
+        } else {
+            panic!("Transaction::execute_and_load - missing pubkey");
+        };
+
+        let transport = Transport::global()?;
+        transport.execute(&self.instruction).await?;
+        load_container_with_transport::<T>(&transport,&pubkey).await
+    }
+
+}
+
+pub struct TransactionSet {
+    name : String,
+    transactions: Vec<Transaction>,
+}
+

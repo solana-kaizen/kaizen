@@ -55,6 +55,7 @@ cfg_if::cfg_if! {
         pub use workflow_allocator::sequencer::Sequencer;
         // pub use workflow_allocator::identity::client::IdentityReference;
         pub use workflow_allocator::client::Client;
+        pub use workflow_allocator::container::ContainerReference;
         pub use workflow_allocator_macros::declare_client;
         
     }
