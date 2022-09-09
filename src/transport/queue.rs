@@ -41,6 +41,20 @@ impl TransactionQueue {
 
     // ~~~
 
+    pub fn find_set(&self, transaction: &Arc<Transaction>) -> Result<Option<Arc<TransactionSet>>> {
+        let pubkeys = transaction.gather_pubkeys()?;
+
+        let pending = self.pending.lock()?;
+        for txset in pending.iter() {
+            let txset_pubkeys = txset.gather_pubkeys()?;
+            if txset_pubkeys.intersection(&pubkeys).count() > 0 {
+                return Ok(Some(Arc::clone(txset)));
+            }
+        }
+
+        Ok(None)
+    }
+
     pub async fn enqueue(&self, transaction : Arc<Transaction>) -> Result<()> {
     
         // ^ TODO

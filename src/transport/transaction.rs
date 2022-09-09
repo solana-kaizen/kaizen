@@ -1,4 +1,5 @@
 use std::sync::Mutex;
+use ahash::HashSet;
 use serde::{ Serialize, Deserialize };
 use solana_sdk::signature::Signature;
 use workflow_core::id::Id;
@@ -55,6 +56,16 @@ impl Transaction {
         }
     }
 
+    pub fn gather_pubkeys(&self) -> Result<HashSet<Pubkey>> {
+        let mut pubkeys = HashSet::default();
+
+        if let Some(pubkey) = self.meta.lock()?.pubkey.as_ref() {
+            pubkeys.insert(pubkey.clone());
+        }
+
+        Ok(pubkeys)
+    }
+
     pub async fn execute(&self) -> Result<()> {
         let transport = Transport::global()?;
         transport.execute(&self.instruction).await?;
@@ -87,5 +98,17 @@ impl TransactionSet {
         TransactionSet {
             transactions: transactions.to_vec()
         }
+    }
+
+    pub fn gather_pubkeys(&self) -> Result<HashSet<Pubkey>> {
+        let mut pubkeys = HashSet::default();
+        for transaction in self.transactions.iter() {
+            let tx_pubkeys = transaction.gather_pubkeys()?;
+            for pubkey in tx_pubkeys {
+                pubkeys.insert(pubkey.clone());
+            }
+        }
+
+        Ok(pubkeys)
     }
 }
