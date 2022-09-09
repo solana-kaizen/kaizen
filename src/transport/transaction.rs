@@ -31,7 +31,7 @@ impl TransactionMeta {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)] //, Serialize, Deserialize)]
 pub struct Transaction {
     pub id : Id,
     pub instruction : Instruction,
