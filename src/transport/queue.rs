@@ -2,7 +2,7 @@
 // use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::Mutex;
-// use crate::prelude::*;
+use workflow_allocator::prelude::*;
 use workflow_allocator::transport::transaction::Transaction;
 use workflow_allocator::transport::transaction::TransactionSet;
 use workflow_allocator::transport::observer::Observer;
@@ -43,11 +43,29 @@ impl TransactionQueue {
 
     pub async fn enqueue(&self, transaction : Arc<Transaction>) -> Result<()> {
     
-        let transactoin_set = Arc::new(TransactionSet::new(&[transaction]));
+        // ^ TODO
+        // let transactoin_set = Arc::new(TransactionSet::new(&[transaction]));
+        // self.pending.lock()?.push(transactoin_set);
 
-        self.pending.lock()?.push(transactoin_set);
+        let observer = self.observer.lock()?.as_ref().cloned();
+        if let Some(observer) = &observer {
+            observer.transaction_created(&transaction);
+        }
 
-
+        let transport = Transport::global()?;
+        let result = transport.execute(&transaction.instruction).await;
+        match result {
+            Ok(_) => {
+                if let Some(observer) = &observer {
+                    observer.transaction_success(&transaction);
+                }        
+            },
+            Err(err) => {
+                if let Some(observer) = &observer {
+                    observer.transaction_failure(&transaction, &err);
+                }
+            }
+        }
 
         Ok(())
     }

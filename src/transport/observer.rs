@@ -1,11 +1,12 @@
 use crate::prelude::*;
 use crate::transport::transaction::Transaction;
+use crate::error::Error;
 
 pub trait Observer : Send + Sync {
     fn transaction_created(&self, transaction: &Transaction);
     fn transaction_success(&self, transaction: &Transaction);
     fn transaction_timeout(&self, transaction: &Transaction);
-    fn transaction_failure(&self, transaction: &Transaction);
+    fn transaction_failure(&self, transaction: &Transaction, error: &Error);
     // fn get_transaction_list(&self) -> Vec<Transaction>;
 }
 
@@ -26,8 +27,8 @@ impl Observer for BasicObserver {
         log_trace!("NativeObserver::transaction_timeout {:#?}", transaction);
     }
 
-    fn transaction_failure(&self, transaction: &Transaction) {
-        log_trace!("NativeObserver::transaction_failure {:#?}", transaction);
+    fn transaction_failure(&self, transaction: &Transaction, error: &Error) {
+        log_trace!("NativeObserver::transaction_failure {:#?} {:#?}", error, transaction);
     }
 
 }
