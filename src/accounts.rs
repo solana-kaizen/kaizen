@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use solana_program::account_info::AccountInfo;
 
 #[derive(Debug, Copy, Clone)]
@@ -655,7 +654,7 @@ mod client {
             &mut self.data[ACCOUNT_DATA_OFFSET..]
         }
         
-        cfg_if! {
+        cfg_if::cfg_if! {
             if #[cfg(target_pointer_width = "64")] {
 
                 pub fn data_len(&self) -> usize {

@@ -1,6 +1,5 @@
 use cfg_if::cfg_if;
 use solana_program::pubkey::Pubkey;
-use solana_program::instruction::AccountMeta;
 use workflow_allocator_macros::{Meta, container};
 // use crate::context::ContextReference;
 // use crate::error;
@@ -14,9 +13,7 @@ use crate::result::Result;
 use workflow_allocator::prelude::*;
 use workflow_allocator::error::ErrorCode;
 use workflow_allocator::container::Containers;
-use workflow_allocator::container::AccountAggregator;
 // use workflow_allocator::container::keys::Ts;
-use async_trait::async_trait;
 
 // use super::TsPubkey;
 // use super::Container;
@@ -282,6 +279,9 @@ impl<'info, 'refs, T> CollectionStore<'info, 'refs, T> where T : Copy + Eq + Par
 
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
+        use async_trait::async_trait;
+        use workflow_allocator::container::AccountAggregator;
+        use solana_program::instruction::AccountMeta;
 
         #[async_trait(?Send)]
         impl<'info,'refs,T> AccountAggregator for Collection<'info,'refs,T> 

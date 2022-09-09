@@ -20,12 +20,9 @@ pub mod payload;
 pub mod context;
 pub mod program;
 pub mod instruction;
-pub mod transaction;
 pub mod prelude;
 pub mod btree;
 pub mod identity;
-pub mod sequencer;
-pub mod user;
 pub mod pgp;
 
 pub use utils::generate_random_pubkey;
@@ -34,11 +31,14 @@ cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
         pub mod wasm;
         pub mod builder;
+        pub mod sequencer;
         pub mod client;
         pub mod wallet;
         pub mod transport;
+        pub mod transaction;
         pub mod store;
         pub mod cache;
+        pub mod user;
 
         use wasm_bindgen::prelude::*;
     }

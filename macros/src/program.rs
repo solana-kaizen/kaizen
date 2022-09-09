@@ -146,11 +146,13 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         #[inline(always)]
         pub fn program_handlers() -> &'static [workflow_allocator::context::HandlerFn] { &PROGRAM_HANDLERS[..] }
 
-        #[inline(always)]
+        // #[inline(always)]
+        #[cfg(not(target_arch = "bpf"))]
         pub fn interface_id(handler_fn: workflow_allocator::context::HandlerFn) -> usize {
             PROGRAM_HANDLERS.iter()
-            .position(|&hfn| hfn as workflow_allocator::context::HandlerFnCPtr == handler_fn as workflow_allocator::context::HandlerFnCPtr )
-            .expect("Unknown interface handler! (check declare_program!())")
+                .position(|&hfn| hfn as workflow_allocator::context::HandlerFnCPtr == handler_fn as workflow_allocator::context::HandlerFnCPtr )
+                .expect("Unknown interface handler! (check declare_program!())")
+                // .unwrap()
         }
 
         // pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> solana_program::entrypoint::ProgramResult {

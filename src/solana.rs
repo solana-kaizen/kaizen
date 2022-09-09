@@ -6,7 +6,7 @@ use solana_program::program::{invoke, invoke_signed};
 use solana_program::system_instruction::create_account;
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
-use solana_program::{msg, system_program, system_instruction};
+use solana_program::{msg, system_instruction};
 
 pub fn allocate_pda<
     'info,
@@ -52,7 +52,7 @@ pub fn allocate_pda<
     // msg!("creating: {:?}", tpl_account_info.key);
     // msg!("payer.key: {:?}", payer.key);
     // msg!("program_id: {:?}", program_id);
-    // msg!("system_program id: {:?}", system_program::id());
+    // msg!("system_program id: {:?}", solana_program::system_program::id());
     // msg!("seed: {:?}", tpl_address_data.seed);
     // msg!("seed_suffix: {:?}", seed_suffix);
     // msg!("info.bump: {:?}", tpl_address_data.bump);

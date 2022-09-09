@@ -22,7 +22,6 @@ pub use crate::container::array::Array;
 pub use crate::container::collection::{CollectionMeta, CollectionStore};
 pub use crate::container::ContainerHeader;
 pub use crate::identity::Identity;
-pub use crate::transport::*;
 
 pub use workflow_log::log_trace;
 
@@ -51,9 +50,11 @@ cfg_if::cfg_if! {
         };
         pub use workflow_allocator::utils::generate_random_pubkey;
         pub use workflow_allocator::accounts::{AccountData,AccountDataReference};
+        pub use workflow_allocator::transport::*;
+
         pub use workflow_allocator::sequencer::Sequencer;
         // pub use workflow_allocator::identity::client::IdentityReference;
-        pub use crate::client::Client;
+        pub use workflow_allocator::client::Client;
         pub use workflow_allocator_macros::declare_client;
         
     }
