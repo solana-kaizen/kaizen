@@ -506,7 +506,7 @@ mod tests {
         workflow_allocator::container::registry::init()?;
 
         let program_id = generate_random_pubkey();
-        let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id).await?;
+        let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id,None).await?;
 
         let config = InstructionBuilderConfig::new(simulator.program_id())
             .with_authority(&simulator.authority())

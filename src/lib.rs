@@ -20,6 +20,7 @@ pub mod payload;
 pub mod context;
 pub mod program;
 pub mod instruction;
+pub mod transaction;
 pub mod prelude;
 pub mod btree;
 pub mod identity;

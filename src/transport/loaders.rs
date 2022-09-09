@@ -53,3 +53,11 @@ where T: workflow_allocator::container::Container<'this,'this>
     load_container_with_transport::<T>(&transport,pubkey).await
 }
 
+// pub async fn execute_and_load<'this,T> ((pubkey, instruction) : (Pubkey, Instruction))
+// -> Result<Option<ContainerReference<'this,T>>> 
+// where T: workflow_allocator::container::Container<'this,'this>
+// {
+//     let transport = Transport::global()?;
+//     transport.execute(&instruction).await?;
+//     load_container_with_transport::<T>(&transport,&pubkey).await
+// }

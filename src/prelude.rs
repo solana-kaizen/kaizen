@@ -47,6 +47,7 @@ cfg_if::cfg_if! {
         pub use workflow_allocator::builder::{
             InstructionBuilder,
             InstructionBuilderConfig,
+            // CreateInstruction,
         };
         pub use workflow_allocator::utils::generate_random_pubkey;
         pub use workflow_allocator::accounts::{AccountData,AccountDataReference};
