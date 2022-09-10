@@ -16,9 +16,12 @@ pub enum TransactionStatus {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionMeta {
+    /// Transaction caption
     name : String,
+    /// Optional transaction signature during processing
     pub signature : Option<Signature>,
-    pub pubkey : Option<Pubkey>,
+    /// Accounts affected by this transaction
+    pub accounts : Vec<Pubkey>,
 }
 
 impl TransactionMeta {
@@ -26,7 +29,8 @@ impl TransactionMeta {
         TransactionMeta {
             name: name.to_string(),
             signature: None,
-            pubkey: Some(pubkey.clone())
+            // pubkey: Some(pubkey.clone()),
+            accounts : vec![pubkey.clone()],
         }
     }
 }
@@ -56,14 +60,15 @@ impl Transaction {
         }
     }
 
-    pub fn gather_pubkeys(&self) -> Result<HashSet<Pubkey>> {
-        let mut pubkeys = HashSet::default();
+    pub fn accounts(&self) -> Result<HashSet<Pubkey>> {
+        let mut accounts = HashSet::default();
+        let meta = self.meta.lock()?;
 
-        if let Some(pubkey) = self.meta.lock()?.pubkey.as_ref() {
-            pubkeys.insert(pubkey.clone());
+        for pubkey in meta.accounts.iter() {
+            accounts.insert(pubkey.clone());
         }
 
-        Ok(pubkeys)
+        Ok(accounts)
     }
 
     pub async fn execute(&self) -> Result<()> {
@@ -72,15 +77,20 @@ impl Transaction {
         Ok(())
     }
 
+    pub fn target_account(&self) -> Result<Pubkey> {
+        let meta = self.meta.lock()?;
+        if meta.accounts.is_empty() {
+            panic!("Transaction::target_account(): missing target account");
+        } else {
+            Ok(meta.accounts[0].clone())
+        }
+    }
+
+    /// Used for unit tests
     pub async fn execute_and_load<'this,T> (&self) -> Result<Option<ContainerReference<'this,T>>> 
     where T: workflow_allocator::container::Container<'this,'this> 
     {
-        let pubkey = if let Some(pubkey) = self.meta.lock()?.pubkey.as_ref() {
-            pubkey.clone()
-        } else {
-            panic!("Transaction::execute_and_load - missing pubkey");
-        };
-
+        let pubkey = self.target_account()?;
         let transport = Transport::global()?;
         transport.execute(&self.instruction).await?;
         load_container_with_transport::<T>(&transport,&pubkey).await
@@ -88,33 +98,70 @@ impl Transaction {
 
 }
 
-pub struct TransactionSet {
-    // name : String,
-    pub id : Id,
-    pub transactions: Vec<Arc<Transaction>>,
+pub struct TransactionChainInner {
+    pub pending: Vec<Arc<Transaction>>,
+    pub complete: Vec<Arc<Transaction>>,
+    pub accounts: HashSet<Pubkey>
 }
 
-impl TransactionSet {
-    pub fn new() -> TransactionSet {
-        TransactionSet {
+impl TransactionChainInner {
+    pub fn new() -> TransactionChainInner {
+        TransactionChainInner {
+            pending: Vec::new(),
+            complete: Vec::new(),
+            accounts: HashSet::default()
+        }
+    }
+}
+
+pub struct TransactionChain {
+    pub id : Id,
+    pub inner : Arc<Mutex<TransactionChainInner>>,
+}
+
+impl TransactionChain {
+    pub fn new() -> TransactionChain {
+        TransactionChain {
             id : Id::new(),
-            transactions: Vec::new()
+            inner : Arc::new(Mutex::new(TransactionChainInner::new())),
         }
     }
     pub fn extend_with(&mut self, transactions : &[Arc<Transaction>]) -> Result<()> {
-        self.transactions.extend_from_slice(transactions);
+        let mut inner = self.inner.lock()?;
+        for transaction in transactions.iter() {
+            inner.accounts.extend(&transaction.accounts()?);
+        }
+        inner.pending.extend_from_slice(transactions);
         Ok(())
     }
 
-    pub fn gather_pubkeys(&self) -> Result<HashSet<Pubkey>> {
-        let mut pubkeys = HashSet::default();
-        for transaction in self.transactions.iter() {
-            let tx_pubkeys = transaction.gather_pubkeys()?;
-            for pubkey in tx_pubkeys {
-                pubkeys.insert(pubkey.clone());
-            }
-        }
-
-        Ok(pubkeys)
+    pub fn accounts(&self) -> Result<HashSet<Pubkey>> {
+        Ok(self.inner.lock()?.accounts.clone())
     }
+
+    pub fn is_done(&self) -> Result<bool> {
+        Ok(self.inner.lock()?.pending.is_empty())
+    }
+
+    pub fn enqueue(&self, transaction : &Arc<Transaction>) -> Result<()> {
+        let mut inner = self.inner.lock()?;
+        inner.pending.push(transaction.clone());
+        Ok(())
+    }
+
+    pub fn dequeue_for_processing(&self) -> Result<Option<Arc<Transaction>>> {
+        let mut inner = self.inner.lock()?;
+        if inner.pending.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(inner.pending.remove(0)))
+        }
+    }
+
+    pub fn set_as_complete(&self, transaction : &Arc<Transaction>) -> Result<()> {
+        let mut inner = self.inner.lock()?;
+        inner.complete.push(transaction.clone());
+        Ok(())
+    }
+
 }

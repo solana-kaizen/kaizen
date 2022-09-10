@@ -2,53 +2,53 @@
 // use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::Mutex;
+use ahash::HashMap;
+use workflow_core::id::Id;
 use workflow_allocator::prelude::*;
 use workflow_allocator::transport::transaction::Transaction;
-use workflow_allocator::transport::transaction::TransactionSet;
+use workflow_allocator::transport::transaction::TransactionChain;
 use workflow_allocator::transport::observer::Observer;
 use workflow_allocator::result::Result;
 
 #[derive(Clone)]
 pub struct TransactionQueue {
-    pub pending : Arc<Mutex<Vec<Arc<TransactionSet>>>>,
+    pub tx_chains : Arc<Mutex<Vec<Arc<TransactionChain>>>>,
     // pub map : BTreeMap<Pubkey, Arc<Mutex<Transaction>>>,
 
-    pub observer : Arc<Mutex<Option<Arc<dyn Observer>>>>
+    pub observers : Arc<Mutex<HashMap<Id,Arc<dyn Observer>>>>
 }
+
+unsafe impl Send for TransactionQueue {}
 
 impl TransactionQueue {
     pub fn new() -> TransactionQueue {
         TransactionQueue {
-            pending : Arc::new(Mutex::new(Vec::new())),
-            observer : Arc::new(Mutex::new(None))
-            // map : BTreeMap::new(),
+            tx_chains : Arc::new(Mutex::new(Vec::new())),
+            observers : Arc::new(Mutex::new(HashMap::default()))
         }
     }
 
-    pub fn observer(&self) -> Result<Option<Arc<dyn Observer>>> {
-        Ok(self.observer.lock()?.as_ref().cloned())
-    }
-
-    pub fn register_observer(&self, observer : Option<Arc<dyn Observer>>) -> Result<()> {
-        *self.observer.lock()? = observer;
+    pub fn register_observer(&self, id : &Id, observer : Arc<dyn Observer>) -> Result<()> {
+        self.observers.lock()?.insert(id.clone(), observer);
         Ok(())
     }
 
-    pub fn unregister_observer(&self) -> Result<()> {
-        *self.observer.lock()? = None;
+    pub fn unregister_observer(&self, id : &Id) -> Result<()> {
+        self.observers.lock()?.remove(id);
         Ok(())
     }
+
 
     // ~~~
 
-    pub fn find_set(&self, transaction: &Arc<Transaction>) -> Result<Option<Arc<TransactionSet>>> {
-        let pubkeys = transaction.gather_pubkeys()?;
+    pub fn find_tx_chain(&self, transaction: &Arc<Transaction>) -> Result<Option<Arc<TransactionChain>>> {
+        let tx_accounts = transaction.accounts()?;
 
-        let pending = self.pending.lock()?;
-        for txset in pending.iter() {
-            let txset_pubkeys = txset.gather_pubkeys()?;
-            if txset_pubkeys.intersection(&pubkeys).count() > 0 {
-                return Ok(Some(Arc::clone(txset)));
+        let pending = self.tx_chains.lock()?;
+        for tx_chain in pending.iter() {
+            let accounts = tx_chain.accounts()?;
+            if accounts.intersection(&tx_accounts).count() > 0 {
+                return Ok(Some(Arc::clone(tx_chain)));
             }
         }
 
@@ -57,45 +57,67 @@ impl TransactionQueue {
 
     pub async fn enqueue(&self, transaction : Arc<Transaction>) -> Result<()> {
     
-        // ^ TODO
-        // let transactoin_set = Arc::new(TransactionSet::new(&[transaction]));
-        // self.pending.lock()?.push(transactoin_set);
-
-        let observer = self.observer.lock()?.as_ref().cloned();
-
-        let (tx_set_created,tx_set) = if let Some(tx_set) = self.find_set(&transaction)? {
-            (false, tx_set)
-        } else {
-            let tx_set = Arc::new(TransactionSet::new());
-            (true, tx_set)
+        let tx_chain = {
+            // check if tx chain exists and if it does, enqueue into it
+            if let Some(tx_chain) = self.find_tx_chain(&transaction)? {
+                tx_chain.enqueue(&transaction)?;
+                self.observers.lock()?.values().for_each(|observer|{
+                    observer.tx_created(&tx_chain.id, &transaction);
+                });
+                return Ok(())
+            } 
+            
+            let tx_chain = Arc::new(TransactionChain::new());
+            self.tx_chains.lock()?.push(tx_chain.clone());
+            self.observers.lock()?.values().for_each(|observer|{
+                observer.tx_chain_created(&tx_chain.id);
+            });
+        
+            tx_chain
         };
 
-        if let Some(observer) = &observer {
-            if tx_set_created {
-                observer.transaction_set_created(&tx_set.id);
-            }
-            observer.transaction_created(&tx_set.id, &transaction);
-        }
-
-
-
-        let transport = Transport::global()?;
-        let result = transport.execute(&transaction.instruction).await;
-        match result {
-            Ok(_) => {
-                if let Some(observer) = &observer {
-                    observer.transaction_success(&tx_set.id, &transaction);
-                    if tx_set_created {
-                        observer.transaction_set_complete(&tx_set.id);
+        
+        workflow_core::task::spawn(async move {
+            
+            
+            // let tx_chain = 
+            loop {
+                let tx = tx_chain.dequeue_for_processing().unwrap();
+                if let Some(tx) = tx {
+                    
+                    let transport = Transport::global().expect("Transport global is not available");
+                    match transport.execute(&tx.instruction).await {
+                        Ok(_) => { },
+                        Err(err) => {
+                        }
                     }
-                }        
-            },
-            Err(err) => {
-                if let Some(observer) = &observer {
-                    observer.transaction_failure(&tx_set.id, &transaction, &err);
+
+                } else {
+                    break;
                 }
+                // let tx = tx_chain.inner.lock().unwrap().pending.first
             }
-        }
+
+// Ok(())
+
+        });
+
+        // let result = transport.execute(&transaction.instruction).await;
+        // match result {
+        //     Ok(_) => {
+        //         if let Some(observer) = &observer {
+        //             observer.transaction_success(&tx_set.id, &transaction);
+        //             if tx_set_created {
+        //                 observer.transaction_set_complete(&tx_set.id);
+        //             }
+        //         }        
+        //     },
+        //     Err(err) => {
+        //         if let Some(observer) = &observer {
+        //             observer.transaction_failure(&tx_set.id, &transaction, &err);
+        //         }
+        //     }
+        // }
 
 
         Ok(())

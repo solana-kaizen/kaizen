@@ -1,6 +1,7 @@
 
 mod lookup;
 
+use cfg_if::cfg_if;
 use std::sync::Arc;
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
@@ -9,17 +10,32 @@ use workflow_allocator::accounts::AccountDataReference;
 use solana_program::instruction::Instruction;
 use downcast::{downcast_sync, AnySync};
 
-#[async_trait(?Send)]
-pub trait Interface : AnySync {
-    fn get_authority_pubkey(&self) -> Result<Pubkey>;
-
-    async fn execute(&self, instr : &Instruction) -> Result<()>;
-    async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
-    async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
-    async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
-    
-    fn purge(&self, pubkey:&Pubkey) -> Result<()>;
-
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        #[async_trait(?Send)]
+        pub trait Interface : AnySync {
+            fn get_authority_pubkey(&self) -> Result<Pubkey>;
+        
+            async fn execute(&self, instr : &Instruction) -> Result<()>;
+            async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
+            async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
+            async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
+            
+            fn purge(&self, pubkey:&Pubkey) -> Result<()>;
+        }
+    } else {
+        #[async_trait]
+        pub trait Interface : AnySync {
+            fn get_authority_pubkey(&self) -> Result<Pubkey>;
+        
+            async fn execute(&self, instr : &Instruction) -> Result<()>;
+            async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
+            async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
+            async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
+            
+            fn purge(&self, pubkey:&Pubkey) -> Result<()>;
+        }
+    }
 }
 
 downcast_sync!(dyn Interface);

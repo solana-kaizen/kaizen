@@ -332,7 +332,8 @@ impl Transport {
 
 }
 
-#[async_trait(?Send)]
+// #[async_trait(?Send)]
+#[async_trait]
 impl super::Interface for Transport {
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
         self.get_authority_pubkey_impl()
@@ -416,17 +417,19 @@ impl super::Interface for Transport {
 
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        let request_type = self.clone().lookup_handler.queue(pubkey);
-        match request_type {
-            RequestType::New(future) => {
-                let response = self.lookup_remote_impl(pubkey).await;
-                self.clone().lookup_handler.complete(pubkey, response).await;
-                future.await
-            },
-            RequestType::Pending(future) => {
-                future.await
-            }
-        }
+        // TODO Send
+        Ok(None)
+        // let request_type = self.clone().lookup_handler.queue(pubkey);
+        // match request_type {
+        //     RequestType::New(future) => {
+        //         let response = self.lookup_remote_impl(pubkey).await;
+        //         self.clone().lookup_handler.complete(pubkey, response).await;
+        //         future.await
+        //     },
+        //     RequestType::Pending(future) => {
+        //         future.await
+        //     }
+        // }
 
     }
 

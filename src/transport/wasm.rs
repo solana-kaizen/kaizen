@@ -488,32 +488,9 @@ impl Transport {
         Ok(pk_jsv)
     }
 
-}
-
-#[async_trait(?Send)]
-impl super::Interface for Transport {
-
-    fn get_authority_pubkey(&self) -> Result<Pubkey> {
-        self.get_authority_pubkey_impl()
-        // // let simulator = { self.try_inner()?.simulator.clone() };
-        // match &self.emulator {
-        //     Some(emulator) => {
-        //         unimplemented!("TODO")
-        //         // Ok(simulator.authority())
-        //     },
-        //     None => {
-        //         todo!("not implemented")
-        //     }
-        // }
-
-    }
-
-    fn purge(&self, pubkey: &Pubkey) -> Result<()> {
-        Ok(self.cache.purge(pubkey)?)
-    }
 
     // async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 
-    async fn execute(&self, instruction : &Instruction) -> Result<()> { 
+    async fn execute_impl(&self, instruction : &Instruction) -> Result<()> { 
         log_trace!("transport execute");
         // match &self.emulator {
         match self.mode {
@@ -628,6 +605,39 @@ impl super::Interface for Transport {
     }
     
     
+
+}
+
+// unsafe impl Send for Transport {}
+
+#[async_trait(?Send)]
+// #[async_trait]
+impl super::Interface for Transport {
+
+    fn get_authority_pubkey(&self) -> Result<Pubkey> {
+        self.get_authority_pubkey_impl()
+        // // let simulator = { self.try_inner()?.simulator.clone() };
+        // match &self.emulator {
+        //     Some(emulator) => {
+        //         unimplemented!("TODO")
+        //         // Ok(simulator.authority())
+        //     },
+        //     None => {
+        //         todo!("not implemented")
+        //     }
+        // }
+
+    }
+
+    async fn execute(&self, instruction : &Instruction) -> Result<()> { 
+        self.execute_impl(instruction).await
+    }
+
+    fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+        Ok(self.cache.purge(pubkey)?)
+    }
+
+
     // async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let reference = self.clone().lookup_local(pubkey).await?;
@@ -649,17 +659,19 @@ impl super::Interface for Transport {
     // async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        let request_type = self.clone().lookup_handler.queue(pubkey);
-        match request_type {
-            RequestType::New(future) => {
-                let response = self.clone().lookup_remote_impl(pubkey).await;
-                self.clone().lookup_handler.complete(pubkey, response).await;
-                future.await
-            },
-            RequestType::Pending(future) => {
-                future.await
-            }
-        }
+        // TODO send
+        Ok(None)
+        // let request_type = self.clone().lookup_handler.queue(pubkey);
+        // match request_type {
+        //     RequestType::New(future) => {
+        //         let response = self.clone().lookup_remote_impl(pubkey).await;
+        //         self.clone().lookup_handler.complete(pubkey, response).await;
+        //         future.await
+        //     },
+        //     RequestType::Pending(future) => {
+        //         future.await
+        //     }
+        // }
 
     }
 
