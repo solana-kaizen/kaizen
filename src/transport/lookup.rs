@@ -1,52 +1,60 @@
 use std::sync::Arc;
-use std::sync::Mutex;
-use manual_future::{ManualFuture, ManualFutureCompleter};
+use async_std::sync::Mutex;
+// use manual_future::{ManualFuture, ManualFutureCompleter};
 use ahash::AHashMap;
 use std::hash::Hash;
 use std::cmp::Eq;
 use std::fmt::Display;
 use crate::result::Result;
+use workflow_core::channel::*;
 
 pub type LookupResult<T> = Result<Option<T>>;
 
-pub enum RequestType<T : Unpin> {
-    New(ManualFuture<LookupResult<T>>),
-    Pending(ManualFuture<LookupResult<T>>)
+// pub enum RequestType<T : Unpin> {
+pub enum RequestType<T> {
+    // New(ManualFuture<LookupResult<T>>),
+    New(Receiver<LookupResult<T>>),
+    // Pending(ManualFuture<LookupResult<T>>)
+    Pending(Receiver<LookupResult<T>>)
 }
 
-pub struct LookupHandler<K, T : Unpin> {
-    pub pending : Arc<Mutex<AHashMap<K,Vec<ManualFutureCompleter<LookupResult<T>>>>>>
+// pub struct LookupHandler<K, T : Unpin> {
+pub struct LookupHandler<K, T> {
+    // pub pending : Arc<Mutex<AHashMap<K,Vec<ManualFutureCompleter<LookupResult<T>>>>>>
+    pub pending : Arc<Mutex<AHashMap<K,Vec<Sender<LookupResult<T>>>>>>
 }
 
-impl<K,T> LookupHandler<K,T> where T : Unpin + Clone, K : Clone + Eq + Hash + Display {
+// impl<K,T> LookupHandler<K,T> where T : Unpin + Clone, K : Clone + Eq + Hash + Display {
+impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
     pub fn new() -> Self {
         LookupHandler {
             pending : Arc::new(Mutex::new(AHashMap::new()))
         }
     }
 
-    pub fn queue(&self, key: &K) -> RequestType<T> {
+    pub async fn queue(&self, key: &K) -> RequestType<T> {
 
-        let mut pending = self.pending.lock().unwrap();
-        let (future, completer) = ManualFuture::<LookupResult<T>>::new();
+        let mut pending = self.pending.lock().await;//unwrap();
+        // let (future, completer) = ManualFuture::<LookupResult<T>>::new();
+        let (sender, receiver) = oneshot::<LookupResult<T>>();
 
         if let Some(list) = pending.get_mut(&key) {
-            list.push(completer);
-            RequestType::Pending(future)
+            list.push(sender);
+            RequestType::Pending(receiver)
         } else {
             let mut list = Vec::new();
-            list.push(completer);
+            list.push(sender);
             pending.insert(key.clone(),list);
-            RequestType::New(future)
+            RequestType::New(receiver)
         }
     }
 
     pub async fn complete(&self, key : &K, result : LookupResult<T>) {
-        let mut pending = self.pending.lock().unwrap();
+        let mut pending = self.pending.lock().await;//unwrap();
 
         if let Some(list) = pending.remove(&key) {
-            for completer in list {
-                completer.complete(result.clone()).await;
+            for sender in list {
+                sender.send(result.clone()).await.expect("Unable to complete lookup result");
             }
         } else {
             panic!("Lookup handler failure while processing account {}", key)
@@ -59,11 +67,18 @@ impl<K,T> LookupHandler<K,T> where T : Unpin + Clone, K : Clone + Eq + Hash + Di
 mod tests {
     use std::time::Duration;
 
-    use super::*;
+    // use super::*;
+    use super::LookupHandler;
+    use super::RequestType;
+    use std::sync::Arc;
+    use std::sync::Mutex;    
+
+    use ahash::AHashMap;
     use futures::join;
     use async_std::task::sleep;
     use workflow_log::log_trace;
     use wasm_bindgen::prelude::*;
+    use super::Result;
 
     #[derive(Debug, Eq, PartialEq)]
     enum RequestTypeTest {
@@ -104,20 +119,20 @@ mod tests {
         pub async fn lookup_handler_request(self : &Arc<Self>, key:&u32) -> Result<Option<u32>> {
 
             // let request_type = self.clone().lookup_handler.queue(key);
-            let request_type = self.lookup_handler.queue(key);
+            let request_type = self.lookup_handler.queue(key).await;
             match request_type {
-                RequestType::New(future) => {
+                RequestType::New(receiver) => {
                     self.request_types.lock().unwrap().push(RequestTypeTest::New);
                     log_trace!("[lh] new request");
                     let response = self.lookup_remote_impl(key).await;
                     log_trace!("[lh] completing initial request");
                     self.lookup_handler.complete(key, response).await;
-                    future.await
+                    receiver.recv().await?
                 },
-                RequestType::Pending(future) => {
+                RequestType::Pending(receiver) => {
                     self.request_types.lock().unwrap().push(RequestTypeTest::Pending);
                     log_trace!("[lh] pending request");
-                    future.await
+                    receiver.recv().await?
                 }
             }
         }
