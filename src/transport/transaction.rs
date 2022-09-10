@@ -33,7 +33,6 @@ impl TransactionMeta {
         TransactionMeta {
             name: name.to_string(),
             signature: None,
-            // pubkey: Some(pubkey.clone()),
             accounts : accounts.iter().map(|pk|*pk.clone()).collect::<Vec<Pubkey>>(),
         }
     }
