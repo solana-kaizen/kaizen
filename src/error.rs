@@ -127,6 +127,7 @@ pub enum ErrorCode {
     ChannelSendError,
     ChannelRecvError,
     DataType,
+    TransactionAlreadyCompleted,
 
     // WebSocketEncoding,
     // WebSocketDataType,

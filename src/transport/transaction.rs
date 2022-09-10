@@ -3,15 +3,19 @@ use ahash::HashSet;
 use serde::{ Serialize, Deserialize };
 use solana_sdk::signature::Signature;
 use workflow_core::id::Id;
+use workflow_core::channel::*;
 use workflow_allocator::prelude::*;
 use workflow_allocator::result::Result;
+use workflow_allocator::error::Error;
+
+pub type TransactionResult = Result<()>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransactionStatus {
     Pending,
     Success,
     Timeout,
-    Failure
+    Error(String)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -25,12 +29,12 @@ pub struct TransactionMeta {
 }
 
 impl TransactionMeta {
-    pub fn new_with_pubkey(name: &str, pubkey: &Pubkey) -> TransactionMeta {
+    pub fn new_with_accounts(name: &str, accounts: &[&Pubkey]) -> TransactionMeta {
         TransactionMeta {
             name: name.to_string(),
             signature: None,
             // pubkey: Some(pubkey.clone()),
-            accounts : vec![pubkey.clone()],
+            accounts : accounts.iter().map(|pk|*pk.clone()).collect::<Vec<Pubkey>>(),
         }
     }
 }
@@ -41,22 +45,24 @@ pub struct Transaction {
     pub instruction : Instruction,
     pub status : Arc<Mutex<TransactionStatus>>,
     pub meta : Arc<Mutex<TransactionMeta>>,
-
-    // ^ targets Vec<Pubkey> ???
-    // ^ targets Vec<Pubkey> ???
-    // ^ targets Vec<Pubkey> ???
+    pub receiver : Receiver<TransactionResult>,
+    pub sender : Sender<TransactionResult>,
 }
 
 impl Transaction {
-    pub fn new_with_pubkey(name: &str, pubkey: &Pubkey, instruction: Instruction) -> Transaction {
+    pub fn new_with_accounts(name: &str, accounts: &[&Pubkey], instruction: Instruction) -> Transaction {
 
-        let meta = TransactionMeta::new_with_pubkey(name, pubkey);
+        let meta = TransactionMeta::new_with_accounts(name, accounts);
+
+        let (sender,receiver) = unbounded::<TransactionResult>();
 
         Transaction {
             id : Id::new(),
             status : Arc::new(Mutex::new(TransactionStatus::Pending)),
             meta : Arc::new(Mutex::new(meta)),
             instruction,
+            sender,
+            receiver,
         }
     }
 
@@ -77,6 +83,8 @@ impl Transaction {
         Ok(())
     }
 
+    /// For *Create* operations it is assumed that the 
+    /// resulting account is always at position [0]
     pub fn target_account(&self) -> Result<Pubkey> {
         let meta = self.meta.lock()?;
         if meta.accounts.is_empty() {
@@ -157,8 +165,14 @@ impl TransactionChain {
             Ok(Some(inner.pending.remove(0)))
         }
     }
+    
+    pub async fn requeue_with_error(&self, transaction : &Arc<Transaction>, _err : &Error) -> Result<()> {
+        let mut inner = self.inner.lock()?;
+        inner.pending.insert(0, transaction.clone());
+        Ok(())
+    }
 
-    pub fn set_as_complete(&self, transaction : &Arc<Transaction>) -> Result<()> {
+    pub async fn set_as_complete(&self, transaction : &Arc<Transaction>) -> Result<()> {
         let mut inner = self.inner.lock()?;
         inner.complete.push(transaction.clone());
         Ok(())
