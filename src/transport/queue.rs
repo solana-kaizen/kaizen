@@ -201,7 +201,11 @@ impl TransactionQueue {
 
             let tx = tx_chain.dequeue_for_processing().unwrap();
             if let Some(tx) = tx {
-                
+
+                for observer in observers.iter() {
+                    observer.tx_processing(tx_chain, &tx).await;
+                }        
+
                 let transport = Transport::global()?;
                 match transport.execute(&tx.instruction).await {
                     Ok(_) => {

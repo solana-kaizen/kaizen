@@ -51,6 +51,8 @@ pub trait Observer : Send + Sync {
 
     /// Called when transaction is posted in the queue (chain).
     async fn tx_created(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>);
+    /// Called when transaction processing begins.
+    async fn tx_processing(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>);
     /// Called on successful completion of a transaction
     async fn tx_success(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>);
     /// Called on transaction timeout (chain is left dangling)
@@ -79,6 +81,10 @@ impl Observer for BasicObserver {
 
     async fn tx_created(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>) {
         log_trace!("BasicObserver::tx_created {} {:#?}", tx_chain.id, transaction);
+    }
+
+    async fn tx_processing(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>) {
+        log_trace!("BasicObserver::tx_processing {} {:#?}", tx_chain.id, transaction);
     }
 
     async fn tx_success(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>) {
