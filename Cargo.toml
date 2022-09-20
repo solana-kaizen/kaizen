@@ -2,9 +2,17 @@
 name = "workflow-allocator"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/workflow-rs/workflow-allocator"
+keywords = ["wasm","framework","transport","solana","bpf","contract"]
+categories = []
+exclude = ["/.*", "/test"]
+description = """
+Solana Program framework for developing Solana Programs 
+and async Rust client-side web applications 
+"""
 
 [lib]
-# name = "workflow_allocator"
 crate-type = ["cdylib", "lib"]
 
 [features]
