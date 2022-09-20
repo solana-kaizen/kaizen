@@ -12,11 +12,9 @@ This in-turn allows create of a single data processing layer that is able to pro
 
 The framework is then backed by native and in-browser async Rust transport layers that can fetch account data and access it client-side via functions interfacing with [AccountInfo](https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html).
 
-This crate is 
-
 # Features:
 
-* Unified Solana Web3 transport interface (uses native implementation when building native and Web3.js implementation when running under WASM browser environment)
+* Unified async Rust Web3 transport interface (uses native Rust Solana implementation when building native and Web3.js implementation when running under WASM32 browser environment)
 * Designed to provide unified environment where Solana Program functions can be used client-side (for example, a function using `workflow-log::log_info!()` will invoke printf!() on native, `console.log()` in browser and `solana_program::log::sol_log()` under BPF)
 * Unified Solana Instruction builder interface that uses [Rust Builder Pattern](https://doc.rust-lang.org/1.0.0/style/ownership/builders.html) and includes various framework-centric functionality
 * Macros for program function mappings, allowing invocation of program functions by function names in-client. 
