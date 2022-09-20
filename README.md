@@ -1,10 +1,10 @@
-# WORKFLOW-ALLOCATOR
+## WORKFLOW-ALLOCATOR
 
 Part of the [WORKFLOW-RS](https://github.com/workflow-rs) application framework.
 
 ***
 
-# Overview:
+## Overview:
 
 This crate is a **security-centric** framework for development of Solana Programs using Rust and **client-side applications using pure async Rust**. The primary goal behind this project is to eliminate IDLs and contain the program and client-side application within the same Rust codebase, allowing program functionaity, if needed, to exist in the same Rust file as the client-side functionality.
 
@@ -12,7 +12,7 @@ This in-turn allows create of a single data processing layer that is able to pro
 
 The framework is then backed by native and in-browser async Rust transport layers that can fetch account data and access it client-side via functions interfacing with [AccountInfo](https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html).
 
-# Features:
+## Features:
 
 * Unified async Rust Web3 transport interface (uses native Rust Solana implementation when building native and Web3.js implementation when running under WASM32 browser environment)
 * Designed to provide unified environment where Solana Program functions can be used client-side (for example, a function using `workflow-log::log_info!()` will invoke printf!() on native, `console.log()` in browser and `solana_program::log::sol_log()` under BPF)
