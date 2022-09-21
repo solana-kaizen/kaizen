@@ -4,6 +4,12 @@ Part of the [WORKFLOW-RS](https://github.com/workflow-rs) application framework.
 
 ***
 
+[![Crates.io](https://img.shields.io/crates/l/workflow-allocator.svg?maxAge=2592000)](https://crates.io/crates/workflow-allocator)
+[![Crates.io](https://img.shields.io/crates/v/workflow-allocator.svg?maxAge=2592000)](https://crates.io/crates/workflow-allocator)
+![platform](https://img.shields.io/badge/platform-Native-informational)
+![platform](https://img.shields.io/badge/platform-Web%20%28wasm32%29-informational)
+![platform](https://img.shields.io/badge/platform-BPF-informational)
+
 ## Overview
 
 This crate is a **security-centric** framework for development of Solana Programs using Rust and **client-side applications using pure async Rust**. The primary goal behind this project is to eliminate IDLs and contain the program and client-side application within the same Rust codebase, allowing program functionaity, if needed, to exist in the same Rust file as the client-side functionality.
