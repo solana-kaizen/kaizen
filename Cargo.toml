@@ -24,7 +24,8 @@ full = [
 ] 
 
 [dependencies]
-solana-program = {path = "../solana/sdk/program"}
+solana-program = "1.14.1"
+# solana-program = {path = "../solana/sdk/program"}
 # solana-program = "1.11.4"
 spl-token = { path = "../solana-program-library/token/program", features = [ "no-entrypoint" ] }
 # spl-token = { version = "3.3", features = [ "no-entrypoint" ] }
@@ -47,7 +48,8 @@ serde = { version = "1.0", features = ["derive"] }
 # [target.'cfg(not(target_arch = "bpf"))'.dev-dependencies]
 
 [target.'cfg(not(target_arch = "bpf"))'.dependencies]
-solana-sdk = {path = "../solana/sdk", features = ['full']}
+solana-sdk = { version = "1.14.1", features = ['full'] }
+# solana-sdk = {path = "../solana/sdk", features = ['full']}
 # solana-sdk = {version="1.11.4", features = ['full']}
 
 workflow-core = { path = "../workflow-core" }
@@ -81,7 +83,8 @@ owning_ref = "0.4.1"
 lazy_static = "1.4.0"
 # moka = { path = "../moka" }
 moka = { git = "http://github.com/aspectron/moka" }
-solana-client = {path = "../solana/client"}
+# solana-client = {path = "../solana/client"}
+solana-client = "1.14.1"
 home = "0.5.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
