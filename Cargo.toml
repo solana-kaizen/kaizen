@@ -31,9 +31,12 @@ spl-token = { path = "../solana-program-library/token/program", features = [ "no
 # spl-token = { version = "3.3", features = [ "no-entrypoint" ] }
 
 workflow-allocator-macros = { path = "macros" }
-workflow-core = { path = "../workflow-core" }
-workflow-log = { path = "../workflow-log" }
-workflow-wasm = { path = "../workflow-wasm" }
+workflow-core = "0.1.0"
+workflow-log = "0.1.0"
+workflow-wasm = "0.1.0"
+# workflow-core = { path = "../workflow-core" }
+# workflow-log = { path = "../workflow-log" }
+# workflow-wasm = { path = "../workflow-wasm" }
 
 cfg-if = "1.0.0"
 borsh = "0.9.1"
@@ -52,9 +55,10 @@ solana-sdk = { version = "1.14.1", features = ['full'] }
 # solana-sdk = {path = "../solana/sdk", features = ['full']}
 # solana-sdk = {version="1.11.4", features = ['full']}
 
-workflow-core = { path = "../workflow-core" }
-workflow-rpc = { path = "../workflow-rpc" }
-workflow-wasm = { path = "../workflow-wasm" }
+# workflow-core = { path = "../workflow-core" }
+workflow-rpc = "0.1.0"
+# workflow-rpc = { path = "../workflow-rpc" }
+# workflow-wasm = { path = "../workflow-wasm" }
 
 rand = "0.7.3"
 async-std = { version = "1.12.0", features = ['attributes'] }
