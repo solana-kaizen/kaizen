@@ -93,3 +93,5 @@ home = "0.5.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 moka = { git = "http://github.com/aspectron/moka", default_features = false, features = ['js'] }
+workflow-panic-hook = { path = "../workflow-panic-hook" }
+

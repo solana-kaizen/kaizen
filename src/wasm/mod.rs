@@ -1,4 +1,13 @@
 use wasm_bindgen::prelude::*;
+use workflow_panic_hook::{set_once, Type};
+#[wasm_bindgen]
+pub fn start_console_logger(){
+    set_once(Type::Console);
+}
+#[wasm_bindgen]
+pub fn start_popup_logger(){
+    set_once(Type::Popup);
+}
 
 pub fn bind(workflow: &JsValue, solana: &JsValue, mods: &JsValue) -> std::result::Result<(), JsValue> {
     let global = js_sys::Object::new();
