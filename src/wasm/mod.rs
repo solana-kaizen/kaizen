@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use workflow_panic_hook::{set_once, Type};
+use workflow_panic_hook::{set_once, Type, show_logs as show_wasm_logs};
 #[wasm_bindgen]
 pub fn start_console_logger(){
     set_once(Type::Console);
@@ -7,6 +7,10 @@ pub fn start_console_logger(){
 #[wasm_bindgen]
 pub fn start_popup_logger(){
     set_once(Type::Popup);
+}
+#[wasm_bindgen]
+pub fn show_logs(){
+    show_wasm_logs();
 }
 
 pub fn bind(workflow: &JsValue, solana: &JsValue, mods: &JsValue) -> std::result::Result<(), JsValue> {
