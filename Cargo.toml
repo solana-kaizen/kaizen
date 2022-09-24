@@ -27,8 +27,8 @@ full = [
 solana-program = "1.14.1"
 # solana-program = {path = "../solana/sdk/program"}
 # solana-program = "1.11.4"
-spl-token = { path = "../solana-program-library/token/program", features = [ "no-entrypoint" ] }
-# spl-token = { version = "3.3", features = [ "no-entrypoint" ] }
+# spl-token = { path = "../solana-program-library/token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.5", features = [ "no-entrypoint" ] }
 
 workflow-allocator-macros = { path = "macros" }
 workflow-core = "0.1.0"
