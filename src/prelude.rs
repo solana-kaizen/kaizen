@@ -19,7 +19,14 @@ pub use crate::rent::RentCollector;
 pub use crate::hash::PubkeyHashMap;
 pub use crate::container::segment::{Segment, SegmentStore, Layout};
 pub use crate::container::array::Array;
-pub use crate::container::collection::{CollectionMeta, CollectionStore};
+pub use crate::container::collection::{
+    KeystoreCollection,
+    OrderedCollectionMeta,
+    OrderedCollectionStore,
+    AccountCollection,
+    AccountReferenceCollection,
+    TsPubkey,
+};
 pub use crate::container::ContainerHeader;
 pub use crate::identity::Identity;
 

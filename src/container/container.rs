@@ -48,7 +48,7 @@ pub enum Containers {
     FrameworkContainers = Ranges::Framework as u32,
     IdentityProxy,
     Identity,
-    Collection,
+    OrderedCollection,
     PGPPubkey,
 
     IndexContainers = Ranges::Indexes as u32,

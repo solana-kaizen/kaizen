@@ -21,7 +21,7 @@ use workflow_allocator::container::Containers;
 
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
-pub struct CollectionMeta {
+pub struct OrderedCollectionMeta {
     pubkey: Pubkey,
     count : u64,
     data_type : u32,
@@ -35,43 +35,43 @@ pub struct CollectionMeta {
 //     }
 // }
 
-pub struct Collection<'info,'refs, T> 
+pub struct OrderedCollection<'info,'refs, T> 
 where T : Copy + Eq + PartialEq + Ord 
 {
-    pub external_meta : Option<&'info mut CollectionMeta>,
+    pub external_meta : Option<&'info mut OrderedCollectionMeta>,
     pub segment_meta : Option<Rc<Segment<'info,'refs>>>,
-    pub container : Option<CollectionStore<'info,'refs, T>>,
+    pub container : Option<OrderedCollectionStore<'info,'refs, T>>,
     // _t_ : std::marker::PhantomData<T>,
 }
 
 
-impl<'info,'refs, T> Collection<'info,'refs, T> 
+impl<'info,'refs, T> OrderedCollection<'info,'refs, T> 
 where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
 {
-    pub fn meta<'meta>(&'meta self) -> Result<&'meta CollectionMeta> {
+    pub fn meta<'meta>(&'meta self) -> Result<&'meta OrderedCollectionMeta> {
         if let Some(external_meta) = &self.external_meta {
             return Ok(external_meta);
         } else if let Some(segment) = &self.segment_meta {
-            Ok(segment.as_struct_ref::<CollectionMeta>())
+            Ok(segment.as_struct_ref::<OrderedCollectionMeta>())
         } else {
-            Err(ErrorCode::CollectionMissingMeta.into())
+            Err(ErrorCode::OrderedCollectionMissingMeta.into())
         }
     }
 
-    pub fn meta_mut<'meta>(&'meta mut self) -> Result<&'meta mut CollectionMeta> {
+    pub fn meta_mut<'meta>(&'meta mut self) -> Result<&'meta mut OrderedCollectionMeta> {
         if let Some(external_meta) = &mut self.external_meta {
             return Ok(external_meta);
         } else if let Some(segment) = &self.segment_meta {
-            Ok(segment.as_struct_mut::<CollectionMeta>())
+            Ok(segment.as_struct_mut::<OrderedCollectionMeta>())
         } else {
-            Err(ErrorCode::CollectionMissingMeta.into())
+            Err(ErrorCode::OrderedCollectionMissingMeta.into())
         }
     }
 
-    pub fn data_len_min() -> usize { std::mem::size_of::<CollectionMeta>() }
+    pub fn data_len_min() -> usize { std::mem::size_of::<OrderedCollectionMeta>() }
 
-    pub fn try_from_meta(meta : &'info mut CollectionMeta) -> Result<Self> {
-        Ok(Collection {
+    pub fn try_from_meta(meta : &'info mut OrderedCollectionMeta) -> Result<Self> {
+        Ok(OrderedCollection {
             segment_meta : None,
             external_meta : Some(meta),
             container : None
@@ -80,9 +80,9 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
 
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<Collection<'info,'refs,T>> {
+    ) -> Result<OrderedCollection<'info,'refs,T>> {
         // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
-        Ok(Collection {
+        Ok(OrderedCollection {
             segment_meta : Some(segment),
             external_meta : None,
             container : None
@@ -91,9 +91,9 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
 
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<Collection<'info,'refs,T>> {
+    ) -> Result<OrderedCollection<'info,'refs,T>> {
         // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
-        Ok(Collection {
+        Ok(OrderedCollection {
             segment_meta : Some(segment),
             external_meta : None,
             container : None
@@ -103,7 +103,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
     pub fn try_create(&mut self, ctx: &ContextReference, data_type : u32) -> Result<()> {
         // let data_type = self.meta().get_data_type();
         let allocation_args = AccountAllocationArgs::default();
-        let collection_store = CollectionStore::<T>::try_allocate(ctx, &allocation_args, 0)?;
+        let collection_store = OrderedCollectionStore::<T>::try_allocate(ctx, &allocation_args, 0)?;
         collection_store.try_init(data_type)?;
         let meta = self.meta_mut()?;
         meta.set_data_type(data_type);
@@ -119,11 +119,11 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         let meta = self.meta()?;
         if let Some(account_info) = ctx.locate_index_account(&meta.pubkey) {
             // let container = CollectionStore::<'info,'refs,T>::try_load(account_info)?;
-            let container = CollectionStore::<T>::try_load(account_info)?;
+            let container = OrderedCollectionStore::<T>::try_load(account_info)?;
             self.container = Some(container);
             Ok(())
         } else {
-            Err(error_code!(ErrorCode::CollectionNotFound))
+            Err(error_code!(ErrorCode::OrderedCollectionNotFound))
         }
     }
 
@@ -136,7 +136,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
             meta.set_count(count + 1);
             Ok(())
         } else {
-            Err(error_code!(ErrorCode::CollectionNotLoaded))
+            Err(error_code!(ErrorCode::OrderedCollectionNotLoaded))
         }
     }
 
@@ -144,7 +144,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
     pub fn try_remove<'t : 'info>(&mut self, record: &'t T) -> Result<()> {
         {
             if self.container.is_none() {
-                return Err(error_code!(ErrorCode::CollectionNotLoaded));
+                return Err(error_code!(ErrorCode::OrderedCollectionNotLoaded));
             }
 
             self.container.as_ref().unwrap().try_remove(record)?;
@@ -160,7 +160,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         if let Some(container) = &self.container {
             Ok(container.as_slice())
         } else {
-            Err(error_code!(ErrorCode::CollectionNotLoaded))
+            Err(error_code!(ErrorCode::OrderedCollectionNotLoaded))
         }
     }
 
@@ -168,7 +168,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         if let Some(container) = &mut self.container {
             Ok(container.as_slice_mut())
         } else {
-            Err(error_code!(ErrorCode::CollectionNotLoaded))
+            Err(error_code!(ErrorCode::OrderedCollectionNotLoaded))
         }
     }
 
@@ -182,7 +182,7 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
             ctx.sync_rent(container.account(),rent_collector)?;
             Ok(())
         } else {
-            Err(error_code!(ErrorCode::CollectionNotLoaded))
+            Err(error_code!(ErrorCode::OrderedCollectionNotLoaded))
         }
     }
 
@@ -191,20 +191,20 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
 
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
-pub struct CollectionStoreMeta {
+pub struct OrderedCollectionStoreMeta {
     pub version : u32,
     pub data_type : u32,
 }
 
-#[container(Containers::Collection)]
-pub struct CollectionStore<'info, 'refs, T> where T : Copy + Eq + PartialEq {
-    pub meta : RefCell<&'info mut CollectionStoreMeta>,
+#[container(Containers::OrderedCollection)]
+pub struct OrderedCollectionStore<'info, 'refs, T> where T : Copy + Eq + PartialEq {
+    pub meta : RefCell<&'info mut OrderedCollectionStoreMeta>,
     pub records : Array<'info, 'refs, T>,
     // _t_ : std::marker::PhantomData<T>,
 
 }
 
-impl<'info, 'refs, T> CollectionStore<'info, 'refs, T> where T : Copy + Eq + PartialEq + Ord {
+impl<'info, 'refs, T> OrderedCollectionStore<'info, 'refs, T> where T : Copy + Eq + PartialEq + Ord {
 
     // pub fn new(ctx:&ContextReference, data_type : u32) -> Result<CollectionStore<'info, 'refs, T>> {
         
@@ -230,7 +230,7 @@ impl<'info, 'refs, T> CollectionStore<'info, 'refs, T> where T : Copy + Eq + Par
     pub fn try_insert(&self, record: &T) -> Result<()> where T: 'info {
         match self.records.binary_search(record) {
             Ok(_) => {
-                Err(error_code!(ErrorCode::CollectionCollision))
+                Err(error_code!(ErrorCode::OrderedCollectionCollision))
             },
             Err(idx) => {
                 log_trace!("###################################### = idx {} / {}",idx,self.records.len());
@@ -284,7 +284,7 @@ cfg_if! {
         use solana_program::instruction::AccountMeta;
 
         #[async_trait(?Send)]
-        impl<'info,'refs,T> AccountAggregator for Collection<'info,'refs,T> 
+        impl<'info,'refs,T> AccountAggregator for OrderedCollection<'info,'refs,T> 
         where T : Copy + Eq + PartialEq + Ord + 'info
         {
             type Key = T;

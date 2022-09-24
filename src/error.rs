@@ -20,6 +20,7 @@ cfg_if! {
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::pubkey::ParsePubkeyError;
+use solana_program::pubkey::PubkeyError;
 use std::convert::From;
 use std::cell::{BorrowError,BorrowMutError};
 use std::time::SystemTimeError;
@@ -77,13 +78,30 @@ pub enum ErrorCode {
     ReallocFailure,
     NonMutableAccountChange,
 
-    CollectionMissingMeta,
-    CollectionMetaSegmentSizeTooSmall,
-    CollectionCollision,
-    CollectionNotFound,
-    CollectionNotLoaded,
-    CollectionDataTypeNotFound,
-    CollectionAccountNotFound,
+    AccountCollectionMissingMeta,
+    AccountCollectionMetaSegmentSizeTooSmall,
+    AccountCollectionCollision,
+    AccountCollectionNotFound,
+    AccountCollectionNotLoaded,
+    AccountCollectionDataTypeNotFound,
+    AccountCollectionAccountNotFound,
+
+    AccountReferenceCollectionMissingMeta,
+    AccountReferenceCollectionMetaSegmentSizeTooSmall,
+    AccountReferenceCollectionCollision,
+    AccountReferenceCollectionNotFound,
+    AccountReferenceCollectionNotLoaded,
+    AccountReferenceCollectionDataTypeNotFound,
+    AccountReferenceCollectionAccountNotFound,
+
+    OrderedCollectionMissingMeta,
+    OrderedCollectionMetaSegmentSizeTooSmall,
+    OrderedCollectionCollision,
+    OrderedCollectionNotFound,
+    OrderedCollectionNotLoaded,
+    OrderedCollectionDataTypeNotFound,
+    OrderedCollectionAccountNotFound,
+
     MappedArrayBounds,
     MappedArrayMetaNotBlank,
     MappedArrayRemoveAtError,
@@ -114,6 +132,9 @@ pub enum ErrorCode {
     BPTreeCyclicAbort,
     BPTreePathError,
     BPTreeNoSuchRecord,
+    MaxSeedLengthExceeded,
+    InvalidSeeds,
+    IllegalOwner,
     ParsePubkeyWrongSize,
     ParsePubkeyInvalid,
     // CacheError,
@@ -562,6 +583,20 @@ impl From<ParsePubkeyError> for Error {
         let code = match error {
             ParsePubkeyError::WrongSize => { ErrorCode::ParsePubkeyWrongSize },
             ParsePubkeyError::Invalid => { ErrorCode::ParsePubkeyInvalid },
+        };
+
+        Error::new()
+            .with_code(code)
+    }
+}
+
+
+impl From<PubkeyError> for Error {
+    fn from(error: PubkeyError) -> Error {
+        let code = match error {
+            PubkeyError::MaxSeedLengthExceeded => { ErrorCode::MaxSeedLengthExceeded },
+            PubkeyError::InvalidSeeds => { ErrorCode::InvalidSeeds },
+            PubkeyError::IllegalOwner => { ErrorCode::IllegalOwner },
         };
 
         Error::new()

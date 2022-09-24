@@ -56,7 +56,7 @@ solana-sdk = { version = "1.14.1", features = ['full'] }
 # solana-sdk = {version="1.11.4", features = ['full']}
 
 # workflow-core = { path = "../workflow-core" }
-workflow-rpc = "0.1.0"
+workflow-rpc = "0.1.2"
 # workflow-rpc = { path = "../workflow-rpc" }
 # workflow-wasm = { path = "../workflow-wasm" }
 

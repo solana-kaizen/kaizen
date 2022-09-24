@@ -137,7 +137,7 @@ pub struct Identity<'info,'refs> {
     // ---
     #[segment(reserve(Array::<IdentityRecord>::calculate_data_len(5)))]
     pub records : Array<'info,'refs, IdentityRecord>,
-    pub collections : Array<'info,'refs, CollectionMeta>,
+    pub collections : Array<'info,'refs, OrderedCollectionMeta>,
 }
 
 impl<'info,'refs> std::fmt::Debug for Identity<'info,'refs> {
@@ -254,7 +254,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
         let data_len = 
             (1 + records.len()) * std::mem::size_of::<IdentityRecord>() +
-            collection_data_types.len() * std::mem::size_of::<CollectionMeta>();
+            collection_data_types.len() * std::mem::size_of::<OrderedCollectionMeta>();
         let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
         
         identity.init()?;
@@ -273,7 +273,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
             // let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;
             // collection_store.try_init(collection_data_type)?;
             let collection_meta = unsafe { identity.collections.try_allocate(false)? };
-            let mut collection = Collection::<TsPubkey>::try_from_meta(collection_meta)?;
+            let mut collection = OrderedCollection::<TsPubkey>::try_from_meta(collection_meta)?;
             collection.try_create(ctx, *data_type)?;
             // collection.init(collection_store.pubkey(), collection_data_type);
         }
@@ -283,7 +283,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
     // pub fn locate_collection
 
-    pub fn locate_collection(&self, data_type : u32) -> Result<Collection<'info,'refs,TsPubkey>> {
+    pub fn locate_collection(&self, data_type : u32) -> Result<OrderedCollection<'info,'refs,TsPubkey>> {
         let collections = self.collections.as_slice_mut();
         // for idx in 0..self.collections.len() {
         for collection_meta in collections.iter_mut() {
@@ -292,11 +292,11 @@ impl<'info, 'refs> Identity<'info, 'refs> {
             // let collection_meta = &mut collections[idx];  //&mut self.collections[idx];
             // let mut collection_meta = &collections[idx];  //&mut self.collections[idx];
             if collection_meta.get_data_type() == data_type {
-                let collection = Collection::try_from_meta(collection_meta)?;
+                let collection = OrderedCollection::try_from_meta(collection_meta)?;
                 return Ok(collection);
             }
         }
-        Err(program_error_code!(ErrorCode::CollectionDataTypeNotFound))
+        Err(program_error_code!(ErrorCode::OrderedCollectionDataTypeNotFound))
     }
 
     pub fn locate_collection_root(&self, data_type : u32) -> Option<Pubkey> {
@@ -319,17 +319,17 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         None
     }
 
-    pub fn locate_collection_v1(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<CollectionStore<'info,'refs, Pubkey>> {
+    pub fn locate_collection_v1(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<OrderedCollectionStore<'info,'refs, Pubkey>> {
         for idx in 0..self.collections.len() {
             let collection = &self.collections[idx];
             if collection.get_data_type() == data_type {
                 let pubkey = collection.get_pubkey();
-                let collection_account = ctx.locate_index_account(&pubkey).ok_or(program_error_code!(ErrorCode::CollectionAccountNotFound))?;
-                let collection_store = CollectionStore::<Pubkey>::try_load(collection_account)?;
+                let collection_account = ctx.locate_index_account(&pubkey).ok_or(program_error_code!(ErrorCode::OrderedCollectionAccountNotFound))?;
+                let collection_store = OrderedCollectionStore::<Pubkey>::try_load(collection_account)?;
                 return Ok(collection_store);
             }
         }
-        Err(program_error_code!(ErrorCode::CollectionDataTypeNotFound))
+        Err(program_error_code!(ErrorCode::OrderedCollectionDataTypeNotFound))
     }
 
     // TODO: testing sandbox

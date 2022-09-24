@@ -1,3 +1,7 @@
+use super::ordered::OrderedCollection;
+
+pub type KeystoreCollection<'info,'refs> = OrderedCollection<'info,'refs,TsPubkey>;
+
 use std::cmp::Ordering;
 
 use solana_program::pubkey::Pubkey;
