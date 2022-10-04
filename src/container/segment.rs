@@ -45,6 +45,10 @@ pub struct Segment<'info, 'refs> {
 
 impl<'info, 'refs> Segment<'info, 'refs> {
 
+    pub fn account(&self) -> &'refs AccountInfo<'info> {
+        self.store.account()
+    }
+
     pub fn data_len_min() -> usize { 0 }
 
     pub fn try_create_from_segment(
@@ -322,6 +326,10 @@ pub struct SegmentStore<'info, 'refs> {
 }
 
 impl<'info, 'refs> SegmentStore<'info, 'refs> {
+
+    pub fn account(&self) -> &'refs AccountInfo<'info> {
+        self.account
+    }
 
     pub fn try_create<T>(
         account: &'refs AccountInfo<'info>,

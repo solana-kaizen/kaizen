@@ -10,11 +10,12 @@ use workflow_allocator::accounts::*;
 pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     payer: &'payer_refs AccountInfo<'payer_info>,
     program_id: &'pid Pubkey,
-    user_seed: &[u8],
+    base_seed: &[u8],
     tpl_adderss_data: &ProgramAddressData,
     tpl_account_info: &'refs AccountInfo<'info>,
     space: usize,
     lamports: u64,
+    validate_pda : bool,
 ) -> Result<&'refs AccountInfo<'info>> {
 
     if space > ACCOUNT_DATA_TEMPLATE_SIZE {
@@ -31,25 +32,26 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     // let seeds_hex = crate::utils::hex(&seeds[..]);
     // log_trace!("* * * program pda seeds:\n{}\n", seeds_hex);
 
-    match Pubkey::create_program_address(
-        &[user_seed, tpl_adderss_data.seed],
-        &program_id
-    ) {
-        Ok(address)=>{
-            if address != *tpl_account_info.key {
-                // log_trace!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
+    if validate_pda {
+        match Pubkey::create_program_address(
+            &[base_seed, tpl_adderss_data.seed],
+            &program_id
+        ) {
+            Ok(address)=>{
+                if address != *tpl_account_info.key {
+                    // log_trace!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
+                    return Err(error_code!(ErrorCode::PDAAddressMatch));
+                }
+
+                // log_trace!("| pda: PDA ADDRESS OK");
+            },
+            Err(_e)=>{
+                // log_trace!("| pda: PDA ADDRESS MATCH failure");
+                //TODO handle this pubkey error
                 return Err(error_code!(ErrorCode::PDAAddressMatch));
             }
-
-            // log_trace!("| pda: PDA ADDRESS OK");
-        },
-        Err(_e)=>{
-            // log_trace!("| pda: PDA ADDRESS MATCH failure");
-            //TODO handle this pubkey error
-            return Err(error_code!(ErrorCode::PDAAddressMatch));
-        }
-    };
-
+        };
+    }
     // ---
 
     // let buffer_size = unsafe {

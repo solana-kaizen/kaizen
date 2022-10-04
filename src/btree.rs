@@ -296,7 +296,7 @@ where
     ) -> Result<BPTreeIndex<'info,'refs,K>> {
 
         let initial_data_len = BPTreeIndex::<K>::initial_data_len_with_records(records);
-        let new_account = ctx.create_pda(initial_data_len,allocation_args)?;
+        let new_account = ctx.try_create_pda(initial_data_len,allocation_args)?;
         let index = BPTreeIndex::try_create(&new_account)?;
 
         {
@@ -310,7 +310,7 @@ where
     pub fn try_create_with_records<'pid,'instr>(ctx: &Context<'info,'refs,'pid,'instr>, records : usize, allocation_args : &AccountAllocationArgs<'info,'refs>) -> Result<BPTreeIndex<'info,'refs,K>> {
         let initial_data_len = BPTreeIndex::<K>::initial_data_len_with_records(records);
         // let allocation_args = AccountAllocationArgs::
-        let new_account = ctx.create_pda(initial_data_len,allocation_args)?;
+        let new_account = ctx.try_create_pda(initial_data_len,allocation_args)?;
         Ok(BPTreeIndex::try_create(&new_account)?)
     }
 
@@ -431,7 +431,7 @@ where
     ) -> Result<BPTreeValues<'info,'refs,K,V>> {
 
         let initial_data_len = BPTreeValues::<K,V>::initial_data_len_with_records(records);
-        let new_account = ctx.create_pda(initial_data_len,allocation_args)?;
+        let new_account = ctx.try_create_pda(initial_data_len,allocation_args)?;
         let values = BPTreeValues::try_create(&new_account)?;
 
         {
@@ -444,7 +444,7 @@ where
 
     pub fn try_create_with_records<'pid,'instr>(ctx: &Context<'info,'refs,'pid,'instr>, records : usize, allocation_args: &AccountAllocationArgs<'info,'refs>) -> Result<BPTreeValues<'info,'refs,K,V>> {
         let initial_data_len = BPTreeValues::<K,V>::initial_data_len_with_records(records);
-        let new_account = ctx.create_pda(initial_data_len,allocation_args)?;
+        let new_account = ctx.try_create_pda(initial_data_len,allocation_args)?;
         Ok(BPTreeValues::try_create(&new_account)?)
     }
 
@@ -616,7 +616,7 @@ where
         let left_len = index_len / 2;
         let right_len = index_len - left_len;
         let initial_data_len = BPTreeIndex::<K>::initial_data_len_with_records(right_len);
-        let new_account = ctx.create_pda(initial_data_len,allocation_args)?;
+        let new_account = ctx.try_create_pda(initial_data_len,allocation_args)?;
         let left = index;
         // let meta_init = BPTreeMetaIndex::new(left_len)?;
         let right = BPTreeIndex::try_create(&new_account)?;
@@ -678,7 +678,7 @@ where
         log_trace!("{}:{}",style("initial_right_data_len:").red(),initial_right_data_len);
         let left = values;
 
-        let new_account = ctx.create_pda(initial_right_data_len,allocation_args)?;
+        let new_account = ctx.try_create_pda(initial_right_data_len,allocation_args)?;
 
         // ^ #################################################################
         // * #################################################################
@@ -1702,7 +1702,7 @@ mod tests {
         simulator.execute_handler(builder,|ctx:&ContextReference| {
             // log_trace!("ctx.template_accounts[0].key.to_string()1111: {:?}", ctx.template_accounts[0].key.to_string());
             let allocation_args = AccountAllocationArgs::default();
-            let account = ctx.create_pda(TestContainer::initial_data_len(), &allocation_args)?;
+            let account = ctx.try_create_pda(TestContainer::initial_data_len(), &allocation_args)?;
             let _test_container = TestContainer::try_create(account)?;
             // log_trace!("create test container successful...");
             Ok(())

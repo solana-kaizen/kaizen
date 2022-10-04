@@ -2,12 +2,16 @@ use workflow_log::*;
 use crate::error::*;
 use crate::result::Result;
 
-pub struct ProgramAddressData<'instr> {
-    pub seed: &'instr [u8],
+pub struct ProgramAddressData<'data> {
+    pub seed: &'data [u8],
 }
 
-impl<'instr> ProgramAddressData<'instr> {
-    pub fn try_from(data : &'instr [u8]) -> Result<(ProgramAddressData<'instr>,usize)> {
+impl<'data> ProgramAddressData<'data> {
+    pub fn from_bytes(seed: &'data [u8]) -> Self {
+        ProgramAddressData { seed }
+    }
+    
+    pub fn try_from(data : &'data [u8]) -> Result<(ProgramAddressData<'data>,usize)> {
         if data.len() < 1 {
             log_trace!("Error: ProgramAddressData is receiving data len {} (you are not supplying valid template accounts?)",data.len());
             return Err(error_code!(ErrorCode::PADDataBufferSizeAvailable));

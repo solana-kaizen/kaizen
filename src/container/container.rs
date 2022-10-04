@@ -6,7 +6,20 @@ use solana_program::account_info::AccountInfo;
 
 pub trait Container<'info,'refs> {
     type T;
+
+    fn container_type() -> u32;
+    fn initial_data_len() -> usize;
+    fn try_allocate(
+        ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
+        allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
+        reserve_data_len : usize
+    ) -> workflow_allocator::result::Result<Self::T>;
+
+    fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self::T>; 
+    // fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self::T>; 
     fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self::T>; 
+    fn account(&self) -> &'refs solana_program::account_info::AccountInfo<'info>;
+    fn pubkey(&self) -> &solana_program::pubkey::Pubkey;
 }
 
 

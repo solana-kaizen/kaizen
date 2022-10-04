@@ -349,7 +349,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         // TODO: generate PDA dynamically or validate incoming PDA
         // ! WARNING this derivation is not correct (testing) 
         let allocation_args = AccountAllocationArgs::default();
-        let proxy_account = ctx.create_pda(IdentityProxy::initial_data_len(), &allocation_args)?;
+        let proxy_account = ctx.try_create_pda(IdentityProxy::initial_data_len(), &allocation_args)?;
         let proxy = IdentityProxy::try_create(proxy_account)?;
 
         proxy.init(identity.pubkey())?;

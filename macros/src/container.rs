@@ -852,7 +852,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             ) -> workflow_allocator::result::Result<Self> {
 
                 let data_len = Self::initial_data_len() + reserve_data_len;
-                let account_info = ctx.create_pda(data_len,allocation_args)?;
+                let account_info = ctx.try_create_pda(data_len,allocation_args)?;
                 Ok(Self::try_create(account_info)?)
             }
         
@@ -1025,37 +1025,42 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         //    pub 
-           fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
 
+            fn container_type() -> u32 {
+                #container_type as u32
+            }
+
+            fn initial_data_len() -> usize {
+                #struct_path_with_generics :: initial_data_len()
+            }
+
+            // #[inline(always)] 
+            fn account(&self) -> &'refs solana_program::account_info::AccountInfo<'info> {
+                self.account()
+            }
+
+            fn pubkey(&self) -> &solana_program::pubkey::Pubkey {
+                self.pubkey()
+            }
+
+            fn try_allocate(
+                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
+                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
+                reserve_data_len : usize
+            ) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+                #struct_name :: #struct_params :: try_allocate(ctx, allocation_args, reserve_data_len)
+            }
+
+            fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+                #struct_name :: #struct_params :: try_create(account)
+            }
+            
+            // fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>, layout : &workflow_allocator::container::segment::Layout<#index_unit_size>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            //     #struct_name :: #struct_params :: try_create_with_layout(account, layout)            
+            // } 
+
+            fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
                 #struct_name :: #struct_params :: try_load(account)
-
-                // #init_offset
-                // let container_type : u32 = #container_type as u32;
-                // let layout = Self::layout();
-                // let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_load(
-                //     &account, segment_store_offset,
-                // // ).unwrap();
-                // )?;
-
-                // {
-                //     let data = account.data.borrow_mut();
-                //     let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
-                //         data.as_ptr()
-                //     )};
-
-                //     if header.container_type != container_type {
-                //         return Err(
-                //             workflow_allocator::error::Error::new()
-                //                 .with_program_code(workflow_allocator::error::ErrorCode::ContainerTypeMismatch as u32)
-                //                 .with_source(file!(),line!())
-                //         );
-                //         // return Err(workflow_allocator::error::ErrorCode::ContainerTypeMismatch.into());
-                //     }
-                // }
-
-                // #loads_ts2
-
-                // Ok(#loads_create)
             }
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

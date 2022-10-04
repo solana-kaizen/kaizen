@@ -1,7 +1,10 @@
-// use cfg_if::cfg_if;
+use cfg_if::cfg_if;
+// use solana_program::rent::Rent;
 // use solana_program::pubkey::Pubkey;
 // use workflow_allocator_macros::{Meta, container};
 use workflow_allocator_macros::Meta;
+use crate::address::ProgramAddressData;
+use crate::container::Container;
 // use crate::context::ContextReference;
 // use crate::error;
 // use crate::error_code;
@@ -13,6 +16,7 @@ use crate::result::Result;
 // use crate::identity::*;
 use workflow_allocator::prelude::*;
 use workflow_allocator::error::ErrorCode;
+use workflow_allocator::container;
 // use workflow_allocator::container::Containers;
 // use workflow_allocator::container::keys::Ts;
 
@@ -37,6 +41,7 @@ pub struct AccountCollectionMeta {
 
 pub struct AccountCollection<'info,'refs> 
 {
+    pub account : &'refs AccountInfo<'info>,
     pub external_meta : Option<&'info mut AccountCollectionMeta>,
     pub segment_meta : Option<Rc<Segment<'info,'refs>>>,
 }
@@ -44,6 +49,10 @@ pub struct AccountCollection<'info,'refs>
 
 impl<'info,'refs> AccountCollection<'info,'refs> 
 {
+    pub fn account(&self) -> &'refs AccountInfo<'info> {
+        self.account
+    }
+
     pub fn meta<'meta>(&'meta self) -> Result<&'meta AccountCollectionMeta> {
         if let Some(external_meta) = &self.external_meta {
             return Ok(external_meta);
@@ -66,8 +75,12 @@ impl<'info,'refs> AccountCollection<'info,'refs>
 
     pub fn data_len_min() -> usize { std::mem::size_of::<AccountCollectionMeta>() }
 
-    pub fn try_from_meta(meta : &'info mut AccountCollectionMeta) -> Result<Self> {
+    pub fn try_from_meta(
+        meta : &'info mut AccountCollectionMeta,
+        account_info : &'refs AccountInfo<'info>,
+    ) -> Result<Self> {
         Ok(AccountCollection {
+            account: account_info,
             segment_meta : None,
             external_meta : Some(meta),
         })
@@ -78,6 +91,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
     ) -> Result<AccountCollection<'info,'refs>> {
         // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
         Ok(AccountCollection {
+            account : segment.account(),
             segment_meta : Some(segment),
             external_meta : None,
         })
@@ -88,13 +102,14 @@ impl<'info,'refs> AccountCollection<'info,'refs>
     ) -> Result<AccountCollection<'info,'refs>> {
         // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
         Ok(AccountCollection {
+            account : segment.account(),
             segment_meta : Some(segment),
             external_meta : None,
         })
     }
 
     // pub fn try_create(&mut self, _ctx: &ContextReference, data_type : u32) -> Result<()> {
-    pub fn try_create(&mut self, data_type : u32) -> Result<()> {
+    pub fn try_init(&mut self, data_type : u32) -> Result<()> {
         // let data_type = self.meta().get_data_type();
         let meta = self.meta_mut()?;
         meta.set_count(0);
@@ -103,47 +118,162 @@ impl<'info,'refs> AccountCollection<'info,'refs>
         Ok(())
         // Ok(collection_store)
     }
-/* 
-    // pub fn try_load<'ctx>(&mut self, ctx:&'ctx ContextReference<'info,'refs,'_,'_>) -> Result<()> {
-    pub fn try_load(&mut self, ctx: &ContextReference<'info,'refs,'_,'_>, suffix : &str, bump : u8) -> Result<()> {
 
+    pub fn try_load<T>(&self, ctx: &ContextReference<'info,'refs,'_,'_>, suffix : &str, index: u64, bump_seed : u8) 
+    -> Result<<T as Container<'info,'refs>>::T>
+    where T : Container<'info,'refs>
+    {
         let meta = self.meta()?;
-
-        // ^ TODO: GET PDA ADDRESS
-
-        // use account pubkey as seed start...
+        assert!(index < meta.get_count());
+        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_le()) };
 
         let pda = Pubkey::create_program_address(
-            &[suffix.as_bytes()], // , tpl_adderss_data.seed],
+            &[suffix.as_bytes(),&index_bytes,&[bump_seed]],
             ctx.program_id
         )?;
 
-        if let Some(account_info) = ctx.locate_index_account(&meta.pubkey) {
-            // let container = CollectionStore::<'info,'refs,T>::try_load(account_info)?;
-            let container = CollectionStore::<T>::try_load(account_info)?;
-            self.container = Some(container);
-            Ok(())
+        if let Some(account_info) = ctx.locate_index_account(&pda) {
+            let container = T::try_load(account_info)?;
+            Ok(container)
         } else {
-            Err(error_code!(ErrorCode::CollectionNotFound))
+            Err(error_code!(ErrorCode::AccountCollectionNotFound))
         }
     }
 
-    // // pub fn try_insert<'t>(&mut self, record: &'t T) -> Result<()> {
-    pub fn try_insert(&mut self, record: &T) -> Result<()> {
-        if let Some(container) = &self.container {
-            container.try_insert(record)?;
-            let meta = self.meta_mut()?;
-            let count = meta.get_count();
-            meta.set_count(count + 1);
-            Ok(())
-        } else {
-            Err(error_code!(ErrorCode::CollectionNotLoaded))
-        }
+    // pub fn try_create_and_insert<T>(
+    pub fn try_create_pda<T>(
+        &mut self,
+        ctx: &ContextReference<'info,'refs,'_,'_>,
+        suffix : &str,
+        bump_seed : u8,
+        // tpl_program_address_data : ProgramAddressData,
+
+        allocation_args : &AccountAllocationArgs<'info,'refs>,
+        data_len : Option<usize>,
+    )
+    -> Result<<T as Container<'info,'refs>>::T>
+    where T : Container<'info,'refs>
+    {
+
+        let user_seed = self.account().key.as_ref();
+
+        let meta = self.meta_mut()?;
+        let next_index = meta.get_count() + 1;
+        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
+
+        let program_address_data_bytes : Vec<u8> = [suffix.as_bytes(),&index_bytes,&[bump_seed]].concat();
+        let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
+
+        let pda = Pubkey::create_program_address(
+            &[tpl_program_address_data.seed],
+            //&[suffix.as_bytes(),&index_bytes,&[bump_seed]],
+            ctx.program_id
+        )?;
+
+        let tpl_account_info = match ctx.locate_index_account(&pda) {
+            Some(account_info) => account_info,
+            None => {
+                return Err(error_code!(ErrorCode::AccountCollectionNotFound))
+            }
+        };
+
+        let data_len = match data_len {
+            Some(data_len) => data_len,
+            None => T::initial_data_len()
+        };
+
+        let account_info = ctx.try_create_pda_with_args(
+            data_len,
+            allocation_args,
+            user_seed,
+            tpl_program_address_data,
+            tpl_account_info,
+            false
+        )?;
+
+        meta.set_count(next_index);
+
+        let container = T::try_create(account_info)?;
+        Ok(container)
+
+
+
     }
 
-    */
+    pub fn try_insert_pda<T>(
+        &mut self,
+        ctx: &ContextReference<'info,'refs,'_,'_>,
+        suffix : &str,
+        bump_seed : u8,
+        container: &T
+    )
+    -> Result<()>
+    where T : Container<'info,'refs>
+    {
+        let user_seed = self.account().key.as_ref();
+
+        let meta = self.meta_mut()?;
+        let next_index = meta.get_count() + 1;
+        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
+
+        let pda = Pubkey::create_program_address(
+            &[user_seed,suffix.as_bytes(),&index_bytes,&[bump_seed]],
+            ctx.program_id
+        )?;
+
+        if container.pubkey() != &pda {
+            return Err(error_code!(ErrorCode::AccountCollectionInvalidAddress));
+        }
+
+        let account = match ctx.locate_index_account(&pda) {
+            Some(account_info) => account_info,
+            None => {
+                return Err(error_code!(ErrorCode::AccountCollectionNotFound))
+            }
+        };
+
+        if account.data_len() < std::mem::size_of::<u32>() {
+            return Err(error_code!(ErrorCode::AccountCollectionInvalidAccount))
+        }
+
+        if T::container_type() != container::try_get_container_type(account)? {
+            return Err(error_code!(ErrorCode::AccountCollectionInvalidContainerType))
+        }
+
+        meta.set_count(next_index);
+
+        Ok(())
+    }
+
+    
 }
 
+cfg_if! {
+    if #[cfg(not(target_arch = "bpf"))] {
+        impl<'info,'refs> AccountCollection<'info,'refs> 
+        {
+
+            pub fn try_create(&self, program_id : &Pubkey, suffix : &str) -> Result<(Pubkey, u8)> {
+                self.try_create_with_offset(program_id, suffix, 0)
+            }
+
+            pub fn try_create_with_offset(&self, program_id : &Pubkey, suffix : &str, index_offset : u64) -> Result<(Pubkey, u8)> {
+
+                let meta = self.meta()?;
+                let next_index = meta.get_count()+1+index_offset;
+                let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
+        
+                let (address, bump_seed) = Pubkey::find_program_address(
+                    &[suffix.as_bytes(),&index_bytes],
+                    program_id
+                );
+            
+                Ok((address, bump_seed))
+            }
+
+        }
+    }
+}
 // ~~~
 
 // cfg_if! {

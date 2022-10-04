@@ -9,6 +9,7 @@ pub enum LamportAllocation {
 #[derive(Debug, Copy, Clone)]
 pub enum AllocationPayer<'info,'refs> {
     Authority,
+    Identity,
     Account(&'refs AccountInfo<'info>)
 }
 

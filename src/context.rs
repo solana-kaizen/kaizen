@@ -24,8 +24,8 @@ use workflow_log::*;
 // use crate::container::AccountAggregator;
 
 pub struct AccountAllocationArgs<'info,'refs> {
-    lamports : LamportAllocation,
-    payer : AllocationPayer<'info,'refs>,
+    pub lamports : LamportAllocation,
+    pub payer : AllocationPayer<'info,'refs>,
     // reserve_data_len : usize
 }
 
@@ -500,9 +500,16 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         Ok((program_address_data_ref, account_info))
     }
 
-    pub fn create_pda(&self, data_len : usize, allocation_args : &AccountAllocationArgs<'info,'refs>) -> Result<&'refs AccountInfo<'info>> {
+    pub fn try_create_pda_with_args(
+        &self,
+        data_len : usize,
+        allocation_args : &AccountAllocationArgs<'info,'refs>,
+        user_seed : &[u8],
+        tpl_program_address_data : ProgramAddressData,
+        tpl_account_info : &'refs AccountInfo<'info>,
+        validate_pda : bool
+    ) -> Result<&'refs AccountInfo<'info>> {
 
-        // sanity check
         cfg_if! {
             if #[cfg(not(target_arch = "bpf"))] {
                 if self.system_accounts.iter().position(|account_info| account_info.key == &solana_sdk::system_program::id()).is_none() {
@@ -510,14 +517,6 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
                 }
             }
         }
-
-        log_trace!("[pda] ... create_pda() starting ...");
-        let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;
-        log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
-        
-        // log_trace!(" CREATE PDA ACCOUNT DATA: ------------------------- * * *");
-        // trace_hex(&*tpl_account_info.data.borrow());
-        // log_trace!(" CREATE PDA ACCOUNT DATA: ------------------------- * * *");
 
         if let Ok(container_type) = container::try_get_container_type(tpl_account_info) {
             if container_type != 0 {
@@ -540,15 +539,44 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             AllocationPayer::Authority => {
                 &self.authority
             },
-            // Identity => {
-                //     todo!("Identity-based payments are not currently supported")
-                // },
-                AllocationPayer::Account(account_info) => {
-                    account_info
+            AllocationPayer::Identity => {
+                match &self.identity {
+                    Some(identity) => identity.account(),
+                    None => {
+                        return Err(error_code!(ErrorCode::IdentityMissingForAlloc))
+                    }
                 }
-            };
-        // log_trace!("D");
+            },
+            AllocationPayer::Account(account_info) => {
+                account_info
+            }
+        };
 
+        let account_info = crate::allocate_pda(
+            payer,
+            self.program_id,
+            &user_seed,
+            &tpl_program_address_data,
+            tpl_account_info,
+            data_len,
+            lamports,
+            validate_pda,
+        )?;
+
+        Ok(account_info)
+
+    }
+
+    pub fn try_create_pda(
+        &self,
+        data_len : usize,
+        allocation_args : &AccountAllocationArgs<'info,'refs>
+    ) -> Result<&'refs AccountInfo<'info>> {
+
+        log_trace!("[pda] ... create_pda() starting ...");
+        let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;
+        log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
+        
         let user_seed = match &self.identity {
             Some(identity) => identity.pubkey().to_bytes(),
             None => {
@@ -556,24 +584,20 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         };
             
-        // log_trace!("| pda: executing allocate_pda()");
-        let res = crate::allocate_pda(
-            payer, //&self.authority,
-            self.program_id,
-            &user_seed,
-            &tpl_program_address_data,
-            tpl_account_info,
+        let account_info = self.try_create_pda_with_args(
             data_len,
-            lamports,
-            // &[(data_len, lamports)]
+            allocation_args,
+            &user_seed,
+            tpl_program_address_data,
+            tpl_account_info,
+            true
         )?;
 
-        // let identity = 
         if let Some(identity) = &self.identity {
             identity.advance_pda_sequence()?;
         }
 
-        Ok(res)
+        Ok(account_info)
     }
 
     pub fn sync_rent(&self, account_info : &'refs AccountInfo<'info>, _rent_collector : &RentCollector<'info,'refs>) -> Result<()> {

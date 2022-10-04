@@ -16,7 +16,7 @@ pub fn allocate_pda<
 >(
     payer: &'payer AccountInfo<'info>,
     program_id:&'pid Pubkey,
-    user_seed: &[u8],
+    seed: &[u8],
 
     // account_template: &AccountInfoTemplate<'info, 'refs>,
     // tpl: &AccountInfoTemplate<'info, 'refs>,
@@ -26,29 +26,32 @@ pub fn allocate_pda<
     // settings : &(usize,u64)
     space: usize,
     lamports : u64,
+    validate_pda: bool,
 ) -> Result<&'refs AccountInfo<'info>> {
 
     // msg!("| pda: inside solana allocate_pda()");
     // msg!("| pda: executing create_program_address()");
-    match Pubkey::create_program_address(
-        &[user_seed, tpl_address_data.seed],
-        // &[seed, seed_suffix, &[tpl_address_data.bump]],
-        &program_id
-    ) {
-        Ok(address)=>{
-            if address != *tpl_account_info.key{
-                // msg!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
+    if validate_pda {
+        match Pubkey::create_program_address(
+            &[seed, tpl_address_data.seed],
+            // &[seed, seed_suffix, &[tpl_address_data.bump]],
+            &program_id
+        ) {
+            Ok(address)=>{
+                if address != *tpl_account_info.key{
+                    // msg!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
+                    return Err(error_code!(ErrorCode::PDAAddressMatch));
+                }
+
+                // msg!("| pda: PDA ADDRESS OK");
+            },
+            Err(_e)=>{
+                // msg!("| pda: PDA ADDRESS MATCH failure");
+                //TODO handle this pubkey error
                 return Err(error_code!(ErrorCode::PDAAddressMatch));
             }
-
-            // msg!("| pda: PDA ADDRESS OK");
-        },
-        Err(_e)=>{
-            // msg!("| pda: PDA ADDRESS MATCH failure");
-            //TODO handle this pubkey error
-            return Err(error_code!(ErrorCode::PDAAddressMatch));
-        }
-    };
+        };
+    }
     // msg!("creating: {:?}", tpl_account_info.key);
     // msg!("payer.key: {:?}", payer.key);
     // msg!("program_id: {:?}", program_id);
