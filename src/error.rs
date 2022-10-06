@@ -97,6 +97,9 @@ pub enum ErrorCode {
     AccountReferenceCollectionNotLoaded,
     AccountReferenceCollectionDataTypeNotFound,
     AccountReferenceCollectionAccountNotFound,
+    AccountReferenceCollectionProxyNotFound,
+
+    InvalidProxyContainerType,
 
     OrderedCollectionMissingMeta,
     OrderedCollectionMetaSegmentSizeTooSmall,

@@ -7,3 +7,5 @@ mod ordered;
 pub use ordered::*;
 mod keystore;
 pub use keystore::*;
+mod proxy;
+pub use proxy::*;

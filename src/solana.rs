@@ -16,7 +16,7 @@ pub fn allocate_pda<
 >(
     payer: &'payer AccountInfo<'info>,
     program_id:&'pid Pubkey,
-    seed: &[u8],
+    user_seed: &[u8],
 
     // account_template: &AccountInfoTemplate<'info, 'refs>,
     // tpl: &AccountInfoTemplate<'info, 'refs>,
@@ -33,7 +33,7 @@ pub fn allocate_pda<
     // msg!("| pda: executing create_program_address()");
     if validate_pda {
         match Pubkey::create_program_address(
-            &[seed, tpl_address_data.seed],
+            &[user_seed, tpl_address_data.seed],
             // &[seed, seed_suffix, &[tpl_address_data.bump]],
             &program_id
         ) {

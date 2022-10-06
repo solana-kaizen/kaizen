@@ -292,7 +292,7 @@ where
         capacity : usize,
         records : usize,
         ctx: &Context<'info,'refs,'pid,'instr>,
-        allocation_args: &AccountAllocationArgs<'info,'refs>
+        allocation_args: &AccountAllocationArgs<'info,'refs,'_>
     ) -> Result<BPTreeIndex<'info,'refs,K>> {
 
         let initial_data_len = BPTreeIndex::<K>::initial_data_len_with_records(records);
@@ -307,7 +307,7 @@ where
         Ok(index)
     }
 
-    pub fn try_create_with_records<'pid,'instr>(ctx: &Context<'info,'refs,'pid,'instr>, records : usize, allocation_args : &AccountAllocationArgs<'info,'refs>) -> Result<BPTreeIndex<'info,'refs,K>> {
+    pub fn try_create_with_records<'pid,'instr>(ctx: &Context<'info,'refs,'pid,'instr>, records : usize, allocation_args : &AccountAllocationArgs<'info,'refs,'_>) -> Result<BPTreeIndex<'info,'refs,K>> {
         let initial_data_len = BPTreeIndex::<K>::initial_data_len_with_records(records);
         // let allocation_args = AccountAllocationArgs::
         let new_account = ctx.try_create_pda(initial_data_len,allocation_args)?;
@@ -427,7 +427,7 @@ where
         records : usize,
         ctx: &Context<'info,'refs,'pid,'instr>,
         tree: &BPTree<'info,'refs,K,V>,
-        allocation_args: &AccountAllocationArgs<'info,'refs>
+        allocation_args: &AccountAllocationArgs<'info,'refs,'_>
     ) -> Result<BPTreeValues<'info,'refs,K,V>> {
 
         let initial_data_len = BPTreeValues::<K,V>::initial_data_len_with_records(records);
@@ -442,7 +442,7 @@ where
         Ok(values)
     }
 
-    pub fn try_create_with_records<'pid,'instr>(ctx: &Context<'info,'refs,'pid,'instr>, records : usize, allocation_args: &AccountAllocationArgs<'info,'refs>) -> Result<BPTreeValues<'info,'refs,K,V>> {
+    pub fn try_create_with_records<'pid,'instr>(ctx: &Context<'info,'refs,'pid,'instr>, records : usize, allocation_args: &AccountAllocationArgs<'info,'refs,'_>) -> Result<BPTreeValues<'info,'refs,K,V>> {
         let initial_data_len = BPTreeValues::<K,V>::initial_data_len_with_records(records);
         let new_account = ctx.try_create_pda(initial_data_len,allocation_args)?;
         Ok(BPTreeValues::try_create(&new_account)?)
@@ -604,7 +604,7 @@ where
         index : &'idx BPTreeIndex<'info,'refs,K>,
         // ???????
         _parent : Option<BPTreeIndex<'info,'refs,K>>,
-        allocation_args: &AccountAllocationArgs<'info,'refs>
+        allocation_args: &AccountAllocationArgs<'info,'refs,'_>
     ) -> Result<(&'idx BPTreeIndex<'info,'refs,K>,BPTreeIndex<'info,'refs,K>)>
     where K : 'info, V : 'info
     // where K : Ord + Copy 
@@ -655,7 +655,7 @@ where
         ctx : &Rc<Box<Context<'info,'refs,'pid,'instr>>>,
         values : BPTreeValues<'info,'refs,K,V>,
         insert_cell : BPTreeValueCell<K,V>,
-        allocation_args : &AccountAllocationArgs<'info,'refs>,
+        allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
     ) -> Result<(BPTreeValues<'info,'refs,K,V>,BPTreeValues<'info,'refs,K,V>)> 
     where K : 'info, V : 'info
     // where
@@ -782,7 +782,7 @@ where
         ctx : &Rc<Box<Context<'info,'refs,'pid,'instr>>>,
         key: &K,
         value : &V,
-        allocation_args: &AccountAllocationArgs<'info,'refs>,
+        allocation_args: &AccountAllocationArgs<'info,'refs,'_>,
     ) -> Result<()>
     where K : 'info, V : 'info
     // where

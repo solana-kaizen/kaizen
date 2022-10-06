@@ -23,36 +23,46 @@ use workflow_log::*;
 
 // use crate::container::AccountAggregator;
 
-pub struct AccountAllocationArgs<'info,'refs> {
+pub enum AccountType {
+    Token,
+    Index,
+    Handler,
+}
+
+pub struct AccountAllocationArgs<'info,'refs,'seed> {
     pub lamports : LamportAllocation,
     pub payer : AllocationPayer<'info,'refs>,
+    pub seed : Option<&'seed [u8]>,
     // reserve_data_len : usize
 }
 
-impl<'info,'refs> Default for AccountAllocationArgs<'info,'refs> {
-    fn default() -> AccountAllocationArgs<'info,'refs> {
+impl<'info,'refs,'seed> Default for AccountAllocationArgs<'info,'refs,'seed> {
+    fn default() -> AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
             payer : AllocationPayer::Authority,
+            seed : None,
             // reserve_data_len : 0,
         }
     }
 }
 
-impl<'info,'refs> AccountAllocationArgs<'info,'refs> {
+impl<'info,'refs,'seed> AccountAllocationArgs<'info,'refs,'seed> {
 
-    pub fn new() -> AccountAllocationArgs<'info,'refs> {
+    pub fn new() -> AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
             payer : AllocationPayer::Authority,
+            seed : None,
             // reserve_data_len : 0,
         }
     }
 
-    pub fn new_with_payer(payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs> {
+    pub fn new_with_payer(payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
             payer : AllocationPayer::Account(payer),
+            seed : None,
             // reserve_data_len : 0,
         }
     }
@@ -503,7 +513,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     pub fn try_create_pda_with_args(
         &self,
         data_len : usize,
-        allocation_args : &AccountAllocationArgs<'info,'refs>,
+        allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
         user_seed : &[u8],
         tpl_program_address_data : ProgramAddressData,
         tpl_account_info : &'refs AccountInfo<'info>,
@@ -570,7 +580,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     pub fn try_create_pda(
         &self,
         data_len : usize,
-        allocation_args : &AccountAllocationArgs<'info,'refs>
+        allocation_args : &AccountAllocationArgs<'info,'refs,'_>
     ) -> Result<&'refs AccountInfo<'info>> {
 
         log_trace!("[pda] ... create_pda() starting ...");

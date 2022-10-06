@@ -11,7 +11,7 @@ pub trait Container<'info,'refs> {
     fn initial_data_len() -> usize;
     fn try_allocate(
         ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
-        allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs>,
+        allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs,'_>,
         reserve_data_len : usize
     ) -> workflow_allocator::result::Result<Self::T>;
 
@@ -59,6 +59,7 @@ pub enum Containers {
     PDATestInterface,
 
     FrameworkContainers = Ranges::Framework as u32,
+    Proxy,
     IdentityProxy,
     Identity,
     OrderedCollection,
@@ -88,7 +89,6 @@ cfg_if! {
                             Box<UnsafeCell<MutexGuard<'this, AccountData>>>>, 
                         Box<UnsafeCell<&'this mut AccountData>>>,
                     Box<AccountInfo<'this>>>, 
-                // Box<<T as Container<'this,'this>>::T>
                 Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>>,
             Box<<T as Container<'this,'this>>::T>
         >;

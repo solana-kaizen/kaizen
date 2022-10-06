@@ -27,17 +27,17 @@ use workflow_allocator::container;
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
 pub struct AccountCollectionMeta {
-    count : u64,
-    data_type : u32,
+    seed_u64 : u64,
+    len : u64,
+    container_type : u32,
 }
 
-// impl CollectionMeta {
-//     pub fn init(&mut self, pubkey : &Pubkey, data_type : u32) {
-//         self.set_pubkey(*pubkey);
-//         self.set_data_type(data_type);
-//         self.set_count(0);
-//     }
-// }
+impl AccountCollectionMeta {
+    pub fn seed_as_bytes(&self) -> [u8;8] {
+        unsafe { std::mem::transmute(self.get_seed_u64().to_le()) }
+    }
+}
+
 
 pub struct AccountCollection<'info,'refs> 
 {
@@ -49,6 +49,10 @@ pub struct AccountCollection<'info,'refs>
 
 impl<'info,'refs> AccountCollection<'info,'refs> 
 {
+    pub fn len(&self) -> usize {
+        self.meta().unwrap().get_len() as usize
+    }
+
     pub fn account(&self) -> &'refs AccountInfo<'info> {
         self.account
     }
@@ -109,11 +113,11 @@ impl<'info,'refs> AccountCollection<'info,'refs>
     }
 
     // pub fn try_create(&mut self, _ctx: &ContextReference, data_type : u32) -> Result<()> {
-    pub fn try_init(&mut self, data_type : u32) -> Result<()> {
+    pub fn try_init(&mut self, container_type : u32) -> Result<()> {
         // let data_type = self.meta().get_data_type();
         let meta = self.meta_mut()?;
-        meta.set_count(0);
-        meta.set_data_type(data_type);
+        meta.set_len(0);
+        meta.set_container_type(container_type);
 
         Ok(())
         // Ok(collection_store)
@@ -124,7 +128,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
     where T : Container<'info,'refs>
     {
         let meta = self.meta()?;
-        assert!(index < meta.get_count());
+        assert!(index < meta.get_len());
         let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_le()) };
 
         let pda = Pubkey::create_program_address(
@@ -148,7 +152,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
         bump_seed : u8,
         // tpl_program_address_data : ProgramAddressData,
 
-        allocation_args : &AccountAllocationArgs<'info,'refs>,
+        allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
         data_len : Option<usize>,
     )
     -> Result<<T as Container<'info,'refs>>::T>
@@ -158,7 +162,10 @@ impl<'info,'refs> AccountCollection<'info,'refs>
         let user_seed = self.account().key.as_ref();
 
         let meta = self.meta_mut()?;
-        let next_index = meta.get_count() + 1;
+        if T::container_type() != meta.get_container_type() {
+            return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+        }
+        let next_index = meta.get_len() + 1;
         let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
 
         let program_address_data_bytes : Vec<u8> = [suffix.as_bytes(),&index_bytes,&[bump_seed]].concat();
@@ -191,7 +198,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
             false
         )?;
 
-        meta.set_count(next_index);
+        meta.set_len(next_index);
 
         let container = T::try_create(account_info)?;
         Ok(container)
@@ -213,7 +220,10 @@ impl<'info,'refs> AccountCollection<'info,'refs>
         let user_seed = self.account().key.as_ref();
 
         let meta = self.meta_mut()?;
-        let next_index = meta.get_count() + 1;
+        if T::container_type() != meta.get_container_type() {
+            return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+        }
+        let next_index = meta.get_len() + 1;
         let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
 
         let pda = Pubkey::create_program_address(
@@ -240,7 +250,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
             return Err(error_code!(ErrorCode::AccountCollectionInvalidContainerType))
         }
 
-        meta.set_count(next_index);
+        meta.set_len(next_index);
 
         Ok(())
     }
@@ -250,25 +260,84 @@ impl<'info,'refs> AccountCollection<'info,'refs>
 
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
+
+        use futures::{stream::FuturesOrdered, StreamExt};
+
         impl<'info,'refs> AccountCollection<'info,'refs> 
         {
 
-            pub fn try_create(&self, program_id : &Pubkey, suffix : &str) -> Result<(Pubkey, u8)> {
-                self.try_create_with_offset(program_id, suffix, 0)
+            pub fn todo_try_create(&self, program_id : &Pubkey, suffix : &str) -> Result<(Pubkey, u8)> {
+                self.todo_try_create_with_offset(program_id, suffix, 0)
             }
 
-            pub fn try_create_with_offset(&self, program_id : &Pubkey, suffix : &str, index_offset : u64) -> Result<(Pubkey, u8)> {
+            pub fn todo_try_create_with_offset(&self, program_id : &Pubkey, suffix : &str, index_offset : u64) -> Result<(Pubkey, u8)> {
+
+                let user_seed = self.account().key.as_ref();
 
                 let meta = self.meta()?;
-                let next_index = meta.get_count()+1+index_offset;
+                let next_index = meta.get_len()+1+index_offset;
                 let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
         
                 let (address, bump_seed) = Pubkey::find_program_address(
-                    &[suffix.as_bytes(),&index_bytes],
+                    &[user_seed, suffix.as_bytes(),&index_bytes],
                     program_id
                 );
             
                 Ok((address, bump_seed))
+            }
+
+            // ^ //////////////////////////////////////////////////////////////////
+            // ^ //////////////////////////////////////////////////////////////////
+            // ^ //////////////////////////////////////////////////////////////////
+            // ^ //////////////////////////////////////////////////////////////////
+
+            pub fn get_pubkey_at(&self, program_id : &Pubkey, idx : usize) -> Result<Pubkey> {
+                let meta = self.meta()?;
+                let user_seed = self.account().key.as_ref();
+                let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
+                let (address, _bump_seed) = Pubkey::find_program_address(
+                    &[user_seed,&meta.seed_as_bytes(),&index_bytes],
+                    program_id
+                );
+
+                Ok(address)
+            }
+
+            pub async fn load_container_at<'this,T>(&self, program_id: &Pubkey, idx: usize) 
+            -> Result<Option<ContainerReference<'this,T>>> 
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let transport = Transport::global()?;
+                Ok(self.load_container_at_with_transport::<T>(program_id, idx, &transport).await?)
+            }
+
+            pub async fn load_container_at_with_transport<'this,T>(&self, program_id: &Pubkey, idx: usize, transport: &Arc<Transport>) 
+            -> Result<Option<ContainerReference<'this,T>>> 
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let container_pubkey = self.get_pubkey_at(program_id, idx)?;
+                Ok(load_container_with_transport::<T>(&transport,&container_pubkey).await?)
+            }
+
+            pub async fn load_container_range<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>) 
+            -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let transport = Transport::global()?;
+                Ok(self.load_container_range_with_transport::<T>(program_id, range, &transport).await?)
+            }
+
+            pub async fn load_container_range_with_transport<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>, transport: &Arc<Transport>) 
+            -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let mut futures = FuturesOrdered::new();
+                for idx in range {
+                    let f = self.load_container_at_with_transport::<T>(program_id, idx, &transport);
+                    futures.push_back(f);
+                }
+
+                Ok(futures.collect::<Vec<_>>().await)
             }
 
         }

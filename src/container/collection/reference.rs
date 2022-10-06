@@ -1,42 +1,29 @@
-// use cfg_if::cfg_if;
-// use solana_program::pubkey::Pubkey;
+use cfg_if::cfg_if;
 use workflow_allocator_macros::Meta;
-// use workflow_allocator_macros::{Meta, container};
-// use crate::context::ContextReference;
-// use crate::error;
-// use crate::error_code;
-// use std::rc::Rc;
-// use crate::error::ErrorCode;
-// use borsh::{BorshDeserialize, BorshSerialize};
+use crate::address::ProgramAddressData;
+use crate::container::Container;
 use crate::result::Result;
-// use crate::container::segment::Segment;
-// use crate::identity::*;
 use workflow_allocator::prelude::*;
 use workflow_allocator::error::ErrorCode;
-// use workflow_allocator::container::Containers;
-// use workflow_allocator::container::keys::Ts;
-
-// use super::TsPubkey;
-// use super::Container;
-
+use super::proxy::Proxy;
 
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
 pub struct AccountReferenceCollectionMeta {
-    count : u64,
-    data_type : u32,
+    seed_u64 : u64,
+    len : u64,
+    container_type : u32,
 }
 
-// impl CollectionMeta {
-//     pub fn init(&mut self, pubkey : &Pubkey, data_type : u32) {
-//         self.set_pubkey(*pubkey);
-//         self.set_data_type(data_type);
-//         self.set_count(0);
-//     }
-// }
+impl AccountReferenceCollectionMeta {
+    pub fn seed_as_bytes(&self) -> [u8;8] {
+        unsafe { std::mem::transmute(self.get_seed_u64().to_le()) }
+    }
+}
 
 pub struct AccountReferenceCollection<'info,'refs> 
 {
+    pub account : &'refs AccountInfo<'info>,
     pub external_meta : Option<&'info mut AccountReferenceCollectionMeta>,
     pub segment_meta : Option<Rc<Segment<'info,'refs>>>,
 }
@@ -44,6 +31,14 @@ pub struct AccountReferenceCollection<'info,'refs>
 
 impl<'info,'refs> AccountReferenceCollection<'info,'refs> 
 {
+    pub fn len(&self) -> usize {
+        self.meta().unwrap().get_len() as usize
+    }
+
+    pub fn account(&self) -> &'refs AccountInfo<'info> {
+        self.account
+    }
+
     pub fn meta<'meta>(&'meta self) -> Result<&'meta AccountReferenceCollectionMeta> {
         if let Some(external_meta) = &self.external_meta {
             return Ok(external_meta);
@@ -66,8 +61,12 @@ impl<'info,'refs> AccountReferenceCollection<'info,'refs>
 
     pub fn data_len_min() -> usize { std::mem::size_of::<AccountReferenceCollectionMeta>() }
 
-    pub fn try_from_meta(meta : &'info mut AccountReferenceCollectionMeta) -> Result<Self> {
+    pub fn try_from_meta(
+        meta : &'info mut AccountReferenceCollectionMeta,
+        account_info : &'refs AccountInfo<'info>,
+    ) -> Result<Self> {
         Ok(AccountReferenceCollection {
+            account: account_info,
             segment_meta : None,
             external_meta : Some(meta),
         })
@@ -78,6 +77,7 @@ impl<'info,'refs> AccountReferenceCollection<'info,'refs>
     ) -> Result<AccountReferenceCollection<'info,'refs>> {
         // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
         Ok(AccountReferenceCollection {
+            account : segment.account(),
             segment_meta : Some(segment),
             external_meta : None,
         })
@@ -86,101 +86,213 @@ impl<'info,'refs> AccountReferenceCollection<'info,'refs>
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, 'refs>>
     ) -> Result<AccountReferenceCollection<'info,'refs>> {
-        // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
         Ok(AccountReferenceCollection {
+            account : segment.account(),
             segment_meta : Some(segment),
             external_meta : None,
         })
     }
 
-    // pub fn try_create(&mut self, ctx: &ContextReference, data_type : u32) -> Result<()> {
-    //     // let data_type = self.meta().get_data_type();
-    //     let allocation_args = AccountAllocationArgs::default();
-    //     let collection_store = AccountReferenceCollectionStore::<T>::try_allocate(ctx, &allocation_args, 0)?;
-    //     collection_store.try_init(data_type)?;
-    //     let meta = self.meta_mut()?;
-    //     meta.set_data_type(data_type);
-    //     meta.set_pubkey(*collection_store.pubkey());
+    pub fn try_init(&mut self, container_type : u32) -> Result<()> {
+        let meta = self.meta_mut()?;
+        meta.set_len(0);
+        meta.set_container_type(container_type);
 
-    //     Ok(())
-    //     // Ok(collection_store)
+        Ok(())
+    }
+
+    pub fn try_load<T>(&self, ctx: &ContextReference<'info,'refs,'_,'_>, suffix : &str, index: u64, bump_seed : u8) 
+    -> Result<<T as Container<'info,'refs>>::T>
+    where T : Container<'info,'refs>
+    {
+        let meta = self.meta()?;
+        assert!(index < meta.get_len());
+        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_le()) };
+
+        let pda = Pubkey::create_program_address(
+            &[suffix.as_bytes(),&index_bytes,&[bump_seed]],
+            ctx.program_id
+        )?;
+
+        if let Some(account_info) = ctx.locate_index_account(&pda) {
+            let container = T::try_load(account_info)?;
+            Ok(container)
+        } else {
+            Err(error_code!(ErrorCode::AccountCollectionNotFound))
+        }
+    }
+
+    // pub fn get_pubkey_seed_at(&self, idx : usize) {
+
+    //     let user_seed = self.account().key.as_ref();
+    //     let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
+    //     let program_address_data_bytes : Vec<u8> = [user_seed,suffix.as_bytes(),&index_bytes,&[bump_seed]].concat();
+
     // }
 
-    // // pub fn try_load<'ctx>(&mut self, ctx:&'ctx ContextReference<'info,'refs,'_,'_>) -> Result<()> {
-    // pub fn try_load(&mut self, ctx: &ContextReference<'info,'refs,'_,'_>) -> Result<()> {
+    pub fn try_insert_reference<T>(
+        &mut self,
+        ctx: &ContextReference<'info,'refs,'_,'_>,
+        bump_seed : u8,
+        allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
+        container: &T
+    )
+    -> Result<()>
+    where T : Container<'info,'refs>
+    {
+        let user_seed = self.account().key.as_ref();
 
-    //     let meta = self.meta()?;
-    //     if let Some(account_info) = ctx.locate_index_account(&meta.pubkey) {
-    //         // let container = CollectionStore::<'info,'refs,T>::try_load(account_info)?;
-    //         let container = AccountReferenceCollectionStore::<T>::try_load(account_info)?;
-    //         self.container = Some(container);
-    //         Ok(())
-    //     } else {
-    //         Err(error_code!(ErrorCode::AccountReferenceCollectionNotFound))
-    //     }
-    // }
+        let meta = self.meta_mut()?;
+        if T::container_type() != meta.get_container_type() {
+            return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+        }
+        let next_index = meta.get_len() + 1;
+        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
+        let program_address_data_bytes : Vec<u8> = [
+            &meta.seed_as_bytes().as_slice(),
+            index_bytes.as_slice(),
+            &[bump_seed]
+        ].concat();
+        let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
 
-    // // pub fn try_insert<'t>(&mut self, record: &'t T) -> Result<()> {
-    // pub fn try_insert(&mut self, record: &T) -> Result<()> {
-    //     if let Some(container) = &self.container {
-    //         container.try_insert(record)?;
-    //         let meta = self.meta_mut()?;
-    //         let count = meta.get_count();
-    //         meta.set_count(count + 1);
-    //         Ok(())
-    //     } else {
-    //         Err(error_code!(ErrorCode::AccountReferenceCollectionNotLoaded))
-    //     }
-    // }
+        let pda = Pubkey::create_program_address(
+            &[user_seed,tpl_program_address_data.seed],
+            // &[user_seed,suffix.as_bytes(),&index_bytes,&[bump_seed]],
+            ctx.program_id
+        )?;
 
-    // // pub fn try_remove(&'info mut self, record: &T) -> Result<()> {
-    // pub fn try_remove<'t : 'info>(&mut self, record: &'t T) -> Result<()> {
-    //     {
-    //         if self.container.is_none() {
-    //             return Err(error_code!(ErrorCode::AccountReferenceCollectionNotLoaded));
-    //         }
+        let tpl_account_info = match ctx.locate_index_account(&pda) {
+            Some(account_info) => account_info,
+            None => {
+                return Err(error_code!(ErrorCode::AccountCollectionNotFound))
+            }
+        };
 
-    //         self.container.as_ref().unwrap().try_remove(record)?;
-    //     }
+        let account_info = ctx.try_create_pda_with_args(
+            Proxy::data_len(),
+            allocation_args,
+            user_seed,
+            tpl_program_address_data,
+            tpl_account_info,
+            false
+        )?;
 
-    //     let meta = self.meta_mut()?;
-    //     let count = meta.get_count();
-    //     meta.set_count(count - 1);
-    //     Ok(())
-    // }
+        let _proxy = Proxy::try_create(account_info, container.pubkey())?;
+
+        meta.set_len(next_index);
+
+        Ok(())
+    }
+    
 
 }
 
 
-// // ~~~
-
-// cfg_if! {
-//     if #[cfg(not(target_arch = "bpf"))] {
-//         use async_trait::async_trait;
-//         use workflow_allocator::container::AccountAggregator;
-//         use solana_program::instruction::AccountMeta;
-
-//         #[async_trait(?Send)]
-//         impl<'info,'refs,T> AccountAggregator for Collection<'info,'refs,T> 
-//         where T : Copy + Eq + PartialEq + Ord + 'info
-//         {
-//             type Key = T;
-//             async fn writable_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
-//                 if key.is_some() {
-//                     return Err(error_code!(ErrorCode::NotImplemented));
-//                 }
-//                 let meta = self.meta()?;
-//                 Ok(vec![AccountMeta::new(meta.get_pubkey(), false)])
-//             }
-
-//             async fn readonly_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
-//                 if key.is_some() {
-//                     return Err(error_code!(ErrorCode::NotImplemented));
-//                 }
-//                 let meta = self.meta()?;
-//                 Ok(vec![AccountMeta::new_readonly(meta.get_pubkey(), false)])
-//             }
+cfg_if! {
+    if #[cfg(not(target_arch = "bpf"))] {
         
-//         }
-//     }
-// }
+        // use futures::join;
+        // use futures::{stream::FuturesUnordered, StreamExt};
+        use futures::{stream::FuturesOrdered, StreamExt};
+
+        impl<'info,'refs> AccountReferenceCollection<'info,'refs> {
+
+            pub fn get_proxy_pubkey_at(&self, program_id : &Pubkey, idx : usize) -> Result<Pubkey> {
+                let meta = self.meta()?;
+                let user_seed = self.account().key.as_ref();
+                let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
+                let (address, _bump_seed) = Pubkey::find_program_address(
+                    &[user_seed,&meta.seed_as_bytes(),&index_bytes],
+                    program_id
+                );
+
+                Ok(address)
+            }
+            
+            pub fn get_proxy_pubkey_seed_at(&self, program_id : &Pubkey, idx : usize) -> Result<Vec<u8>> {
+    
+                let meta = self.meta()?;
+
+                let user_seed = self.account().key.as_ref();
+                let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
+                let mut pda_seed : Vec<u8> = [meta.seed_as_bytes().as_slice(),&index_bytes].concat();
+
+                let (_address, bump_seed) = Pubkey::find_program_address(
+                    &[user_seed,pda_seed.as_slice()],
+                    program_id
+                );
+
+                pda_seed.push(bump_seed);
+                Ok(pda_seed)
+            }
+            
+            pub async fn load_container_at<'this,T>(&self, program_id: &Pubkey, idx: usize) 
+            -> Result<Option<ContainerReference<'this,T>>> 
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let transport = Transport::global()?;
+                Ok(self.load_container_at_with_transport::<T>(program_id, idx, &transport).await?)
+            }
+
+            pub async fn load_container_at_with_transport<'this,T>(&self, program_id: &Pubkey, idx: usize, transport: &Arc<Transport>) 
+            -> Result<Option<ContainerReference<'this,T>>> 
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let proxy_pubkey = self.get_proxy_pubkey_at(program_id, idx)?;
+                let proxy = match load_container_with_transport::<Proxy>(&transport, &proxy_pubkey).await? {
+                    Some(proxy) => proxy,
+                    None => return Err(error_code!(ErrorCode::AccountReferenceCollectionProxyNotFound))
+                };
+
+                let container_pubkey = proxy.reference();
+                Ok(load_container_with_transport::<T>(&transport,container_pubkey).await?)
+            }
+            
+    
+            pub async fn load_container_range<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>) 
+            -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let transport = Transport::global()?;
+                Ok(self.load_container_range_with_transport::<T>(program_id, range, &transport).await?)
+            }
+    
+            pub async fn load_container_range_with_transport<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>, transport: &Arc<Transport>) 
+            -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let mut futures = FuturesOrdered::new();
+                for idx in range {
+                    let f = self.load_container_at_with_transport::<T>(program_id, idx, &transport);
+                    futures.push_back(f);
+                }
+
+                Ok(futures.collect::<Vec<_>>().await)
+            }
+
+        }            
+
+        // #[async_trait(?Send)]
+        // impl<'info,'refs,T> AccountAggregator for Collection<'info,'refs,T> 
+        // where T : Copy + Eq + PartialEq + Ord + 'info
+        // {
+        //     type Key = T;
+        //     async fn writable_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
+        //         if key.is_some() {
+        //             return Err(error_code!(ErrorCode::NotImplemented));
+        //         }
+        //         let meta = self.meta()?;
+        //         Ok(vec![AccountMeta::new(meta.get_pubkey(), false)])
+        //     }
+
+        //     async fn readonly_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
+        //         if key.is_some() {
+        //             return Err(error_code!(ErrorCode::NotImplemented));
+        //         }
+        //         let meta = self.meta()?;
+        //         Ok(vec![AccountMeta::new_readonly(meta.get_pubkey(), false)])
+        //     }
+        
+        // }
+    }
+}
