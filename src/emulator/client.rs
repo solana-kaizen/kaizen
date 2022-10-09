@@ -7,7 +7,7 @@ use workflow_allocator::accounts::AccountDataReference;
 use workflow_allocator::result::Result;
 use workflow_allocator::error::*;
 use workflow_core::trigger::Listener;
-use workflow_log::{log_trace, log_error};
+use workflow_log::*;
 use workflow_rpc::asynchronous::client::RpcClient;
 use workflow_rpc::asynchronous::client::result::Result as RpcResult;
 use super::interface::{EmulatorInterface, ExecutionResponse};
