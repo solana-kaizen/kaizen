@@ -336,7 +336,7 @@ impl Transport {
             if network == "inproc" {
                 let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
                 (Mode::Inproc, JsValue::NULL, Some(emulator))
-            } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
+            } else if regex::Regex::new(r"^rpcs?://").unwrap().is_match(network) {
                 // let emulator = EmulatorRpcClient::new(network)?;
                 let emulator = Arc::new(EmulatorRpcClient::new(network)?);
                 emulator.connect_as_task()?;
