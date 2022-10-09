@@ -7,7 +7,7 @@ use workflow_allocator::accounts::AccountDataReference;
 use workflow_allocator::result::Result;
 use workflow_allocator::error::*;
 use workflow_core::trigger::Listener;
-use workflow_log::log_trace;
+use workflow_log::{log_trace, log_error};
 use workflow_rpc::asynchronous::client::RpcClient;
 use workflow_rpc::asynchronous::client::result::Result as RpcResult;
 use super::interface::{EmulatorInterface, ExecutionResponse};
@@ -55,7 +55,9 @@ impl EmulatorInterface for EmulatorRpcClient {
             Ok(LookupResp { account_data_store }) => {
                 Ok(account_data_store.map(|account_data_store|Arc::new(AccountDataReference::from(&account_data_store))))
             },
-            Err(err) => Err(err)
+            Err(err) => {
+                Err(err)
+            }
         }
     }
 

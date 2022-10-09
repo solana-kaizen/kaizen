@@ -14,6 +14,7 @@ cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
         use workflow_rpc::asynchronous::error::RpcResponseError;
         use std::sync::PoisonError;
+        use std::sync::Arc;
     }
 }
 
@@ -172,29 +173,17 @@ pub enum ErrorCode {
 #[derive(Debug)]
 pub enum Variant {
     ProgramError(ProgramError),
-    // FrameworkError(ErrorCode),
     ErrorCode(ErrorCode),
-    // PoisonError(PoisonError),
     BorrowError(BorrowError),
     BorrowMutError(BorrowMutError),
-
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
-    ClientError(ClientError),
-
-    // #[cfg(not(target_arch = "bpf"))]
-    // CacheError(CacheError),
-    
-    IoError(IoError),
-
+    ClientError(Arc<ClientError>),
+    IoError(Arc<IoError>),
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
     OsString(OsString),
-    
     #[cfg(not(target_arch = "bpf"))]
-    RpcError(workflow_rpc::asynchronous::client::error::Error),
-    // #[cfg(target_arch = "wasm32")]
+    RpcError(Arc<workflow_rpc::asynchronous::client::error::Error>),
     #[cfg(not(target_arch = "bpf"))]
-    // #[cfg(not(target_arch = "bpf"))]
-    // JsValue(wasm_bindgen::JsValue)
     JsValue(String)
 }
 
@@ -202,12 +191,33 @@ impl Clone for Variant {
     fn clone(&self) -> Self {
 
         match self {
-            Variant::BorrowError(_) => { Variant::ErrorCode(ErrorCode::BorrowError) },
-            Variant::BorrowMutError(_) => { Variant::ErrorCode(ErrorCode::BorrowMutError) },
+
+            Variant::ProgramError(e) => Variant::ProgramError(e.clone()),
+            Variant::ErrorCode(e) => Variant::ErrorCode(e.clone()),
+            Variant::BorrowError(_e) => Variant::ErrorCode(ErrorCode::BorrowError),
+            Variant::BorrowMutError(_e) => Variant::ErrorCode(ErrorCode::BorrowMutError),
             #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
-            Variant::ClientError(_) => { Variant::ErrorCode(ErrorCode::ClientError) },
-            // Variant::RpcError(e) => { Variant::ErrorCode(ErrorCode::ClientError) },
-            v => v.clone()
+            Variant::ClientError(e) => Variant::ClientError(e.clone()),
+            Variant::IoError(e) => Variant::IoError(e.clone()),
+            #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+            Variant::OsString(e) => Variant::OsString(e.clone()),
+            #[cfg(not(target_arch = "bpf"))]
+            Variant::RpcError(e) => Variant::RpcError(e.clone()),
+            #[cfg(not(target_arch = "bpf"))]
+            Variant::JsValue(e) => Variant::JsValue(e.clone()),
+        
+
+
+            // Variant::ProgramError(e) => Variant::ProgramError(e.clone()),
+            // Variant::ErrorCode(e) => Variant::ErrorCode(e.clone()),
+            // Variant::IoError(e) => Variant::IoError(e.clone()),
+            // Variant::BorrowError(_) => { Variant::ErrorCode(ErrorCode::BorrowError) },
+            // Variant::BorrowMutError(_) => { Variant::ErrorCode(ErrorCode::BorrowMutError) },
+            // #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+            // Variant::ClientError(_) => { Variant::ErrorCode(ErrorCode::ClientError) },
+            // // Variant::RpcError(e) => { Variant::ErrorCode(ErrorCode::ClientError) },
+            // // v => v.clone()
+
         }
     }
 }
@@ -664,7 +674,7 @@ impl From<SystemTimeError> for Error {
 impl From<IoError> for Error {
     fn from(error: IoError) -> Error {
         Error::new()
-            .with_variant(Variant::IoError(error))
+            .with_variant(Variant::IoError(Arc::new(error)))
     }
 }
 
@@ -714,7 +724,7 @@ impl From<wasm_bindgen::JsValue> for Error {
 impl From<workflow_rpc::asynchronous::client::error::Error> for Error {
     fn from(error: workflow_rpc::asynchronous::client::error::Error) -> Error {
         Error::new()
-            .with_variant(Variant::RpcError(error))
+            .with_variant(Variant::RpcError(Arc::new(error)))
         // JsValue::from(format!("{:?}", error))
     }
 }
@@ -741,7 +751,7 @@ impl<T> From<async_std::channel::SendError<T>> for Error {
 impl From<ClientError> for Error {
     fn from(error: ClientError) -> Error {
         Error::new()
-            .with_variant(Variant::ClientError(error))
+            .with_variant(Variant::ClientError(Arc::new(error)))
         // JsValue::from(format!("{:?}", error))
     }
 }

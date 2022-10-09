@@ -416,9 +416,6 @@ impl super::Interface for Transport {
     }
 
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-
-        // TODO Send
-        // Ok(None)
         let request_type = self.clone().lookup_handler.queue(pubkey).await;
         match request_type {
             RequestType::New(receiver) => {

@@ -90,7 +90,7 @@ mod client {
     }
 
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug)]
     pub struct AccountDataReference {
         pub key : Arc<Pubkey>,
         pub timestamp : Arc<Mutex<Instant>>,
