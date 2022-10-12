@@ -187,9 +187,7 @@ impl<'info,'refs> CollectionMeta for AccountCollectionMetaSegment<'info,'refs> {
 
 }
 
-pub struct AccountCollection<'info, M>
-where M: CollectionMeta
-{
+pub struct AccountCollection<'info, M>{
     pub domain : &'info [u8],
     //meta : Rc<RefCell<&'info mut T>>,
     meta : M,
@@ -203,6 +201,9 @@ where M: CollectionMeta
 impl<'info,M> AccountCollection<'info,M>
 where M: CollectionMeta
 {
+    fn new(domain:&'info [u8], meta:M)->Self{
+        Self { domain, meta}
+    }
     pub fn len(&self) -> Result<usize> {
         // self.meta().unwrap().get_len() as usize
         Ok(self.meta.get_len()? as usize)
@@ -237,27 +238,27 @@ where M: CollectionMeta
     pub fn try_from_meta(
         data : &'info mut AccountCollectionMeta,
         account_info : &AccountInfo<'info>,
-    ) -> Result<Self> {
+    ) -> Result<AccountCollection<'info, AccountCollectionMetaReference<'info>>> {
 
         // let m = M
         let reference = AccountCollectionMetaReference::new(data);
         // let r : &dyn M = &dyn reference;
         // let trait_object: Box<dyn M> = Box::new(reference) as Box<dyn M>;
 
-        // let meta : &dyn M = reference as ;// as M;
-        Ok(AccountCollection {
-            domain : account_info.key.as_ref(),
-            meta : reference,
+        //let meta : M = reference;
+        Ok(AccountCollection::<AccountCollectionMetaReference>::new(
+            account_info.key.as_ref(),
+            reference,
             // meta : Rc::new(reference), //AccountCollectionMetaReference::new(data)
             // account: account_info,
             // segment_meta : None,
             // external_meta : Some(meta),
-        })
+        ))
     }
 
     pub fn try_create_from_segment(
         segment : Rc<Segment<'info, '_>>
-    ) -> Result<Self> {
+    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'info>>> {
         Ok(AccountCollection {
             domain : segment.account().key.as_ref(),
             meta : AccountCollectionMetaSegment::new(segment)
@@ -266,7 +267,7 @@ where M: CollectionMeta
 
     pub fn try_load_from_segment(
             segment : Rc<Segment<'info, '_>>
-    ) -> Result<Self> {
+    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'info>>> {
         Ok(AccountCollection {
             domain : segment.account().key.as_ref(),
             meta : AccountCollectionMetaSegment::new(segment)
@@ -290,7 +291,7 @@ where M: CollectionMeta
     -> Result<<T as Container<'info,'refs>>::T>
     where T : Container<'info,'refs>
     {
-        let meta = self.meta()?;
+        let meta = self.meta.clone()?;
         assert!(index < meta.get_len());
         let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_le()) };
 
