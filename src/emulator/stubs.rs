@@ -10,7 +10,7 @@ use workflow_allocator::accounts::*;
 pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     payer: &'payer_refs AccountInfo<'payer_info>,
     program_id: &'pid Pubkey,
-    base_seed: &[u8],
+    domain_seed: &[u8],
     tpl_adderss_data: &ProgramAddressData,
     tpl_account_info: &'refs AccountInfo<'info>,
     space: usize,
@@ -34,7 +34,7 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
 
     if validate_pda {
         match Pubkey::create_program_address(
-            &[base_seed, tpl_adderss_data.seed],
+            &[domain_seed, tpl_adderss_data.seed],
             &program_id
         ) {
             Ok(address)=>{

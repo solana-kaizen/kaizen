@@ -155,12 +155,12 @@ impl Store for FileStore {
 
         let data = AccountDataStore::from(&*reference.account_data.lock()?).try_to_vec()?;
 
-{
-            log_trace!("################## STORE {}",reference.key);
+        // if false {
             // let account_data = &reference.account_data.read().await;
+            log_trace!("storing: {}",reference.key);
             trace_hex(&data);
-            log_trace!("################################### STORE ");
-        }
+            // log_trace!("################################### STORE ");
+        // }
 
 
         // let data = reference.account_data.read().await.try_to_vec()?;

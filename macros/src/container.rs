@@ -147,6 +147,7 @@ struct Segment {
     // opts : Opts,
     args : Option<SegmentArgs>,
     flex : bool,
+    seed : Option<Value>,
     field_name : syn::Ident,
     name : String,
     // literal_key_str : LitStr,
@@ -350,6 +351,24 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             .into();                
         }    
 
+        // let seed = args.map(|args|args.get("seed"));
+        let seed = if let Some(args) = &args {
+            let seed = args.get("seed");
+            if let Some(seed) = seed {
+                if seed.is_none() {
+                    return Error::new_spanned(
+                        field_name.clone(),
+                        format!("missing seed value")
+                    )
+                    .to_compile_error()
+                    .into();
+                } else {
+                    // seed
+                    seed.clone() // .unwrap()
+                }
+            } else { None }
+        } else { None };
+
         let type_name = field.ty.clone();
         let visibility = field.vis.clone();
         let type_name_for_ident = type_name.clone();
@@ -395,6 +414,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
         let seg = Segment {
             args,
             flex,
+            seed,
             visibility,
             field_name,
             name,
@@ -595,17 +615,28 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             flex = Some(idx);
         }
 
-        inits.push(quote!{
-            let segment = #store_field_name.try_get_segment_at(#idx)?;
-            let #field_name : #type_name  = #type_ident::try_create_from_segment(segment)?;
-
-            // ^  ket x : T<k> = T::new();
-        });
-        loads.push(quote!{
-            let segment = #store_field_name.try_get_segment_at(#idx)?;
-            let #field_name : #type_name  = #type_ident::try_load_from_segment(segment)?;
-            // let #field_name = #type_ident::try_load_from_segment(segment)?;
-        });
+        if let Some(seed) = &segment.seed {
+            let seed = seed.to_token_stream();
+            inits.push(quote!{
+                let segment = #store_field_name.try_get_segment_at(#idx)?;
+                let seed = #seed;
+                let #field_name : #type_name  = #type_ident::try_create_from_segment_with_seed(segment,seed)?;
+            });
+            loads.push(quote!{
+                let segment = #store_field_name.try_get_segment_at(#idx)?;
+                let seed = #seed;
+                let #field_name : #type_name  = #type_ident::try_load_from_segment_with_seed(segment,seed)?;
+            });
+        } else {
+            inits.push(quote!{
+                let segment = #store_field_name.try_get_segment_at(#idx)?;
+                let #field_name : #type_name  = #type_ident::try_create_from_segment(segment)?;
+            });
+            loads.push(quote!{
+                let segment = #store_field_name.try_get_segment_at(#idx)?;
+                let #field_name : #type_name  = #type_ident::try_load_from_segment(segment)?;
+            });
+        }
     }
 
     let field_ident_vec : Vec<Ident> = segments.iter().map(|f| { f.field_name.clone() }).collect();

@@ -27,14 +27,14 @@ use workflow_allocator::container;
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
 pub struct AccountCollectionMeta {
-    seed_u64 : u64,
+    seed : u64,
     len : u64,
     container_type : u32,
 }
 
 impl AccountCollectionMeta {
-    pub fn seed_as_bytes(&self) -> [u8;8] {
-        unsafe { std::mem::transmute(self.get_seed_u64().to_le()) }
+    pub fn get_seed_as_bytes(&self) -> [u8;8] {
+        unsafe { std::mem::transmute(self.get_seed().to_le()) }
     }
 }
 
@@ -113,11 +113,12 @@ impl<'info,'refs> AccountCollection<'info,'refs>
     }
 
     // pub fn try_create(&mut self, _ctx: &ContextReference, data_type : u32) -> Result<()> {
-    pub fn try_init(&mut self, container_type : u32) -> Result<()> {
+    pub fn try_init(&mut self, container_type : u32, seed : u64) -> Result<()> {
         // let data_type = self.meta().get_data_type();
         let meta = self.meta_mut()?;
         meta.set_len(0);
         meta.set_container_type(container_type);
+        meta.set_seed(seed);
 
         Ok(())
         // Ok(collection_store)
@@ -144,31 +145,39 @@ impl<'info,'refs> AccountCollection<'info,'refs>
         }
     }
 
+    pub fn get_seed_at(&self, meta: &AccountCollectionMeta, idx : u64) -> Vec<u8> {
+        let domain = self.account().key.as_ref();
+        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_le()) };
+        [domain, &meta.get_seed_as_bytes(),&index_bytes].concat()
+    }
+
     // pub fn try_create_and_insert<T>(
     pub fn try_create_pda<T>(
         &mut self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
-        suffix : &str,
-        bump_seed : u8,
+        // suffix : &str,
+        seed_bump : u8,
         // tpl_program_address_data : ProgramAddressData,
 
-        allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
+        // allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
         data_len : Option<usize>,
     )
     -> Result<<T as Container<'info,'refs>>::T>
     where T : Container<'info,'refs>
     {
+        // let domain = self.account().key.as_ref();
 
-        let user_seed = self.account().key.as_ref();
-
-        let meta = self.meta_mut()?;
+        let meta = self.meta()?;
         if T::container_type() != meta.get_container_type() {
             return Err(error_code!(ErrorCode::ContainerTypeMismatch));
         }
         let next_index = meta.get_len() + 1;
-        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
+        // let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
 
-        let program_address_data_bytes : Vec<u8> = [suffix.as_bytes(),&index_bytes,&[bump_seed]].concat();
+        let mut program_address_data_bytes = self.get_seed_at(meta,next_index);
+        program_address_data_bytes.push(seed_bump);
+
+        // let program_address_data_bytes : Vec<u8> = [domain, &meta.get_seed_as_bytes(),&index_bytes,&[seed_bump]].concat();
         let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
 
         let pda = Pubkey::create_program_address(
@@ -189,16 +198,18 @@ impl<'info,'refs> AccountCollection<'info,'refs>
             None => T::initial_data_len()
         };
 
+        let allocation_args = AccountAllocationArgs::new(AddressDomain::None);
+
         let account_info = ctx.try_create_pda_with_args(
             data_len,
-            allocation_args,
-            user_seed,
+            &allocation_args,
+            // user_seed,
             tpl_program_address_data,
             tpl_account_info,
             false
         )?;
 
-        meta.set_len(next_index);
+        self.meta_mut()?.set_len(next_index);
 
         let container = T::try_create(account_info)?;
         Ok(container)
@@ -210,24 +221,28 @@ impl<'info,'refs> AccountCollection<'info,'refs>
     pub fn try_insert_pda<T>(
         &mut self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
-        suffix : &str,
-        bump_seed : u8,
+        // suffix : &str,
+        bump : u8,
         container: &T
     )
     -> Result<()>
     where T : Container<'info,'refs>
     {
-        let user_seed = self.account().key.as_ref();
+        // let user_seed = self.account().key.as_ref();
 
-        let meta = self.meta_mut()?;
+        let meta = self.meta()?;
         if T::container_type() != meta.get_container_type() {
             return Err(error_code!(ErrorCode::ContainerTypeMismatch));
         }
         let next_index = meta.get_len() + 1;
-        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
+
+        let program_address_data_bytes = self.get_seed_at(meta,next_index);
+        // program_address_data_bytes.push(seed_bump);
+
+        // let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
 
         let pda = Pubkey::create_program_address(
-            &[user_seed,suffix.as_bytes(),&index_bytes,&[bump_seed]],
+            &[&program_address_data_bytes,&[bump]], //user_seed,suffix.as_bytes(),&index_bytes,&[seed_bump]],
             ctx.program_id
         )?;
 
@@ -250,7 +265,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
             return Err(error_code!(ErrorCode::AccountCollectionInvalidContainerType))
         }
 
-        meta.set_len(next_index);
+        self.meta_mut()?.set_len(next_index);
 
         Ok(())
     }
@@ -265,42 +280,18 @@ cfg_if! {
 
         impl<'info,'refs> AccountCollection<'info,'refs> 
         {
-
-            pub fn todo_try_create(&self, program_id : &Pubkey, suffix : &str) -> Result<(Pubkey, u8)> {
-                self.todo_try_create_with_offset(program_id, suffix, 0)
-            }
-
-            pub fn todo_try_create_with_offset(&self, program_id : &Pubkey, suffix : &str, index_offset : u64) -> Result<(Pubkey, u8)> {
-
-                let user_seed = self.account().key.as_ref();
-
-                let meta = self.meta()?;
-                let next_index = meta.get_len()+1+index_offset;
-                let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
-        
-                let (address, bump_seed) = Pubkey::find_program_address(
-                    &[user_seed, suffix.as_bytes(),&index_bytes],
+            pub fn get_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {
+                let (address, bump) = Pubkey::find_program_address(
+                    &[&self.get_seed_at(self.meta()?, idx)], //domain,&meta.get_seed_as_bytes(),&index_bytes],
                     program_id
                 );
-            
-                Ok((address, bump_seed))
+
+                Ok((address, bump))
             }
 
-            // ^ //////////////////////////////////////////////////////////////////
-            // ^ //////////////////////////////////////////////////////////////////
-            // ^ //////////////////////////////////////////////////////////////////
-            // ^ //////////////////////////////////////////////////////////////////
-
+            #[inline(always)]
             pub fn get_pubkey_at(&self, program_id : &Pubkey, idx : usize) -> Result<Pubkey> {
-                let meta = self.meta()?;
-                let user_seed = self.account().key.as_ref();
-                let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
-                let (address, _bump_seed) = Pubkey::find_program_address(
-                    &[user_seed,&meta.seed_as_bytes(),&index_bytes],
-                    program_id
-                );
-
-                Ok(address)
+                Ok(self.get_pda_at(program_id, idx as u64)?.0)
             }
 
             pub async fn load_container_at<'this,T>(&self, program_id: &Pubkey, idx: usize) 

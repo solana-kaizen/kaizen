@@ -33,7 +33,7 @@ impl ArrayMeta {
 
 #[derive(Debug)]
 pub struct Array<'info, 'refs, T> 
-where T : Copy
+where T : Copy + 'info
 {
     pub account : &'refs AccountInfo<'info>,
     pub segment : Rc<Segment<'info, 'refs>>,
@@ -42,7 +42,7 @@ where T : Copy
 }
 
 impl<'info, 'refs, T> Array<'info, 'refs, T> 
-where T: Copy
+where T: Copy + 'info
 {
 
     pub fn try_create_from_segment(
@@ -277,7 +277,9 @@ where T: Copy
         Ok(())
     }
 
-    pub unsafe fn try_insert(&self, record : &T) -> Result<()> {
+    pub unsafe fn try_insert(&self, record : &T) -> Result<()> 
+    // where T: 'info
+    {
         let dest = self.try_allocate(false)?;
         *dest = *record;
         Ok(())
@@ -289,7 +291,10 @@ where T: Copy
         Ok(())
     }
 
-    pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> {
+    // pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> {
+    pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> 
+    // where T : 'info
+    {
         Ok(self.try_allocate_at(self.len(),zero_init)?)
     }
 

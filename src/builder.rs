@@ -11,6 +11,7 @@ use crate::payload::Payload;
 use crate::sequencer::Sequencer;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
+use workflow_allocator::address::AddressDomain;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
 use workflow_allocator::container::AccountAggregator;
 // use workflow_allocator::instruction::{
@@ -70,7 +71,7 @@ impl InstructionBuilderConfig {
 }
 
 
-pub type TemplateAccessDescriptor = (IsSigner,Access,SeedSuffix);
+pub type TemplateAccessDescriptor = (IsSigner,Access,AddressDomain,SeedSuffix);
 
 /// # Helper for creating a structured program Instruction 
 /// Structured program instructions are used by the Workflow Allocator framework.
@@ -343,14 +344,30 @@ impl InstructionBuilder {
 
     pub fn with_account_templates(mut self, n : usize) -> Self {
         for _ in 0..n {
-            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,SeedSuffix::Sequence))
+            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Sequence))
         }
         self
     }
 
     pub fn with_account_templates_with_custom_suffixes(mut self, suffixes : &[&str]) -> Self {
         for n in 0..suffixes.len() {
-            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,SeedSuffix::Custom(suffixes[n].to_string())))
+            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffixes[n].to_string())))
+        }
+        self
+    }
+
+    // pub fn with_account_templates_with_custom_domains_and_suffixes(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
+    // pub fn with_account_templates_with_custom_seeds(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
+    pub fn with_account_templates_with_seeds(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
+        for (domain, suffix) in suffixes {
+            self.template_access_descriptors.push(
+                (
+                    IsSigner::NotSigner,
+                    Access::Write,
+                    domain.clone(),
+                    SeedSuffix::Custom(suffix.to_string())
+                )
+            )
         }
         self
     }
@@ -359,22 +376,22 @@ impl InstructionBuilder {
         for n in 0..suffixes.len() {
             let mut suffix = prefix.to_string();
             suffix.push_str(suffixes[n]);
-            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,SeedSuffix::Custom(suffix)))
+            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffix)))
         }
         self
     }
 
-    pub fn with_custom_account_templates(mut self, templates : &[(IsSigner,Access)]) -> Self {
-        let template_access_descriptors: Vec<TemplateAccessDescriptor> = 
-            templates
-                .iter()
-                .map(|t|(t.0,t.1,SeedSuffix::Sequence))
-                .collect();
-        self.template_access_descriptors.extend(template_access_descriptors);
-        self
-    }
+    // pub fn with_custom_account_templates(mut self, templates : &[(IsSigner,Access)]) -> Self {
+    //     let template_access_descriptors: Vec<TemplateAccessDescriptor> = 
+    //         templates
+    //             .iter()
+    //             .map(|t|(t.0,t.1,SeedSuffix::Sequence))
+    //             .collect();
+    //     self.template_access_descriptors.extend(template_access_descriptors);
+    //     self
+    // }
 
-    pub fn with_custom_account_templates_and_seeds(mut self, templates : &[(IsSigner,Access,SeedSuffix)]) -> Self {
+    pub fn with_custom_account_templates_and_seeds(mut self, templates : &[(IsSigner,Access,AddressDomain,SeedSuffix)]) -> Self {
         // let template_access_descriptors: Vec<TemplateAccessDescriptor> = 
         //     templates
         //         .iter()
@@ -470,23 +487,34 @@ impl InstructionBuilder {
         }
 
         // @seeds
-        let user_seed = match &self.identity {
-            Some(identity) => identity.pubkey.clone(),
-            None => {
-                match &self.authority {
-                    Some(authority) => authority.pubkey.clone(),
-                    None => {
-                        return Err(error!("InstructionBuilder::seal(): missing identity and/or authority"))
-                    }
-                }
-            }
-        };
+        // let user_seed = match &self.identity {
+        //     Some(identity) => identity.pubkey.clone(),
+        //     None => {
+        //         match &self.authority {
+        //             Some(authority) => authority.pubkey.clone(),
+        //             None => {
+        //                 return Err(error!("InstructionBuilder::seal(): missing identity and/or authority"))
+        //             }
+        //         }
+        //     }
+        // };
 
-        for (is_signer,is_writable, seed_suffix) in self.template_access_descriptors.iter() {
+        for (is_signer,is_writable, domain, seed_suffix) in self.template_access_descriptors.iter() {
         
             // @seeds
             // let mut seeds = vec![self.program_id.as_ref(), user_seed.as_ref()];
-            let mut seeds = vec![user_seed.as_ref()];
+            // let mut seeds = vec![user_seed.as_ref()];
+            let domain_seed = domain.get_seed(
+                self.authority.as_ref(),
+                self.identity.as_ref()
+            )?;
+
+            let mut seeds = vec![domain_seed.as_slice()];
+            // match domain {
+            //     AddressDomain::None => vec![],
+            //     AddressDomain::Default => 
+            //     //vec![user_seed.as_ref()];
+            // };
             // let mut seeds = vec![];
 
             let seed_suffix = match seed_suffix {

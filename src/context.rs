@@ -8,7 +8,10 @@ use solana_program::entrypoint::ProgramResult;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
 
-use workflow_allocator::address::ProgramAddressData;
+use workflow_allocator::address::{
+    AddressDomain,
+    ProgramAddressData
+};
 use workflow_allocator::accounts::{
     LamportAllocation, 
     AllocationPayer,
@@ -29,10 +32,13 @@ pub enum AccountType {
     Handler,
 }
 
+
 pub struct AccountAllocationArgs<'info,'refs,'seed> {
+    /// Seed prefix: None, Authority key, Identity key, or Identity key w/sequence
+    pub domain : AddressDomain,
+    pub seed : Option<&'seed [u8]>,
     pub lamports : LamportAllocation,
     pub payer : AllocationPayer<'info,'refs>,
-    pub seed : Option<&'seed [u8]>,
     // reserve_data_len : usize
 }
 
@@ -41,6 +47,7 @@ impl<'info,'refs,'seed> Default for AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
             payer : AllocationPayer::Authority,
+            domain : AddressDomain::Identity,
             seed : None,
             // reserve_data_len : 0,
         }
@@ -49,20 +56,57 @@ impl<'info,'refs,'seed> Default for AccountAllocationArgs<'info,'refs,'seed> {
 
 impl<'info,'refs,'seed> AccountAllocationArgs<'info,'refs,'seed> {
 
-    pub fn new() -> AccountAllocationArgs<'info,'refs,'seed> {
+    pub fn new(domain : AddressDomain) -> AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
+            domain,// : AddressDomain::Identity,
+            seed : None,
             lamports : LamportAllocation::Auto,
             payer : AllocationPayer::Authority,
-            seed : None,
             // reserve_data_len : 0,
         }
     }
 
-    pub fn new_with_payer(payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
+    // pub fn new_with_domain(domain : AddressDomain) -> AccountAllocationArgs<'info,'refs,'seed> {
+    //     AccountAllocationArgs {
+    //         domain,
+    //         seed : None,
+    //         lamports : LamportAllocation::Auto,
+    //         payer : AllocationPayer::Authority,
+    //         // reserve_data_len : 0,
+    //     }    
+    // }    
+
+    pub fn new_with_payer(domain : AddressDomain, payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
+            domain,// : PdaDomain::Default,
+            seed : None,
             lamports : LamportAllocation::Auto,
             payer : AllocationPayer::Account(payer),
-            seed : None,
+            // reserve_data_len : 0,
+        }
+    }
+
+    // pub fn new_with_domain_and_payer(domain : PdaDomain, payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
+    //     AccountAllocationArgs {
+    //         lamports : LamportAllocation::Auto,
+    //         payer : AllocationPayer::Account(payer),
+    //         domain,
+    //         seed : None,
+    //         // reserve_data_len : 0,
+    //     }
+    // }
+
+    pub fn new_with_args(
+        domain : AddressDomain,
+        lamports : Option<LamportAllocation>,
+        payer : Option<AllocationPayer<'info,'refs>>,
+        seed : Option<&'seed [u8]>,
+    ) -> AccountAllocationArgs<'info,'refs,'seed> {
+        AccountAllocationArgs {
+            domain,
+            seed,
+            lamports : lamports.unwrap_or(LamportAllocation::Auto),
+            payer : payer.unwrap_or(AllocationPayer::Authority),
             // reserve_data_len : 0,
         }
     }
@@ -514,7 +558,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         &self,
         data_len : usize,
         allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
-        user_seed : &[u8],
+        // pda_domain : &[u8],
         tpl_program_address_data : ProgramAddressData,
         tpl_account_info : &'refs AccountInfo<'info>,
         validate_pda : bool
@@ -562,16 +606,55 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         };
 
+        let mut advance_pda_sequence = false;
+        let domain_seed = match &allocation_args.domain {
+            AddressDomain::None => { vec![] },
+            AddressDomain::Default => {
+                match &self.identity {
+                    Some(identity) => {
+                        advance_pda_sequence = true;
+                        // let bytes = 
+                        identity.pubkey().to_bytes().to_vec()
+                        // bytes.as_slice()
+                    },
+                    None => {
+                        self.authority.key.to_bytes().to_vec()
+                    }
+                }
+            },
+            AddressDomain::Authority => {
+                self.authority.key.to_bytes().to_vec()
+            },
+            AddressDomain::Identity => {
+                if let Some(identity) = &self.identity {
+                    advance_pda_sequence = true;
+                    identity.pubkey().to_bytes().to_vec()
+                } else {
+                    return Err(error_code!(ErrorCode::IdentityMissingForAlloc))
+                }
+            },
+            // AddressDomain::Custom(seed) => seed.to_vec()
+        };
+
+
         let account_info = crate::allocate_pda(
             payer,
             self.program_id,
-            &user_seed,
+            &domain_seed,
             &tpl_program_address_data,
             tpl_account_info,
             data_len,
             lamports,
             validate_pda,
         )?;
+
+        // match allocation_args.domain {
+        //     AddressDomain::D
+        // }
+
+        if advance_pda_sequence {
+            self.identity.as_ref().unwrap().advance_pda_sequence()?;
+        }
 
         Ok(account_info)
 
@@ -587,25 +670,26 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;
         log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
         
-        let user_seed = match &self.identity {
-            Some(identity) => identity.pubkey().to_bytes(),
-            None => {
-                self.authority.key.to_bytes()
-            }
-        };
+        // let user_seed = match &self.identity {
+        //     Some(identity) => identity.pubkey().to_bytes(),
+        //     None => {
+        //         self.authority.key.to_bytes()
+        //     }
+        // };
             
         let account_info = self.try_create_pda_with_args(
             data_len,
             allocation_args,
-            &user_seed,
+            // &user_seed,
             tpl_program_address_data,
             tpl_account_info,
             true
         )?;
 
-        if let Some(identity) = &self.identity {
-            identity.advance_pda_sequence()?;
-        }
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // if let Some(identity) = &self.identity {
+        //     identity.advance_pda_sequence()?;
+        // }
 
         Ok(account_info)
     }

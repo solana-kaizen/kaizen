@@ -1,6 +1,57 @@
+use solana_program::instruction::AccountMeta;
 use workflow_log::*;
 use crate::error::*;
 use crate::result::Result;
+
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum AddressDomain {
+    /// No doomain
+    None,
+    /// auto-select identity if available, otherwise authority
+    Default,
+    /// explicitly select authority
+    Authority,
+    /// explicitly select identity
+    Identity,
+    // /// custom
+    // Custom(&'seed [u8])
+}
+
+impl AddressDomain {
+
+    #[cfg(not(target_arch = "bpf"))]
+    pub fn get_seed(&self, authority: Option<&AccountMeta>, identity: Option<&AccountMeta>) -> Result<Vec<u8>> {
+        let seed_prefix = match self {
+            AddressDomain::None => vec![],
+            AddressDomain::Default => {
+                match identity.or(authority) {
+                    Some(meta) => meta.pubkey.to_bytes().to_vec(),
+                    None => return Err(error!("Missing identity or authority for default address domain"))
+                }
+            },
+            AddressDomain::Authority => {
+                authority
+                    .ok_or(error!("Missing authority for address domain"))?
+                    .pubkey
+                    .to_bytes()
+                    .to_vec()
+            },
+            AddressDomain::Identity => {
+                authority
+                    .ok_or(error!("Missing identity for address domain"))?
+                    .pubkey
+                    .to_bytes()
+                    .to_vec()
+            },
+            // AddressDomain::Custom(seed) => seed.to_vec()
+        };
+
+        Ok(seed_prefix)
+    }
+
+
+}
 
 pub struct ProgramAddressData<'data> {
     pub seed: &'data [u8],

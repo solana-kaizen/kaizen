@@ -38,7 +38,8 @@ pub struct OrderedCollectionMeta {
 pub struct OrderedCollection<'info,'refs, T> 
 where T : Copy + Eq + PartialEq + Ord 
 {
-    pub external_meta : Option<&'info mut OrderedCollectionMeta>,
+    // pub external_meta : Option<&'info mut OrderedCollectionMeta>,
+    pub external_meta : Option<&'refs mut OrderedCollectionMeta>,
     pub segment_meta : Option<Rc<Segment<'info,'refs>>>,
     pub container : Option<OrderedCollectionStore<'info,'refs, T>>,
     // _t_ : std::marker::PhantomData<T>,
@@ -70,7 +71,8 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
 
     pub fn data_len_min() -> usize { std::mem::size_of::<OrderedCollectionMeta>() }
 
-    pub fn try_from_meta(meta : &'info mut OrderedCollectionMeta) -> Result<Self> {
+    // pub fn try_from_meta(meta : &'info mut OrderedCollectionMeta) -> Result<Self> {
+    pub fn try_from_meta(meta : &'refs mut OrderedCollectionMeta) -> Result<Self> {
         Ok(OrderedCollection {
             segment_meta : None,
             external_meta : Some(meta),
@@ -100,10 +102,14 @@ where T : Copy + Eq + PartialEq + Ord + 'info + 'refs
         })
     }
 
-    pub fn try_create(&mut self, ctx: &ContextReference, data_type : u32) -> Result<()> {
+    pub fn try_create(&mut self, ctx: &ContextReference<'info,'refs,'_,'_>, allocation_args: &AccountAllocationArgs<'info,'refs,'_>, data_type : u32) -> Result<()> {
+    // pub fn try_create(&mut self, ctx: &ContextReference<'info,'refs,'_,'_>, allocation_args: &AccountAllocationArgs<'_,'_,'_>, data_type : u32) -> Result<()> {
+    // pub fn try_create(&mut self, ctx: &ContextReference<'info,'refs,'_,'_>, allocation_args: &AccountAllocationArgs, data_type : u32) -> Result<()> {
+    // pub fn try_create(&mut self, ctx: &ContextReference, allocation_args: &AccountAllocationArgs<'info,'refs,'_>, data_type : u32) -> Result<()> {
         // let data_type = self.meta().get_data_type();
-        let allocation_args = AccountAllocationArgs::default();
-        let collection_store = OrderedCollectionStore::<T>::try_allocate(ctx, &allocation_args, 0)?;
+        // let allocation_args = AccountAllocationArgs::new(AddressDomain::Identity);
+        // let allocation_args = AccountAllocationArgs::new();
+        let collection_store = OrderedCollectionStore::<T>::try_allocate(ctx, allocation_args, 0)?;
         collection_store.try_init(data_type)?;
         let meta = self.meta_mut()?;
         meta.set_data_type(data_type);

@@ -1701,7 +1701,7 @@ mod tests {
 
         simulator.execute_handler(builder,|ctx:&ContextReference| {
             // log_trace!("ctx.template_accounts[0].key.to_string()1111: {:?}", ctx.template_accounts[0].key.to_string());
-            let allocation_args = AccountAllocationArgs::default();
+            let allocation_args = AccountAllocationArgs::new(AddressDomain::None);
             let account = ctx.try_create_pda(TestContainer::initial_data_len(), &allocation_args)?;
             let _test_container = TestContainer::try_create(account)?;
             // log_trace!("create test container successful...");
@@ -1756,7 +1756,7 @@ mod tests {
             simulator.execute_handler(builder,|ctx:&ContextReference| {
                 let test_container_account = &ctx.handler_accounts[0];
                 let test_container = TestContainer::try_load(test_container_account)?;
-                let allocation_args = AccountAllocationArgs::default();
+                let allocation_args = AccountAllocationArgs::new(AddressDomain::None);
 
                 let v = ctx.instruction_data[0] as u32 | ((ctx.instruction_data[1] as u32) << 8);
                 // log_trace!("test creating instance: {:?}", v);

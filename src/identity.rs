@@ -226,8 +226,14 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     // }
 
     /// Create a new identity container and the corresponding identity proxy account
+    // pub fn create(ctx:&ContextReference<'_,'_,'_,'_>) -> ProgramResult { //Result<()> {
     // pub fn create(ctx:&ContextReference<'info,'refs,'_,'_>) -> ProgramResult { //Result<()> {
+    // pub fn create(ctx:&ContextReference) -> ProgramResult { //Result<()> {
     pub fn create(ctx:&ContextReference) -> ProgramResult { //Result<()> {
+        // Identity::<'info,'refs>::create_(ctx)
+    //     Identity::create_(ctx)
+    // }
+    // pub fn create_(ctx:&ContextReference<'info,'refs,'_,'_>) -> ProgramResult { //Result<()> {
 
         let mut records : Vec<IdentityRecordStore> = Vec::new();
         let mut collection_data_types : Vec<u32> = Vec::new();
@@ -249,12 +255,15 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         }
         // let records = instr.get_records();
 
-        let allocation_args = AccountAllocationArgs::default();
+        // let allocation_args = AccountAllocationArgs::<'info,'refs,'_>::new(AddressDomain::Authority);
+        let allocation_args = AccountAllocationArgs::new(AddressDomain::Authority);
         let proxy = IdentityProxy::try_allocate(ctx, &allocation_args, 0)?;
 
         let data_len = 
             (1 + records.len()) * std::mem::size_of::<IdentityRecord>() +
             collection_data_types.len() * std::mem::size_of::<OrderedCollectionMeta>();
+        // let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
+        // let mut identity = Identity::<'info,'refs>::try_allocate(ctx, &allocation_args, data_len)?;
         let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
         
         identity.init()?;
@@ -268,13 +277,15 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
         // for idx in 0..collections.len() {
         for data_type in collection_data_types.iter() {
+            // let allocation_args = AccountAllocationArgs::<'info,'_,'_>::new(AddressDomain::Identity);
+            let allocation_args = AccountAllocationArgs::new(AddressDomain::Identity);
             // let collection_data_type = collections[idx];
             // let allocation_args = AccountAllocationArgs::default();
             // let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;
             // collection_store.try_init(collection_data_type)?;
             let collection_meta = unsafe { identity.collections.try_allocate(false)? };
             let mut collection = OrderedCollection::<TsPubkey>::try_from_meta(collection_meta)?;
-            collection.try_create(ctx, *data_type)?;
+            collection.try_create(ctx, &allocation_args,*data_type)?;
             // collection.init(collection_store.pubkey(), collection_data_type);
         }
 
@@ -348,7 +359,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
         // TODO: generate PDA dynamically or validate incoming PDA
         // ! WARNING this derivation is not correct (testing) 
-        let allocation_args = AccountAllocationArgs::default();
+        let allocation_args = AccountAllocationArgs::new(AddressDomain::Authority);
         let proxy_account = ctx.try_create_pda(IdentityProxy::initial_data_len(), &allocation_args)?;
         let proxy = IdentityProxy::try_create(proxy_account)?;
 

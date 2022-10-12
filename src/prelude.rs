@@ -12,7 +12,8 @@ pub use solana_program::system_instruction::SystemInstruction;
 pub use solana_program::instruction::{ Instruction, AccountMeta };
 pub use solana_program::entrypoint::ProcessInstruction;
 
-pub use crate::accounts::{AllocationPayer,LamportAllocation,IsSigner,Access};
+pub use crate::accounts::{ AllocationPayer,LamportAllocation,IsSigner,Access };
+pub use crate::address::AddressDomain;
 pub use crate::context::{ Context, ContextReference, HandlerFn, HandlerFnCPtr, AccountAllocationArgs };
 pub use crate::payload::Payload;
 pub use crate::rent::RentCollector;
