@@ -23,13 +23,13 @@ use workflow_allocator::container;
 // use super::TsPubkey;
 // use super::Container;
 
-trait CollectionMeta {
+pub trait CollectionMeta {
     fn min_data_len() -> usize;
-    fn try_init(&self, seed : &[u8], container_type : Option<u32>) -> Result<()>;
-    fn get_seed<'data>(&'data self) -> Result<&'data [u8]>;
-    fn get_len(&self) -> Result<u64>;
-    fn set_len(&self, _len: u64) -> Result<()>;
-    fn get_container_type(&self) -> Result<Option<u32>>;
+    fn try_init(&mut self, seed : &[u8], container_type : Option<u32>) -> Result<()>;
+    fn get_seed<'data>(&'data self) -> Vec<u8>; // &'data [u8];
+    fn get_len(&self) -> u64;
+    fn set_len(&mut self, _len: u64);
+    fn get_container_type(&self) -> Option<u32>;
 
 }
 
@@ -44,7 +44,7 @@ pub struct AccountCollectionMeta {
 
 impl AccountCollectionMeta {
 
-    fn try_init(&self, seed_src : &[u8], container_type : Option<u32>) -> Result<()> {
+    fn try_init(&mut self, seed_src : &[u8], container_type : Option<u32>) -> Result<()> {
         // TODO check that len, seed and container_type are blank
         self.set_len(0);
         self.set_collection_container_type(container_type.unwrap_or(0u32));
@@ -60,25 +60,28 @@ impl AccountCollectionMeta {
         std::mem::size_of::<AccountCollectionMeta>()
     }
 
-    fn get_seed<'data>(&'data self) -> Result<&'data [u8]> {
-        Ok(unsafe { std::mem::transmute(self.get_collection_seed().to_le()) })
+    fn get_seed<'data>(&'data self) -> Vec<u8> { // &'data [u8] {
+        let bytes: [u8; 8] = unsafe { std::mem::transmute(self.get_collection_seed().to_le()) };
+        // &bytes
+        bytes.to_vec()
+        // bytes.as_ptr()
+        // unsafe { std::mem::transmute(&self.get_collection_seed().to_le_bytes()) }
     }
 
-    fn get_len(&self) -> Result<u64> {
-        Ok(self.get_collection_len())
+    fn get_len(&self) -> u64 {
+        self.get_collection_len()
     }
 
-    fn set_len(&self, len : u64) -> Result<()> {
+    fn set_len(&mut self, len : u64) {
         self.set_collection_len(len);
-        Ok(())
     }
 
-    fn get_container_type(&self) -> Result<Option<u32>> {
+    fn get_container_type(&self) -> Option<u32> {
         let container_type = self.get_collection_container_type();
         if container_type == 0 {
-            Ok(None)
+            None
         } else {
-            Ok(Some(container_type))
+            Some(container_type)
         }
     }
 
@@ -100,42 +103,42 @@ impl<'info> AccountCollectionMetaReference<'info> {
         Self { data }
     }
 
-    pub fn data_ref<'data>(&'data self) -> Result<&'data AccountCollectionMeta> {
+    pub fn data_ref<'data>(&'data self) -> &'data AccountCollectionMeta {
         // Ok(self.segment.as_struct_ref::<AccountCollectionMeta>())
-        Ok(self.data)
+        self.data
     }
 
-    pub fn data_mut<'data>(&'data self) -> Result<&'data mut AccountCollectionMeta> {
+    pub fn data_mut<'data>(&'data mut self) -> &'data mut AccountCollectionMeta {
         // Ok(self.segment.as_struct_mut::<AccountCollectionMeta>())
-        Ok(self.data)
+        self.data
     }
 
 }
 
 
 impl<'info> CollectionMeta for AccountCollectionMetaReference<'info> {
-    fn try_init(&self, seed : &[u8], container_type : Option<u32>) -> Result<()> {
-        self.data_ref()?.try_init(seed,container_type)
+    fn try_init(&mut self, seed : &[u8], container_type : Option<u32>) -> Result<()> {
+        self.data_mut().try_init(seed,container_type)
     }
 
     fn min_data_len() -> usize {
         std::mem::size_of::<AccountCollectionMeta>()
     }
 
-    fn get_seed<'data>(&'data self) -> Result<&'data [u8]> {
-        self.data_ref()?.get_seed()
+    fn get_seed<'data>(&'data self) -> Vec<u8> { //&'data [u8] {
+        self.data_ref().get_seed()
     }
     
-    fn get_len(&self) -> Result<u64> {
-        self.data_ref()?.get_len()
+    fn get_len(&self) -> u64 {
+        self.data_ref().get_len()
     }
     
-    fn set_len(&self, len : u64) -> Result<()> {
-        self.data_ref()?.set_len(len)
+    fn set_len(&mut self, len : u64) {
+        self.data_mut().set_len(len);
     }
     
-    fn get_container_type(&self) -> Result<Option<u32>> {
-        self.data_ref()?.get_container_type()
+    fn get_container_type(&self) -> Option<u32> {
+        self.data_ref().get_container_type()
     }
 
 }
@@ -150,39 +153,39 @@ impl<'info,'refs> AccountCollectionMetaSegment<'info,'refs> {
         Self { segment }
     }
 
-    pub fn data_ref<'data>(&'data self) -> Result<&'data AccountCollectionMeta> {
-        Ok(self.segment.as_struct_ref::<AccountCollectionMeta>())
+    pub fn data_ref<'data>(&'data self) -> &'data AccountCollectionMeta {
+        self.segment.as_struct_ref::<AccountCollectionMeta>()
     }
 
-    pub fn data_mut<'data>(&'data self) -> Result<&'data mut AccountCollectionMeta> {
-        Ok(self.segment.as_struct_mut::<AccountCollectionMeta>())
+    pub fn data_mut<'data>(&'data self) -> &'data mut AccountCollectionMeta {
+        self.segment.as_struct_mut::<AccountCollectionMeta>()
     }
 }
 
 impl<'info,'refs> CollectionMeta for AccountCollectionMetaSegment<'info,'refs> {
 
-    fn try_init(&self, seed : &[u8], container_type : Option<u32>) -> Result<()> {
-        self.data_ref()?.try_init(seed,container_type)
+    fn try_init(&mut self, seed : &[u8], container_type : Option<u32>) -> Result<()> {
+        self.data_mut().try_init(seed,container_type)
     }
 
     fn min_data_len() -> usize {
         std::mem::size_of::<AccountCollectionMeta>()
     }
 
-    fn get_seed<'data>(&'data self) -> Result<&'data [u8]> {
-        self.data_ref()?.get_seed()
+    fn get_seed<'data>(&'data self) -> Vec<u8> { //&'data [u8] {
+        self.data_ref().get_seed()
     }
     
-    fn get_len(&self) -> Result<u64> {
-        self.data_ref()?.get_len()
+    fn get_len(&self) -> u64 {
+        self.data_ref().get_len()
     }
     
-    fn set_len(&self, len : u64) -> Result<()> {
-        self.data_ref()?.set_len(len)
+    fn set_len(&mut self, len : u64) {
+        self.data_mut().set_len(len)
     }
     
-    fn get_container_type(&self) -> Result<Option<u32>> {
-        self.data_ref()?.get_container_type()
+    fn get_container_type(&self) -> Option<u32> {
+        self.data_ref().get_container_type()
     }
 
 }
@@ -204,9 +207,9 @@ where M: CollectionMeta
     fn new(domain:&'info [u8], meta:M)->Self{
         Self { domain, meta}
     }
-    pub fn len(&self) -> Result<usize> {
+    pub fn len(&self) -> usize {
         // self.meta().unwrap().get_len() as usize
-        Ok(self.meta.get_len()? as usize)
+        self.meta.get_len() as usize
     }
 
     // pub fn account(&self) -> &'refs AccountInfo<'info> {
@@ -240,44 +243,44 @@ where M: CollectionMeta
         account_info : &AccountInfo<'info>,
     ) -> Result<AccountCollection<'info, AccountCollectionMetaReference<'info>>> {
 
-        // let m = M
-        let reference = AccountCollectionMetaReference::new(data);
-        // let r : &dyn M = &dyn reference;
-        // let trait_object: Box<dyn M> = Box::new(reference) as Box<dyn M>;
-
-        //let meta : M = reference;
         Ok(AccountCollection::<AccountCollectionMetaReference>::new(
             account_info.key.as_ref(),
-            reference,
-            // meta : Rc::new(reference), //AccountCollectionMetaReference::new(data)
-            // account: account_info,
-            // segment_meta : None,
-            // external_meta : Some(meta),
+            AccountCollectionMetaReference::new(data)
         ))
     }
 
-    pub fn try_create_from_segment(
-        segment : Rc<Segment<'info, '_>>
-    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'info>>> {
-        Ok(AccountCollection {
-            domain : segment.account().key.as_ref(),
-            meta : AccountCollectionMetaSegment::new(segment)
-        })
+    pub fn try_create_from_segment<'refs>(
+        segment : Rc<Segment<'info, 'refs>>
+    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
+        Ok(AccountCollection::<AccountCollectionMetaSegment>::new(
+            segment.account().key.as_ref(),
+            AccountCollectionMetaSegment::new(segment)
+            // AccountCollectionMetaReference::new(data)
+        ))
+        // Ok(AccountCollection {
+        //     domain : segment.account().key.as_ref(),
+        //     meta : AccountCollectionMetaSegment::new(segment)
+        // })
     }
 
-    pub fn try_load_from_segment(
-            segment : Rc<Segment<'info, '_>>
-    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'info>>> {
-        Ok(AccountCollection {
-            domain : segment.account().key.as_ref(),
-            meta : AccountCollectionMetaSegment::new(segment)
-        })
+    pub fn try_load_from_segment<'refs>(
+            segment : Rc<Segment<'info, 'refs>>
+    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
+        Ok(AccountCollection::<AccountCollectionMetaSegment>::new(
+            segment.account().key.as_ref(),
+            AccountCollectionMetaSegment::new(segment)
+            // AccountCollectionMetaReference::new(data)
+        ))
+        // Ok(AccountCollection {
+        //     domain : segment.account().key.as_ref(),
+        //     meta : AccountCollectionMetaSegment::new(segment)
+        // })
     }
 
     // pub fn try_create(&mut self, _ctx: &ContextReference, data_type : u32) -> Result<()> {
     pub fn try_init(&mut self, container_type : u32, seed : u64) -> Result<()> {
         // let data_type = self.meta().get_data_type();
-        self.meta.try_init(seed,Some(container_type));
+        self.meta.try_init(&seed.to_le_bytes(),Some(container_type))?;
         // let meta = self.meta_mut()?;
         // meta.set_len(0);
         // meta.set_container_type(container_type);
@@ -291,8 +294,8 @@ where M: CollectionMeta
     -> Result<<T as Container<'info,'refs>>::T>
     where T : Container<'info,'refs>
     {
-        let meta = self.meta.clone()?;
-        assert!(index < meta.get_len());
+        // let meta = self.meta.clone()?;
+        assert!(index < self.meta.get_len());
         let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_le()) };
 
         let pda = Pubkey::create_program_address(
@@ -308,10 +311,11 @@ where M: CollectionMeta
         }
     }
 
-    pub fn get_seed_at(&self, meta: &AccountCollectionMeta, idx : u64) -> Vec<u8> {
-        let domain = self.account().key.as_ref();
+    // pub fn get_seed_at(&self, meta: &AccountCollectionMeta, idx : u64) -> Vec<u8> {
+    pub fn get_seed_at(&self, idx : u64) -> Vec<u8> {
+        let domain = self.domain; //self.account().key.as_ref();
         let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_le()) };
-        [domain, &meta.get_seed_as_bytes(),&index_bytes].concat()
+        [domain, &self.meta.get_seed(),&index_bytes].concat()
     }
 
     // pub fn try_create_and_insert<T>(
@@ -330,14 +334,17 @@ where M: CollectionMeta
     {
         // let domain = self.account().key.as_ref();
 
-        let meta = self.meta()?;
-        if T::container_type() != meta.get_container_type() {
-            return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+        // let meta = self.meta()?;
+        if let Some(container_type) = self.meta.get_container_type() {
+            if T::container_type() != container_type {
+                return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+            }
         }
-        let next_index = meta.get_len() + 1;
+
+        let next_index = self.meta.get_len() + 1;
         // let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
 
-        let mut program_address_data_bytes = self.get_seed_at(meta,next_index);
+        let mut program_address_data_bytes = self.get_seed_at(next_index);
         program_address_data_bytes.push(seed_bump);
 
         // let program_address_data_bytes : Vec<u8> = [domain, &meta.get_seed_as_bytes(),&index_bytes,&[seed_bump]].concat();
@@ -372,7 +379,7 @@ where M: CollectionMeta
             false
         )?;
 
-        self.meta_mut()?.set_len(next_index);
+        self.meta.set_len(next_index);
 
         let container = T::try_create(account_info)?;
         Ok(container)
@@ -393,13 +400,16 @@ where M: CollectionMeta
     {
         // let user_seed = self.account().key.as_ref();
 
-        let meta = self.meta()?;
-        if T::container_type() != meta.get_container_type() {
-            return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+//        let meta = self.meta()?;
+        if let Some(container_type) = self.meta.get_container_type() {
+            if T::container_type() != container_type {
+                return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+            }
         }
-        let next_index = meta.get_len() + 1;
 
-        let program_address_data_bytes = self.get_seed_at(meta,next_index);
+        let next_index = self.meta.get_len() + 1;
+
+        let program_address_data_bytes = self.get_seed_at(next_index);
         // program_address_data_bytes.push(seed_bump);
 
         // let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
@@ -428,7 +438,7 @@ where M: CollectionMeta
             return Err(error_code!(ErrorCode::AccountCollectionInvalidContainerType))
         }
 
-        self.meta_mut()?.set_len(next_index);
+        self.meta.set_len(next_index);
 
         Ok(())
     }
@@ -446,7 +456,7 @@ cfg_if! {
         {
             pub fn get_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {
                 let (address, bump) = Pubkey::find_program_address(
-                    &[&self.get_seed_at(self.meta()?, idx)], //domain,&meta.get_seed_as_bytes(),&index_bytes],
+                    &[&self.get_seed_at(idx)],
                     program_id
                 );
 
