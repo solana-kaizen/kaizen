@@ -23,108 +23,270 @@ use workflow_allocator::container;
 // use super::TsPubkey;
 // use super::Container;
 
+trait CollectionMeta {
+    fn min_data_len() -> usize;
+    fn try_init(&self, seed : &[u8], container_type : Option<u32>) -> Result<()>;
+    fn get_seed<'data>(&'data self) -> Result<&'data [u8]>;
+    fn get_len(&self) -> Result<u64>;
+    fn set_len(&self, _len: u64) -> Result<()>;
+    fn get_container_type(&self) -> Result<Option<u32>>;
+
+}
+
 
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
 pub struct AccountCollectionMeta {
-    seed : u64,
-    len : u64,
-    container_type : u32,
+    collection_seed : u64,
+    collection_len : u64,
+    collection_container_type : u32,
 }
 
 impl AccountCollectionMeta {
-    pub fn get_seed_as_bytes(&self) -> [u8;8] {
-        unsafe { std::mem::transmute(self.get_seed().to_le()) }
-    }
-}
 
-
-pub struct AccountCollection<'info,'refs> 
-{
-    pub account : &'refs AccountInfo<'info>,
-    pub external_meta : Option<&'info mut AccountCollectionMeta>,
-    pub segment_meta : Option<Rc<Segment<'info,'refs>>>,
-}
-
-
-impl<'info,'refs> AccountCollection<'info,'refs> 
-{
-    pub fn len(&self) -> usize {
-        self.meta().unwrap().get_len() as usize
+    fn try_init(&self, seed_src : &[u8], container_type : Option<u32>) -> Result<()> {
+        // TODO check that len, seed and container_type are blank
+        self.set_len(0);
+        self.set_collection_container_type(container_type.unwrap_or(0u32));
+        // let seed = u64::from_le_bytes(seed_src[0..8].try_into().unwrap());
+        let mut seed_dst = [0u8; 8];
+        seed_dst.clone_from_slice(&seed_src[0..]);
+        let seed = u64::from_be_bytes(seed_dst);
+        self.set_collection_seed(seed);
+        Ok(())
     }
 
-    pub fn account(&self) -> &'refs AccountInfo<'info> {
-        self.account
+    fn min_data_len() -> usize {
+        std::mem::size_of::<AccountCollectionMeta>()
     }
 
-    pub fn meta<'meta>(&'meta self) -> Result<&'meta AccountCollectionMeta> {
-        if let Some(external_meta) = &self.external_meta {
-            return Ok(external_meta);
-        } else if let Some(segment) = &self.segment_meta {
-            Ok(segment.as_struct_ref::<AccountCollectionMeta>())
+    fn get_seed<'data>(&'data self) -> Result<&'data [u8]> {
+        Ok(unsafe { std::mem::transmute(self.get_collection_seed().to_le()) })
+    }
+
+    fn get_len(&self) -> Result<u64> {
+        Ok(self.get_collection_len())
+    }
+
+    fn set_len(&self, len : u64) -> Result<()> {
+        self.set_collection_len(len);
+        Ok(())
+    }
+
+    fn get_container_type(&self) -> Result<Option<u32>> {
+        let container_type = self.get_collection_container_type();
+        if container_type == 0 {
+            Ok(None)
         } else {
-            Err(ErrorCode::AccountCollectionMissingMeta.into())
+            Ok(Some(container_type))
         }
     }
 
-    pub fn meta_mut<'meta>(&'meta mut self) -> Result<&'meta mut AccountCollectionMeta> {
-        if let Some(external_meta) = &mut self.external_meta {
-            return Ok(external_meta);
-        } else if let Some(segment) = &self.segment_meta {
-            Ok(segment.as_struct_mut::<AccountCollectionMeta>())
-        } else {
-            Err(ErrorCode::AccountCollectionMissingMeta.into())
-        }
+}
+
+pub struct AccountCollectionMetaReference<'info> {
+    data : &'info mut AccountCollectionMeta
+}
+
+// impl AccountCollectionMeta {
+//     pub fn get_seed_as_bytes(&self) -> [u8;8] {
+//         unsafe { std::mem::transmute(self.get_collection_seed().to_le()) }
+//     }
+// }
+
+impl<'info> AccountCollectionMetaReference<'info> {
+
+    pub fn new(data : &'info mut AccountCollectionMeta) -> Self {
+        Self { data }
     }
+
+    pub fn data_ref<'data>(&'data self) -> Result<&'data AccountCollectionMeta> {
+        // Ok(self.segment.as_struct_ref::<AccountCollectionMeta>())
+        Ok(self.data)
+    }
+
+    pub fn data_mut<'data>(&'data self) -> Result<&'data mut AccountCollectionMeta> {
+        // Ok(self.segment.as_struct_mut::<AccountCollectionMeta>())
+        Ok(self.data)
+    }
+
+}
+
+
+impl<'info> CollectionMeta for AccountCollectionMetaReference<'info> {
+    fn try_init(&self, seed : &[u8], container_type : Option<u32>) -> Result<()> {
+        self.data_ref()?.try_init(seed,container_type)
+    }
+
+    fn min_data_len() -> usize {
+        std::mem::size_of::<AccountCollectionMeta>()
+    }
+
+    fn get_seed<'data>(&'data self) -> Result<&'data [u8]> {
+        self.data_ref()?.get_seed()
+    }
+    
+    fn get_len(&self) -> Result<u64> {
+        self.data_ref()?.get_len()
+    }
+    
+    fn set_len(&self, len : u64) -> Result<()> {
+        self.data_ref()?.set_len(len)
+    }
+    
+    fn get_container_type(&self) -> Result<Option<u32>> {
+        self.data_ref()?.get_container_type()
+    }
+
+}
+
+
+pub struct AccountCollectionMetaSegment<'info,'refs> {
+    segment : Rc<Segment<'info,'refs>>
+}
+
+impl<'info,'refs> AccountCollectionMetaSegment<'info,'refs> {
+    pub fn new(segment : Rc<Segment<'info,'refs>>) -> Self {
+        Self { segment }
+    }
+
+    pub fn data_ref<'data>(&'data self) -> Result<&'data AccountCollectionMeta> {
+        Ok(self.segment.as_struct_ref::<AccountCollectionMeta>())
+    }
+
+    pub fn data_mut<'data>(&'data self) -> Result<&'data mut AccountCollectionMeta> {
+        Ok(self.segment.as_struct_mut::<AccountCollectionMeta>())
+    }
+}
+
+impl<'info,'refs> CollectionMeta for AccountCollectionMetaSegment<'info,'refs> {
+
+    fn try_init(&self, seed : &[u8], container_type : Option<u32>) -> Result<()> {
+        self.data_ref()?.try_init(seed,container_type)
+    }
+
+    fn min_data_len() -> usize {
+        std::mem::size_of::<AccountCollectionMeta>()
+    }
+
+    fn get_seed<'data>(&'data self) -> Result<&'data [u8]> {
+        self.data_ref()?.get_seed()
+    }
+    
+    fn get_len(&self) -> Result<u64> {
+        self.data_ref()?.get_len()
+    }
+    
+    fn set_len(&self, len : u64) -> Result<()> {
+        self.data_ref()?.set_len(len)
+    }
+    
+    fn get_container_type(&self) -> Result<Option<u32>> {
+        self.data_ref()?.get_container_type()
+    }
+
+}
+
+pub struct AccountCollection<'info, M>
+where M: CollectionMeta
+{
+    pub domain : &'info [u8],
+    //meta : Rc<RefCell<&'info mut T>>,
+    meta : M,
+    // meta : Box<dyn CollectionMeta>,
+    // pub account : &'refs AccountInfo<'info>,
+    // pub external_meta : Option<&'info mut AccountCollectionMeta>,
+    // pub segment_meta : Option<Rc<Segment<'info,'refs>>>,
+}
+
+
+impl<'info,M> AccountCollection<'info,M>
+where M: CollectionMeta
+{
+    pub fn len(&self) -> Result<usize> {
+        // self.meta().unwrap().get_len() as usize
+        Ok(self.meta.get_len()? as usize)
+    }
+
+    // pub fn account(&self) -> &'refs AccountInfo<'info> {
+    //     self.account
+    // }
+
+    // pub fn meta<'meta>(&'meta self) -> Result<&'meta AccountCollectionMeta> {
+    //     if let Some(external_meta) = &self.external_meta {
+    //         return Ok(external_meta);
+    //     } else if let Some(segment) = &self.segment_meta {
+    //         Ok(segment.as_struct_ref::<AccountCollectionMeta>())
+    //     } else {
+    //         Err(ErrorCode::AccountCollectionMissingMeta.into())
+    //     }
+    // }
+
+    // pub fn meta_mut<'meta>(&'meta mut self) -> Result<&'meta mut AccountCollectionMeta> {
+    //     if let Some(external_meta) = &mut self.external_meta {
+    //         return Ok(external_meta);
+    //     } else if let Some(segment) = &self.segment_meta {
+    //         Ok(segment.as_struct_mut::<AccountCollectionMeta>())
+    //     } else {
+    //         Err(ErrorCode::AccountCollectionMissingMeta.into())
+    //     }
+    // }
 
     pub fn data_len_min() -> usize { std::mem::size_of::<AccountCollectionMeta>() }
 
     pub fn try_from_meta(
-        meta : &'info mut AccountCollectionMeta,
-        account_info : &'refs AccountInfo<'info>,
+        data : &'info mut AccountCollectionMeta,
+        account_info : &AccountInfo<'info>,
     ) -> Result<Self> {
+
+        // let m = M
+        let reference = AccountCollectionMetaReference::new(data);
+        // let r : &dyn M = &dyn reference;
+        // let trait_object: Box<dyn M> = Box::new(reference) as Box<dyn M>;
+
+        // let meta : &dyn M = reference as ;// as M;
         Ok(AccountCollection {
-            account: account_info,
-            segment_meta : None,
-            external_meta : Some(meta),
+            domain : account_info.key.as_ref(),
+            meta : reference,
+            // meta : Rc::new(reference), //AccountCollectionMetaReference::new(data)
+            // account: account_info,
+            // segment_meta : None,
+            // external_meta : Some(meta),
         })
     }
 
     pub fn try_create_from_segment(
-        segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<AccountCollection<'info,'refs>> {
-        // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
+        segment : Rc<Segment<'info, '_>>
+    ) -> Result<Self> {
         Ok(AccountCollection {
-            account : segment.account(),
-            segment_meta : Some(segment),
-            external_meta : None,
+            domain : segment.account().key.as_ref(),
+            meta : AccountCollectionMetaSegment::new(segment)
         })
     }
 
     pub fn try_load_from_segment(
-            segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<AccountCollection<'info,'refs>> {
-        // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
+            segment : Rc<Segment<'info, '_>>
+    ) -> Result<Self> {
         Ok(AccountCollection {
-            account : segment.account(),
-            segment_meta : Some(segment),
-            external_meta : None,
+            domain : segment.account().key.as_ref(),
+            meta : AccountCollectionMetaSegment::new(segment)
         })
     }
 
     // pub fn try_create(&mut self, _ctx: &ContextReference, data_type : u32) -> Result<()> {
     pub fn try_init(&mut self, container_type : u32, seed : u64) -> Result<()> {
         // let data_type = self.meta().get_data_type();
-        let meta = self.meta_mut()?;
-        meta.set_len(0);
-        meta.set_container_type(container_type);
-        meta.set_seed(seed);
+        self.meta.try_init(seed,Some(container_type));
+        // let meta = self.meta_mut()?;
+        // meta.set_len(0);
+        // meta.set_container_type(container_type);
+        // meta.set_seed(seed);
 
         Ok(())
         // Ok(collection_store)
     }
 
-    pub fn try_load<T>(&self, ctx: &ContextReference<'info,'refs,'_,'_>, suffix : &str, index: u64, bump_seed : u8) 
+    pub fn try_load<'refs,T>(&self, ctx: &ContextReference<'info,'refs,'_,'_>, suffix : &str, index: u64, bump_seed : u8) 
     -> Result<<T as Container<'info,'refs>>::T>
     where T : Container<'info,'refs>
     {
@@ -152,7 +314,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
     }
 
     // pub fn try_create_and_insert<T>(
-    pub fn try_create_pda<T>(
+    pub fn try_create_pda<'refs,T>(
         &mut self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
         // suffix : &str,
@@ -218,7 +380,7 @@ impl<'info,'refs> AccountCollection<'info,'refs>
 
     }
 
-    pub fn try_insert_pda<T>(
+    pub fn try_insert_pda<'refs,T>(
         &mut self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
         // suffix : &str,
@@ -278,7 +440,8 @@ cfg_if! {
 
         use futures::{stream::FuturesOrdered, StreamExt};
 
-        impl<'info,'refs> AccountCollection<'info,'refs> 
+        impl<'info,M> AccountCollection<'info,M> 
+        where M: CollectionMeta
         {
             pub fn get_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {
                 let (address, bump) = Pubkey::find_program_address(
