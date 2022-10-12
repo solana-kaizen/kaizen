@@ -1,185 +1,121 @@
 use cfg_if::cfg_if;
-use workflow_allocator_macros::Meta;
 use crate::address::ProgramAddressData;
 use crate::container::Container;
 use crate::result::Result;
 use workflow_allocator::prelude::*;
 use workflow_allocator::error::ErrorCode;
 use super::proxy::Proxy;
+use super::meta::*;
 
-#[derive(Meta, Copy, Clone)]
-#[repr(packed)]
-pub struct AccountReferenceCollectionMeta {
-    seed : u64,
-    len : u64,
-    container_type : u32,
+pub struct AccountReferenceCollection<'info, M>{
+    pub domain : &'info [u8],
+    meta : M,
 }
 
-impl AccountReferenceCollectionMeta {
-    pub fn get_seed_as_bytes(&self) -> [u8;8] {
-        unsafe { std::mem::transmute(self.get_seed().to_le()) }
-    }
-}
-
-pub struct AccountReferenceCollection<'info,'refs> 
+impl<'info,M> AccountReferenceCollection<'info,M>
+where M: CollectionMeta
 {
-    pub account : &'refs AccountInfo<'info>,
-    pub external_meta : Option<&'info mut AccountReferenceCollectionMeta>,
-    pub segment_meta : Option<Rc<Segment<'info,'refs>>>,
-}
 
-
-impl<'info,'refs> AccountReferenceCollection<'info,'refs> 
-{
-    pub fn len(&self) -> usize {
-        self.meta().unwrap().get_len() as usize
+    fn try_create(
+        domain:&'info [u8],
+        mut meta:M,
+        seed : &[u8],
+        container_type : Option<u32>
+    )->Result<Self> {
+        meta.try_create(seed,container_type)?;
+        Ok(Self { domain, meta })
     }
 
-    pub fn account(&self) -> &'refs AccountInfo<'info> {
-        self.account
+    fn try_load(
+        domain:&'info [u8],
+        mut meta:M,
+    )->Result<Self> {
+        meta.try_load()?;
+        Ok(Self { domain, meta })
     }
 
-    pub fn meta<'meta>(&'meta self) -> Result<&'meta AccountReferenceCollectionMeta> {
-        if let Some(external_meta) = &self.external_meta {
-            return Ok(external_meta);
-        } else if let Some(segment) = &self.segment_meta {
-            Ok(segment.as_struct_ref::<AccountReferenceCollectionMeta>())
-        } else {
-            Err(ErrorCode::AccountReferenceCollectionMissingMeta.into())
-        }
+    pub fn data_len_min() -> usize { M::min_data_len() }
+
+    pub fn try_create_from_meta(
+        data : &'info mut AccountCollectionMeta,
+        account_info : &AccountInfo<'info>,
+        seed : &[u8],
+        container_type : Option<u32>,
+    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaReference<'info>>> {
+
+        AccountReferenceCollection::<AccountCollectionMetaReference>::try_create(
+            account_info.key.as_ref(),
+            AccountCollectionMetaReference::new(data),
+            seed,
+            container_type,
+        )
     }
 
-    pub fn meta_mut<'meta>(&'meta mut self) -> Result<&'meta mut AccountReferenceCollectionMeta> {
-        if let Some(external_meta) = &mut self.external_meta {
-            return Ok(external_meta);
-        } else if let Some(segment) = &self.segment_meta {
-            Ok(segment.as_struct_mut::<AccountReferenceCollectionMeta>())
-        } else {
-            Err(ErrorCode::AccountReferenceCollectionMissingMeta.into())
-        }
+    pub fn try_load_from_meta(
+        data : &'info mut AccountCollectionMeta,
+        account_info : &AccountInfo<'info>,
+    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaReference<'info>>> {
+
+        AccountReferenceCollection::<AccountCollectionMetaReference>::try_load(
+            account_info.key.as_ref(),
+            AccountCollectionMetaReference::new(data)
+        )
     }
 
-    pub fn data_len_min() -> usize { std::mem::size_of::<AccountReferenceCollectionMeta>() }
-
-    pub fn try_from_meta(
-        meta : &'info mut AccountReferenceCollectionMeta,
-        account_info : &'refs AccountInfo<'info>,
-    ) -> Result<Self> {
-        Ok(AccountReferenceCollection {
-            account: account_info,
-            segment_meta : None,
-            external_meta : Some(meta),
-        })
+    pub fn try_create_from_segment<'refs>(
+        segment : Rc<Segment<'info, 'refs>>,
+        seed : &[u8],
+        container_type : Option<u32>,
+    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
+        AccountReferenceCollection::<AccountCollectionMetaSegment>::try_create(
+            segment.account().key.as_ref(),
+            AccountCollectionMetaSegment::new(segment),
+            seed,
+            container_type,
+        )
     }
 
-    pub fn try_create_from_segment(
-        segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<AccountReferenceCollection<'info,'refs>> {
-        // let meta = segment.as_struct_mut_ref::<CollectionMeta>();
-        Ok(AccountReferenceCollection {
-            account : segment.account(),
-            segment_meta : Some(segment),
-            external_meta : None,
-        })
-    }
-
-    pub fn try_load_from_segment(
+    pub fn try_load_from_segment<'refs>(
             segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<AccountReferenceCollection<'info,'refs>> {
-        Ok(AccountReferenceCollection {
-            account : segment.account(),
-            segment_meta : Some(segment),
-            external_meta : None,
-        })
+    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
+        AccountReferenceCollection::<AccountCollectionMetaSegment>::try_load(
+            segment.account().key.as_ref(),
+            AccountCollectionMetaSegment::new(segment)
+        )
     }
 
-    pub fn try_init(&mut self, container_type : u32, seed : u64) -> Result<()> {
-        let meta = self.meta_mut()?;
-        meta.set_len(0);
-        meta.set_container_type(container_type);
-        meta.set_seed(seed);
-
-        Ok(())
+    pub fn len(&self) -> usize {
+        self.meta.get_len() as usize
     }
 
-    pub fn get_proxy_seed_at(&self, meta: &AccountReferenceCollectionMeta, idx : u64) -> Vec<u8> {
-        let domain = self.account().key.as_ref();
+    pub fn get_proxy_seed_at(&self, idx : u64) -> Vec<u8> {
+        let domain = self.domain;
         let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_le()) };
-        [domain, &meta.get_seed_as_bytes(),&index_bytes].concat()
+        [domain, &self.meta.get_seed(),&index_bytes].concat()
     }
 
-    // pub fn try_load<T>(
-    //     &self,
-    //     ctx: &ContextReference<'info,'refs,'_,'_>,
-    //     // suffix : &str,
-    //     index: u64,
-    //     seed_bump : u8
-    // ) 
-    // -> Result<<T as Container<'info,'refs>>::T>
-    // where T : Container<'info,'refs>
-    // {
-    //     let meta = self.meta()?;
-    //     assert!(index < meta.get_len());
-    //     // let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_le()) };
-
-    //     let mut program_address_data_bytes = self.get_proxy_seed_at(meta,index);
-    //     program_address_data_bytes.push(seed_bump);
-
-
-    //     let pda = Pubkey::create_program_address(
-    //         &[&program_address_data_bytes], //suffix.as_bytes(),&index_bytes,&[seed_bump]],
-    //         ctx.program_id
-    //     )?;
-
-    //     if let Some(account_info) = ctx.locate_index_account(&pda) {
-    //         let proxy = Proxy::try_load(account_info)?;
-    //         Ok(container)
-    //     } else {
-    //         Err(error_code!(ErrorCode::AccountCollectionNotFound))
-    //     }
-    // }
-
-    // pub fn get_pubkey_seed_at(&self, idx : usize) {
-
-    //     let user_seed = self.account().key.as_ref();
-    //     let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
-    //     let program_address_data_bytes : Vec<u8> = [user_seed,suffix.as_bytes(),&index_bytes,&[bump_seed]].concat();
-
-    // }
-
-    pub fn try_insert_reference<T>(
+    pub fn try_insert_reference<'refs,T>(
         &mut self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
-        seed_bump : u8,
-        // allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
+        bump : u8,
         container: &T
     )
     -> Result<()>
     where T : Container<'info,'refs>
     {
-        // let user_seed = self.account().key.as_ref();
-
-        let meta = self.meta()?;
-        if T::container_type() != meta.get_container_type() {
-            return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+        if let Some(container_type) = self.meta.get_container_type() {
+            if T::container_type() != container_type {
+                return Err(error_code!(ErrorCode::ContainerTypeMismatch));
+            }
         }
-        let next_index = meta.get_len() + 1;
 
-        let mut program_address_data_bytes = self.get_proxy_seed_at(meta,next_index);
-        program_address_data_bytes.push(seed_bump);
+        let next_index = self.meta.get_len() + 1;
+        let mut program_address_data_bytes = self.get_proxy_seed_at(next_index);
+        program_address_data_bytes.push(bump);
 
-
-        // let index_bytes: [u8; 8] = unsafe { std::mem::transmute(next_index.to_le()) };
-        // let program_address_data_bytes : Vec<u8> = [
-        //     &meta.seed_as_bytes().as_slice(),
-        //     index_bytes.as_slice(),
-        //     &[seed_bump]
-        // ].concat();
         let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
-
         let pda = Pubkey::create_program_address(
             &[tpl_program_address_data.seed],
-            // &[user_seed,suffix.as_bytes(),&index_bytes,&[bump_seed]],
             ctx.program_id
         )?;
 
@@ -194,15 +130,13 @@ impl<'info,'refs> AccountReferenceCollection<'info,'refs>
         let account_info = ctx.try_create_pda_with_args(
             Proxy::data_len(),
             &allocation_args,
-            // user_seed,
             tpl_program_address_data,
             tpl_account_info,
             false
         )?;
 
-        let _proxy = Proxy::try_create(account_info, container.pubkey())?;
-
-        self.meta_mut()?.set_len(next_index);
+        Proxy::try_create(account_info, container.pubkey())?;
+        self.meta.set_len(next_index);
 
         Ok(())
     }
@@ -218,11 +152,15 @@ cfg_if! {
         // use futures::{stream::FuturesUnordered, StreamExt};
         use futures::{stream::FuturesOrdered, StreamExt};
 
-        impl<'info,'refs> AccountReferenceCollection<'info,'refs> {
+        impl<'info,M> AccountReferenceCollection<'info,M>
+        where M: CollectionMeta
+        {        
+
+        // impl<'info,'refs> AccountReferenceCollection<'info,'refs> {
 
             pub fn get_proxy_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {
                 let (address, bump) = Pubkey::find_program_address(
-                    &[&self.get_proxy_seed_at(self.meta()?, idx)], //domain,&meta.get_seed_as_bytes(),&index_bytes],
+                    &[&self.get_proxy_seed_at(idx)], //domain,&meta.get_seed_as_bytes(),&index_bytes],
                     program_id
                 );
 
@@ -306,27 +244,5 @@ cfg_if! {
 
         }            
 
-        // #[async_trait(?Send)]
-        // impl<'info,'refs,T> AccountAggregator for Collection<'info,'refs,T> 
-        // where T : Copy + Eq + PartialEq + Ord + 'info
-        // {
-        //     type Key = T;
-        //     async fn writable_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
-        //         if key.is_some() {
-        //             return Err(error_code!(ErrorCode::NotImplemented));
-        //         }
-        //         let meta = self.meta()?;
-        //         Ok(vec![AccountMeta::new(meta.get_pubkey(), false)])
-        //     }
-
-        //     async fn readonly_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
-        //         if key.is_some() {
-        //             return Err(error_code!(ErrorCode::NotImplemented));
-        //         }
-        //         let meta = self.meta()?;
-        //         Ok(vec![AccountMeta::new_readonly(meta.get_pubkey(), false)])
-        //     }
-        
-        // }
     }
 }
