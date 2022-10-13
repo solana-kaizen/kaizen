@@ -7,25 +7,28 @@ use workflow_allocator::error::ErrorCode;
 use workflow_allocator::container;
 use super::meta::*;
 
-pub struct AccountCollection<'info, M>{
+pub type PdaCollection<'info,'refs> = PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info,'refs>>;
+pub type PdaCollectionReference<'info> = PdaCollectionInterface<'info, PdaCollectionMetaInterface<'info>>;
+
+pub struct PdaCollectionInterface<'info, M>{
     pub domain : &'info [u8],
     meta : M,
 }
 
-impl<'info,M> AccountCollection<'info,M>
+impl<'info,M> PdaCollectionInterface<'info,M>
 where M: CollectionMeta
 {
-    fn try_create(
+    fn try_create_impl(
         domain:&'info [u8],
         mut meta:M,
-        seed : &[u8],
-        container_type : Option<u32>
+        // seed : &[u8],
+        // container_type : Option<u32>
     )->Result<Self> {
-        meta.try_create(seed,container_type)?;
+        meta.try_create()?; // seed,container_type)?;
         Ok(Self { domain, meta })
     }
 
-    fn try_load(
+    fn try_load_impl(
         domain:&'info [u8],
         mut meta:M,
     )->Result<Self> {
@@ -36,51 +39,93 @@ where M: CollectionMeta
     pub fn data_len_min() -> usize { M::min_data_len() }
 
     pub fn try_create_from_meta(
-        data : &'info mut AccountCollectionMeta,
+        data : &'info mut PdaCollectionMeta,
         account_info : &AccountInfo<'info>,
-        seed : &[u8],
+        seed : &'static [u8],
         container_type : Option<u32>,
-    ) -> Result<AccountCollection<'info, AccountCollectionMetaReference<'info>>> {
+    ) -> Result<PdaCollectionInterface<'info, PdaCollectionMetaInterface<'info>>> {
 
-        AccountCollection::<AccountCollectionMetaReference>::try_create(
+        PdaCollectionInterface::<PdaCollectionMetaInterface>::try_create_impl(
             account_info.key.as_ref(),
-            AccountCollectionMetaReference::new(data),
-            seed,
-            container_type,
+            PdaCollectionMetaInterface::new(
+                data,
+                seed,
+                container_type,
+            ),
         )
     }
 
     pub fn try_load_from_meta(
-        data : &'info mut AccountCollectionMeta,
+        data : &'info mut PdaCollectionMeta,
         account_info : &AccountInfo<'info>,
-    ) -> Result<AccountCollection<'info, AccountCollectionMetaReference<'info>>> {
-
-        AccountCollection::<AccountCollectionMetaReference>::try_load(
-            account_info.key.as_ref(),
-            AccountCollectionMetaReference::new(data)
-        )
-    }
-
-    pub fn try_create_from_segment<'refs>(
-        segment : Rc<Segment<'info, 'refs>>,
-        seed : &[u8],
+        seed : &'static [u8],
         container_type : Option<u32>,
-    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
-        AccountCollection::<AccountCollectionMetaSegment>::try_create(
-            segment.account().key.as_ref(),
-            AccountCollectionMetaSegment::new(segment),
-            seed,
-            container_type,
+    ) -> Result<PdaCollectionInterface<'info, PdaCollectionMetaInterface<'info>>> {
+
+        PdaCollectionInterface::<PdaCollectionMetaInterface>::try_load_impl(
+            account_info.key.as_ref(),
+            PdaCollectionMetaInterface::new(
+                data,
+                seed,
+                container_type,
+            )
         )
     }
 
-    pub fn try_load_from_segment<'refs>(
-            segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<AccountCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
-        AccountCollection::<AccountCollectionMetaSegment>::try_load(
+    // pub fn try_create_from_segment<'refs>(
+    //     segment : Rc<Segment<'info, 'refs>>,
+    // ) -> Result<PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
+    //     PdaCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
+    //         segment.account().key.as_ref(),
+    //         PdaCollectionSegmentInterface::new(segment),
+    //     )
+    // }
+
+    // pub fn try_load_from_segment<'refs>(
+    //         segment : Rc<Segment<'info, 'refs>>
+    // ) -> Result<PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
+    //     PdaCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
+    //         segment.account().key.as_ref(),
+    //         PdaCollectionSegmentInterface::new(segment)
+    //     )
+    // }
+
+    pub fn try_create_from_segment_with_collection_args<'refs>(
+        segment : Rc<Segment<'info, 'refs>>,
+        seed : &'static [u8],
+        container_type : Option<u32>,
+    ) -> Result<PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
+        PdaCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
             segment.account().key.as_ref(),
-            AccountCollectionMetaSegment::new(segment)
+            PdaCollectionSegmentInterface::new(
+                segment,
+                seed,
+                container_type
+            ),
         )
+    }
+
+    pub fn try_load_from_segment_with_collection_args<'refs>(
+            segment : Rc<Segment<'info, 'refs>>,
+            seed : &'static [u8],
+            container_type : Option<u32>,
+    ) -> Result<PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
+        PdaCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
+            segment.account().key.as_ref(),
+            PdaCollectionSegmentInterface::new(
+                segment,
+                seed,
+                container_type
+            )
+        )
+    }
+
+    pub fn try_create(
+        &mut self,
+        // seed : &[u8],
+        // container_type : Option<u32>,
+    ) -> Result<()> {
+        self.meta.try_create()//seed, container_type)
     }
 
     pub fn len(&self) -> usize {
@@ -219,7 +264,7 @@ cfg_if! {
 
         use futures::{stream::FuturesOrdered, StreamExt};
 
-        impl<'info,M> AccountCollection<'info,M> 
+        impl<'info,M> PdaCollectionInterface<'info,M> 
         where M: CollectionMeta
         {
             pub fn get_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {

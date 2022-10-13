@@ -1,10 +1,13 @@
 
+use std::collections::HashMap;
 use std::convert::Into;
 use proc_macro::{TokenStream};
-use proc_macro2::{Span, Ident, Group};
+use proc_macro2::{Span, Ident};
+// use proc_macro2::{Span, Ident, Group};
  use proc_macro2::{TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
 use workflow_macro_tools::attributes::*;
+use workflow_macro_tools::parse_error;
 
 // use syn::parse::ParseBuffer;
 use syn::{
@@ -13,8 +16,8 @@ use syn::{
     Type,
     // Path,
     TypePath,
-    Attribute,
-    LitBool,
+    // Attribute,
+    // LitBool,
     Visibility,
     // LitInt,
     // ExprType,
@@ -39,27 +42,25 @@ use syn::{
     // FieldsUnnamed,
 };
 // use darling::{FromDeriveInput, FromField};
-use std::collections::HashMap;
+// use std::collections::HashMap;
 
 
-#[derive(Debug)]
-struct SegmentArgs {
-//    reserve : Option<Expr>
-    map : HashMap<Ident,Option<Value>>,
-    // args : Vec<(Ident,Option<Group>)>,
-}
+// #[derive(Debug)]
+// struct SegmentArgs {
+//     map : HashMap<Ident,Option<Value>>,
+// }
 
-fn get_segment_attrs(attr: &Attribute) -> syn::Result<SegmentArgs> {
-    let meta: SegmentArgs = attr.parse_args().unwrap();
-    Ok(meta)
-}
+// fn get_segment_attrs(attr: &Attribute) -> syn::Result<SegmentArgs> {
+//     let meta: SegmentArgs = attr.parse_args().unwrap();
+//     Ok(meta)
+// }
 
-impl SegmentArgs {
-    pub fn get(&self, name: &str) -> Option<&Option<Value>> {
-        let ident = Ident::new(name, Span::call_site());
-        self.map.get(&ident)
-    }
-}
+// impl SegmentArgs {
+//     pub fn get(&self, name: &str) -> Option<&Option<Value>> {
+//         let ident = Ident::new(name, Span::call_site());
+//         self.map.get(&ident)
+//     }
+// }
 
 /*
 #[segment(reserve(1024))]
@@ -71,64 +72,67 @@ impl SegmentArgs {
 */
 
 const SEGMENT_ATTRIBUTES: &[&str] = &["fixed","reserve","flex"];
+const COLLECTION_ATTRIBUTES: &[&str] = &["seed","container","container_type"];
 
-impl Parse for SegmentArgs {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let mut map: HashMap<Ident,Option<Value>> = HashMap::new();
-        while !input.is_empty() {
-            let token : Item =  input.parse()?;
-            match token {
-                Item::Identifier(ident) => {
-                    if input.peek(Token![,]) {
-                        let _ : Token![,] = input.parse()?;
-                        map.insert(ident, Some(Value::AssignmentValue(AssignmentValue::Boolean(LitBool::new(true,Span::call_site())))));
-                    } else if input.peek(Token![=]) {
-                        let _ : Token![=] = input.parse()?;
-                        let rvalue : AssignmentValue = input.parse()?;
-                        map.insert(ident, Some(Value::AssignmentValue(rvalue)));
-                    } else {
-                        let group : Group = input.parse()?;
-                        map.insert(ident, Some(Value::EvaluationValue(EvaluationValue::Group(group))));
-                    }
 
-                    if input.peek(Token![,]) {
-                        let _ : Token![,] = input.parse()?;
-                    }
 
-                },
-                Item::Literal(lit) => {
-                    let reserve = Ident::new("reserve", Span::call_site());
-                    if map.get(&reserve).is_none() {
-                        map.insert(reserve, Some(Value::EvaluationValue(EvaluationValue::Integer(lit))));
-                    }
-                },
-                _ => {
-                    return Err(Error::new_spanned(
-                        input.parse::<Expr>()?,
-                        format!("unsipported attributes")
-                    ));
+// impl Parse for SegmentArgs {
+//     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+//         let mut map: HashMap<Ident,Option<Value>> = HashMap::new();
+//         while !input.is_empty() {
+//             let token : Item =  input.parse()?;
+//             match token {
+//                 Item::Identifier(ident) => {
+//                     if input.peek(Token![,]) {
+//                         let _ : Token![,] = input.parse()?;
+//                         map.insert(ident, Some(Value::AssignmentValue(AssignmentValue::Boolean(LitBool::new(true,Span::call_site())))));
+//                     } else if input.peek(Token![=]) {
+//                         let _ : Token![=] = input.parse()?;
+//                         let rvalue : AssignmentValue = input.parse()?;
+//                         map.insert(ident, Some(Value::AssignmentValue(rvalue)));
+//                     } else {
+//                         let group : Group = input.parse()?;
+//                         map.insert(ident, Some(Value::EvaluationValue(EvaluationValue::Group(group))));
+//                     }
+
+//                     if input.peek(Token![,]) {
+//                         let _ : Token![,] = input.parse()?;
+//                     }
+
+//                 },
+//                 Item::Literal(lit) => {
+//                     let reserve = Ident::new("reserve", Span::call_site());
+//                     if map.get(&reserve).is_none() {
+//                         map.insert(reserve, Some(Value::EvaluationValue(EvaluationValue::Integer(lit))));
+//                     }
+//                 },
+//                 _ => {
+//                     return Err(Error::new_spanned(
+//                         input.parse::<Expr>()?,
+//                         format!("unsipported attributes")
+//                     ));
     
-                }
-            }
-        }
+//                 }
+//             }
+//         }
 
-        for (ident,_) in map.iter() {
-            let name = ident.to_string();
-            if !SEGMENT_ATTRIBUTES.contains(&name.as_str()) {
-                return Err(Error::new_spanned(
-                    ident,
-                    format!("unsupported segment attribute: {}, supported attributes are {}", name, SEGMENT_ATTRIBUTES.join(", "))
-                ));
-                // .to_compile_error()
-            //    .into()
-            }
-        }
+//         for (ident,_) in map.iter() {
+//             let name = ident.to_string();
+//             if !SEGMENT_ATTRIBUTES.contains(&name.as_str()) {
+//                 return Err(Error::new_spanned(
+//                     ident,
+//                     format!("unsupported segment attribute: {}, supported attributes are {}", name, SEGMENT_ATTRIBUTES.join(", "))
+//                 ));
+//                 // .to_compile_error()
+//             //    .into()
+//             }
+//         }
 
-        Ok(Self {
-            map
-        })
-    }
-}
+//         Ok(Self {
+//             map
+//         })
+//     }
+// }
 
 
 // #[derive(Debug)]
@@ -143,11 +147,34 @@ impl Parse for SegmentArgs {
 // Span::call_site()
 
 #[derive(Debug)]
+pub struct SegmentArgs {
+    pub segment : Option<Args>,
+    pub collection : Option<Args>,
+}
+
+
+#[derive(Debug, Clone)]
+pub struct CollectionArgs {
+    pub seed : Option<Value>,
+    pub container : Option<Value>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CollectionRefs {
+    pub seed_const : Ident,
+    pub container_type_const : Ident,
+}
+
+
+
+#[derive(Debug)]
 struct Segment {
     // opts : Opts,
-    args : Option<SegmentArgs>,
+    // args : Option<SegmentArgs>,
+    args : SegmentArgs, //Option<Args>,
     flex : bool,
-    seed : Option<Value>,
+    // seed : Option<Value>,
+    collection : Option<CollectionArgs>,
     field_name : syn::Ident,
     name : String,
     // literal_key_str : LitStr,
@@ -303,12 +330,16 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
     {
         fields
     } else {
-        return Error::new_spanned(
-            ast,
-            format!("#[container] macro only supports structs")
-        )
-        .to_compile_error()
-        .into();
+        return parse_error(
+            ast, 
+            "#[container] macro only supports structs"
+        ).into();
+        // return Error::new_spanned(
+        //     ast,
+        //     format!("#[container] macro only supports structs")
+        // )
+        // .to_compile_error()
+        // .into();
     };
 
     let mut flex_segments = 0;
@@ -317,27 +348,98 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
         let field_name: syn::Ident = field.ident.as_ref().unwrap().clone();
         let name: String = field_name.to_string();
 
-        let mut attrs: Vec<_> =
-            field.attrs.iter().filter(|attr| attr.path.is_ident("segment")).collect();
-        if attrs.len() > 1 {
-            return Error::new_spanned(
-                attrs[1].clone(),
-                format!("#[container]: more than one #[segment()] attributes while processing {}", name)
-            )
-            .to_compile_error()
-            .into();
-    
-        }
-        let args = if attrs.len() > 0 {
-            let attr = attrs.remove(0);
-            Some(get_segment_attrs(attr).unwrap())
-        } else {
-            None
+        let mut args = SegmentArgs {
+            segment : None,
+            collection : None,
         };
+
+        // let mut attrs: Vec<_> =
+        //     field
+        //         .attrs
+        //         .iter()
+        //         .map(|attr| {
+        //             if attr.path.is_ident("segment") || attr.path.is_ident("collection") {
+        //                 Some(attr)
+        //             } else {
+        //                 None
+        //             }
+        //         })
+        //         .filter(|attr|)
+        //         .collect();
+
+
+
+        // let attrs = Vec::new();
+
+        for attr in field.attrs.iter() {
+            if attr.path.is_ident("segment") {
+                if args.segment.is_some() {
+                    return parse_error(
+                        attr.clone(),
+                        &format!("#[container]: more than one #[segment()] attributes while processing {}", name)
+                    ).into();
+                }
+
+                match get_attributes(attr) {
+                    Some(attrs) => {
+                        if let Err(err) = attrs.allow(SEGMENT_ATTRIBUTES) {
+                            return err.to_compile_error().into();
+                        }
+                        args.segment = Some(attrs);
+                    },
+                    None => {
+                        
+                    }
+                }
+
+            } else if attr.path.is_ident("collection") {
+                if args.collection.is_some() {
+                    return parse_error(
+                        attr.clone(),
+                        &format!("#[container]: more than one #[collection()] attributes while processing {}", name)
+                    ).into();
+                }
+
+                match get_attributes(attr) {
+                    Some(attrs) => {
+                        if let Err(err) = attrs.allow(COLLECTION_ATTRIBUTES) {
+                            return err.to_compile_error().into();
+                        }
+                        args.collection = Some(attrs);
+                    },
+                    None => {
+                        
+                    }
+                }
+
+            }
+        }
+
+        // let mut attrs: Vec<_> =
+        //     field.attrs.iter().filter(|attr| attr.path.is_ident("segment")).collect();
+        // if attrs.len() > 1 {
+        //     return Error::new_spanned(
+        //         attrs[1].clone(),
+        //         format!("#[container]: more than one #[segment()] attributes while processing {}", name)
+        //     )
+        //     .to_compile_error()
+        //     .into();
+    
+        // }
+
+
+
+        // let args = if attrs.len() > 0 {
+        //     let attr = attrs.remove(0);
+        //     // Some(get_segment_attrs(attr).unwrap())
+        //     Some(get_attributes(attr).unwrap())
+        // } else {
+        //     None
+        // };
 
         // args.get()
         // let is_flex = args.get("flex").is_
-        let flex = if let Some(args) = &args {
+        let flex = if let Some(args) = &args.segment {
             args.get("flex").is_some()
         } else { false };
         if flex { flex_segments += 1; }
@@ -352,21 +454,27 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
         }    
 
         // let seed = args.map(|args|args.get("seed"));
-        let seed = if let Some(args) = &args {
-            let seed = args.get("seed");
-            if let Some(seed) = seed {
-                if seed.is_none() {
-                    return Error::new_spanned(
-                        field_name.clone(),
-                        format!("missing seed value")
-                    )
-                    .to_compile_error()
-                    .into();
-                } else {
-                    // seed
-                    seed.clone() // .unwrap()
-                }
-            } else { None }
+
+        // TODO setup accessor functions for value retrieval
+        let collection_seed = if let Some(args) = &args.collection {
+            match args.get_value_or("seed", field_name.clone(), "missing seed value") {
+                Ok(value) => value,
+                Err(err) => return err.into()
+            }
+        } else { None };
+
+        // let collection_container_type = if let Some(args) = &args.collection {
+        //     match args.get_value_or("container_type", field_name.clone(), "missing seed value") {
+        //         Ok(value) => value,
+        //         Err(err) => return err.into()
+        //     }
+        // } else { None };
+
+        let collection_container = if let Some(args) = &args.collection {
+            match args.get_value_or("container", field_name.clone(), "missing container value") {
+                Ok(value) => value,
+                Err(err) => return err.into()
+            }
         } else { None };
 
         let type_name = field.ty.clone();
@@ -410,11 +518,29 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                 (None,None)
             }
         };
+
+        let collection = if collection_seed.is_some() || collection_container.is_some() {
+            Some(
+                CollectionArgs { 
+                    seed : collection_seed, 
+                    container : collection_container 
+                }
+            )
+        } else { 
+        
+            if args.collection.is_some() {
+                return parse_error(field_name.clone(), "collection attribute requires seed field: #[collection(seed(b\"...\"))]").into();
+            }
+            
+            None 
+        };
+
 // println!("!!!!!!!!!!!!!!!!!!!!!!  ========= > {:#?}", field_name);
         let seg = Segment {
             args,
             flex,
-            seed,
+            // seed,
+            collection,
             visibility,
             field_name,
             name,
@@ -459,7 +585,40 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
     // filter our store field
     let segments = segments.into_iter().filter(|seg| !seg.is_store() ).collect::<Vec<_>>();
 
+    let mut collection_refs = HashMap::<String,CollectionRefs>::new();
+    let mut collection_inits = Vec::new();
+    for segment in segments.iter() {
+        if let Some(collection) = &segment.collection {
+            // collections.insert(segment.name.clone(), collection.clone());
+            // let field_name = &segment.field_name;
+            let collection_seed_const = Ident::new(&format!("COLLECTION_SEED_{}",&segment.name.to_uppercase()), Span::call_site());
+            match &collection.seed {
+                Some(seed) => {
+                    let seed = seed.to_token_stream();
+                    collection_inits.push(quote!{ const #collection_seed_const: &'static [u8] = #seed; });
+                },
+                None => {
+                    return parse_error(segment.field_name.clone(),"missing seed attribute parameter").into();
+                }
+            }
+            let collection_container_type_const = Ident::new(&format!("COLLECTION_CONTAINER_{}",&segment.name.to_uppercase()), Span::call_site());
+            match &collection.container {
+                Some(container) => {
+                    let container = container.to_token_stream();
+                    collection_inits.push(quote!{ const #collection_container_type_const: Option<u32> = Some(#container :: CONTAINER_TYPE); });
+                },
+                None => {
+                    collection_inits.push(quote!{ const #collection_container_type_const: Option<u32> = None; });
+                }
+            }
 
+            collection_refs.insert(segment.name.clone(), CollectionRefs {
+                seed_const : collection_seed_const,
+                container_type_const : collection_container_type_const,
+            });
+
+        }
+    }
     // let seg = Segment {
     //     args : None,
     //     field_name : store_field_name.clone(),
@@ -615,17 +774,29 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             flex = Some(idx);
         }
 
-        if let Some(seed) = &segment.seed {
-            let seed = seed.to_token_stream();
+        if let Some(collection) = &collection_refs.get(&segment.name) {
+            // let seed = seed.to_token_stream();
+            let seed_const = collection.seed_const.clone();
+            let container_type_const = collection.container_type_const.clone();
             inits.push(quote!{
                 let segment = #store_field_name.try_get_segment_at(#idx)?;
-                let seed = #seed;
-                let #field_name : #type_name  = #type_ident::try_create_from_segment_with_seed(segment,seed)?;
+                // let seed = #seed;
+                // let container_type = 0u32;
+                let #field_name : #type_name  = #type_ident::try_create_from_segment_with_collection_args(
+                    segment,
+                    #struct_name :: #seed_const,
+                    #struct_name :: #container_type_const,
+                )?;
             });
             loads.push(quote!{
                 let segment = #store_field_name.try_get_segment_at(#idx)?;
-                let seed = #seed;
-                let #field_name : #type_name  = #type_ident::try_load_from_segment_with_seed(segment,seed)?;
+                // let seed = #seed;
+                // let container_type = 0u32
+                let #field_name : #type_name  = #type_ident::try_load_from_segment_with_collection_args(
+                    segment,
+                    #struct_name :: #seed_const,
+                    #struct_name :: #container_type_const
+                )?;
             });
         } else {
             inits.push(quote!{
@@ -687,7 +858,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
         // }
 
 
-        let ts_ = if let Some(args) = &segment.args {
+        let ts_ = if let Some(args) = &segment.args.segment {
             let reserve = Ident::new("reserve", Span::call_site());
             match args.map.get(&reserve) {
                 Some(reserve) => {
@@ -855,6 +1026,11 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
         #struct_redef
 
         impl #struct_params #struct_name #struct_params #where_clause {
+
+            pub const CONTAINER_TYPE: u32 = #container_type as u32;
+
+            #(#collection_inits)*
+
 
             // pub fn try_allocate<'pid,'instr>(
             //     ctx: &std::rc::Rc<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>,

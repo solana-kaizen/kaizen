@@ -7,26 +7,29 @@ use workflow_allocator::error::ErrorCode;
 use super::proxy::Proxy;
 use super::meta::*;
 
-pub struct AccountReferenceCollection<'info, M>{
+pub type PdaProxyCollection<'info,'refs> = PdaProxyCollectionInterface<'info, PdaCollectionSegmentInterface<'info,'refs>>;
+pub type PdaProxyCollectionReference<'info> = PdaProxyCollectionInterface<'info, PdaCollectionMetaInterface<'info>>;
+
+pub struct PdaProxyCollectionInterface<'info, M>{
     pub domain : &'info [u8],
     meta : M,
 }
 
-impl<'info,M> AccountReferenceCollection<'info,M>
+impl<'info,M> PdaProxyCollectionInterface<'info,M>
 where M: CollectionMeta
 {
 
-    fn try_create(
+    fn try_create_impl(
         domain:&'info [u8],
         mut meta:M,
-        seed : &[u8],
-        container_type : Option<u32>
+        // seed : &[u8],
+        // container_type : Option<u32>
     )->Result<Self> {
-        meta.try_create(seed,container_type)?;
+        meta.try_create()?; //seed,container_type)?;
         Ok(Self { domain, meta })
     }
 
-    fn try_load(
+    fn try_load_impl(
         domain:&'info [u8],
         mut meta:M,
     )->Result<Self> {
@@ -37,51 +40,77 @@ where M: CollectionMeta
     pub fn data_len_min() -> usize { M::min_data_len() }
 
     pub fn try_create_from_meta(
-        data : &'info mut AccountCollectionMeta,
+        data : &'info mut PdaCollectionMeta,
         account_info : &AccountInfo<'info>,
-        seed : &[u8],
+        seed : &'static [u8],
         container_type : Option<u32>,
-    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaReference<'info>>> {
+    ) -> Result<PdaProxyCollectionInterface<'info, PdaCollectionMetaInterface<'info>>> {
 
-        AccountReferenceCollection::<AccountCollectionMetaReference>::try_create(
+        PdaProxyCollectionInterface::<PdaCollectionMetaInterface>::try_create_impl(
             account_info.key.as_ref(),
-            AccountCollectionMetaReference::new(data),
-            seed,
-            container_type,
+            PdaCollectionMetaInterface::new(
+                data,
+                seed,
+                container_type,
+            ),
+            // seed,
+            // container_type,
         )
     }
 
     pub fn try_load_from_meta(
-        data : &'info mut AccountCollectionMeta,
+        data : &'info mut PdaCollectionMeta,
         account_info : &AccountInfo<'info>,
-    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaReference<'info>>> {
-
-        AccountReferenceCollection::<AccountCollectionMetaReference>::try_load(
-            account_info.key.as_ref(),
-            AccountCollectionMetaReference::new(data)
-        )
-    }
-
-    pub fn try_create_from_segment<'refs>(
-        segment : Rc<Segment<'info, 'refs>>,
-        seed : &[u8],
+        seed : &'static [u8],
         container_type : Option<u32>,
-    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
-        AccountReferenceCollection::<AccountCollectionMetaSegment>::try_create(
-            segment.account().key.as_ref(),
-            AccountCollectionMetaSegment::new(segment),
-            seed,
-            container_type,
+) -> Result<PdaProxyCollectionInterface<'info, PdaCollectionMetaInterface<'info>>> {
+
+        PdaProxyCollectionInterface::<PdaCollectionMetaInterface>::try_load_impl(
+            account_info.key.as_ref(),
+            PdaCollectionMetaInterface::new(
+                data,
+                seed,
+                container_type,
+            )
         )
     }
 
-    pub fn try_load_from_segment<'refs>(
-            segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<AccountReferenceCollection<'info, AccountCollectionMetaSegment<'info, 'refs>>> {
-        AccountReferenceCollection::<AccountCollectionMetaSegment>::try_load(
+    pub fn try_create_from_segment_with_collection_args<'refs>(
+        segment : Rc<Segment<'info, 'refs>>,
+        seed : &'static [u8],
+        container_type : Option<u32>,
+) -> Result<PdaProxyCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
+        PdaProxyCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
             segment.account().key.as_ref(),
-            AccountCollectionMetaSegment::new(segment)
+            PdaCollectionSegmentInterface::new(
+                segment,
+                seed,
+                container_type,
+            ),
         )
+    }
+
+    pub fn try_load_from_segment_with_collection_args<'refs>(
+            segment : Rc<Segment<'info, 'refs>>,
+            seed : &'static [u8],
+            container_type : Option<u32>,
+    ) -> Result<PdaProxyCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
+        PdaProxyCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
+            segment.account().key.as_ref(),
+            PdaCollectionSegmentInterface::new(
+                segment,
+                seed,
+                container_type,
+            )
+        )
+    }
+
+    pub fn try_create(
+        &mut self,
+        // seed : &[u8],
+        // container_type : Option<u32>,
+    ) -> Result<()> {
+        self.meta.try_create()//seed, container_type)
     }
 
     pub fn len(&self) -> usize {
@@ -148,11 +177,9 @@ where M: CollectionMeta
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
         
-        // use futures::join;
-        // use futures::{stream::FuturesUnordered, StreamExt};
         use futures::{stream::FuturesOrdered, StreamExt};
 
-        impl<'info,M> AccountReferenceCollection<'info,M>
+        impl<'info,M> PdaProxyCollectionInterface<'info,M>
         where M: CollectionMeta
         {        
 
@@ -170,33 +197,7 @@ cfg_if! {
 
             pub fn get_proxy_pubkey_at(&self, program_id : &Pubkey, idx : usize) -> Result<Pubkey> {
                 Ok(self.get_proxy_pda_at(program_id,idx as u64)?.0)
-                // let meta = self.meta()?;
-                // let user_seed = self.account().key.as_ref();
-                // let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
-                // let (address, _bump_seed) = Pubkey::find_program_address(
-                //     &[user_seed,&meta.seed_as_bytes(),&index_bytes],
-                //     program_id
-                // );
-
-                // Ok(address)
             }
-            
-            // pub fn get_proxy_pubkey_seed_at(&self, program_id : &Pubkey, idx : usize) -> Result<Vec<u8>> {
-    
-            //     let meta = self.meta()?;
-
-            //     let user_seed = self.account().key.as_ref();
-            //     let index_bytes: [u8; 8] = unsafe { std::mem::transmute((idx as u64).to_le()) };
-            //     let mut pda_seed : Vec<u8> = [meta.seed_as_bytes().as_slice(),&index_bytes].concat();
-
-            //     let (_address, bump_seed) = Pubkey::find_program_address(
-            //         &[user_seed,pda_seed.as_slice()],
-            //         program_id
-            //     );
-
-            //     pda_seed.push(bump_seed);
-            //     Ok(pda_seed)
-            // }
             
             pub async fn load_container_at<'this,T>(&self, program_id: &Pubkey, idx: usize) 
             -> Result<Option<ContainerReference<'this,T>>> 
