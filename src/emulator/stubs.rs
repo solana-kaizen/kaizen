@@ -63,6 +63,8 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     //         .offset(-8) as *mut u64;
     //     *ptr
     // };
+
+    log_error!("payer: {:?}", payer);
     
     // log_trace!("| pda: account realloc - buffer: {} slice: {} target: {}",buffer_size,tpl_account_info.data_len(),space);
     account_info_realloc(tpl_account_info, space, true, true)?;
