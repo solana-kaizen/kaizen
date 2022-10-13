@@ -256,7 +256,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         // let records = instr.get_records();
 
         // let allocation_args = AccountAllocationArgs::<'info,'refs,'_>::new(AddressDomain::Authority);
-        let allocation_args = AccountAllocationArgs::new(AddressDomain::Authority);
+        let allocation_args = AccountAllocationArgs::new_with_payer(AddressDomain::Authority, AllocationPayer::Authority);
         let proxy = IdentityProxy::try_allocate(ctx, &allocation_args, 0)?;
 
         let data_len = 
@@ -278,7 +278,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         // for idx in 0..collections.len() {
         for data_type in collection_data_types.iter() {
             // let allocation_args = AccountAllocationArgs::<'info,'_,'_>::new(AddressDomain::Identity);
-            let allocation_args = AccountAllocationArgs::new(AddressDomain::Identity);
+            let allocation_args = AccountAllocationArgs::new_with_payer(AddressDomain::Identity, AllocationPayer::Authority);
             // let collection_data_type = collections[idx];
             // let allocation_args = AccountAllocationArgs::default();
             // let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;

@@ -76,12 +76,14 @@ impl<'info,'refs,'seed> AccountAllocationArgs<'info,'refs,'seed> {
     //     }    
     // }    
 
-    pub fn new_with_payer(domain : AddressDomain, payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
+    // pub fn new_with_payer(domain : AddressDomain, payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
+    pub fn new_with_payer(domain : AddressDomain, payer : AllocationPayer<'info,'refs>) -> AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
             domain,// : PdaDomain::Default,
             seed : None,
             lamports : LamportAllocation::Auto,
-            payer : AllocationPayer::Account(payer),
+            payer
+            // payer : AllocationPayer::Account(payer),
             // reserve_data_len : 0,
         }
     }
