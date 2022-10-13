@@ -442,7 +442,8 @@ pub mod client {
 
         let builder = InstructionBuilder::new(program_id, interface_id, handler_id as u16)
             .with_authority(authority)
-            .with_account_templates_with_custom_suffixes(&["proxy"]) 
+            // .with_account_templates_with_custom_suffixes(&["proxy"]) 
+            .with_account_templates_with_seeds(&[(AddressDomain::Authority,"proxy")]) 
             .with_account_templates(1 + instructions.get_collection_count())
             .with_sequence(0u64) 
             .with_instruction_data(&instruction_data)
@@ -479,7 +480,7 @@ pub mod client {
             .with_sequence(0u64);
 
         let builder = InstructionBuilder::new_with_config_for_testing(&config)
-            .with_account_templates_with_custom_suffixes(&["proxy"])
+            .with_account_templates_with_seeds(&[(AddressDomain::Authority,"proxy")])
             .with_account_templates(2)
             .seal()?;
 
@@ -506,6 +507,9 @@ pub mod client {
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
+    use std::str::FromStr;
+
     // use async_std;
     use super::*;
     // use workflow_allocator::prelude::*;
@@ -516,6 +520,7 @@ mod tests {
     async fn identity_init() -> Result<()> {
         workflow_allocator::container::registry::init()?;
 
+        // let program_id = Pubkey::from_str("F9SsGPgxpBdTyiZA41X1HYLR5QtcXnNBvhoE374DWhjg")?; //generate_random_pubkey();
         let program_id = generate_random_pubkey();
         let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id,None).await?;
 
@@ -525,7 +530,8 @@ mod tests {
             .with_sequence(0u64);
 
         let builder = InstructionBuilder::new_with_config_for_testing(&config)
-            .with_account_templates_with_custom_suffixes(&["proxy"]) // [proxy, identity]
+            .with_account_templates_with_seeds(&[(AddressDomain::Authority,"proxy")]) // [proxy, identity]
+            // .with_account_templates_with_custom_suffixes(&["proxy"]) // [proxy, identity]
             .with_account_templates(1) // [proxy, identity]
             // .with_account_templates(2) // [proxy, identity]
             .seal()?;
