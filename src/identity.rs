@@ -484,7 +484,7 @@ pub mod client {
             .with_account_templates(2)
             .seal()?;
 
-        let accounts = builder.template_accounts();
+        let accounts = builder.generic_template_accounts();
         // let proxy = accounts[0].clone(); // PDA0
         let identity = accounts[1].clone();
 
@@ -536,7 +536,7 @@ mod tests {
             // .with_account_templates(2) // [proxy, identity]
             .seal()?;
 
-        let accounts = builder.template_accounts();
+        let accounts = builder.generic_template_accounts();
         let proxy = accounts[0].clone(); // PDA0
         let identity = accounts[1].clone();
 

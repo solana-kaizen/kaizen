@@ -132,8 +132,10 @@ pub type HandlerFnCPtr = *const fn(ctx: &ContextReference) -> ProgramResult;
 
 #[derive(Debug)]
 pub struct ContextMeta {
-    pub template_accounts_consumed : usize,
-    pub template_address_data_bytes_consumed : usize,
+    pub generic_template_accounts_consumed : usize,
+    pub generic_template_data_bytes_consumed : usize,
+    pub collection_template_accounts_consumed : usize,
+    pub collection_template_data_bytes_consumed : usize,
 }
 
 
@@ -153,6 +155,7 @@ pub struct Context<'info, 'refs, 'pid, 'instr> {
     pub system_accounts : &'refs [AccountInfo<'info>],
     pub token_accounts : &'refs [AccountInfo<'info>],
     pub index_accounts : &'refs [AccountInfo<'info>],
+    pub collection_accounts : &'refs [AccountInfo<'info>],
     pub handler_accounts : &'refs [AccountInfo<'info>],
     
     pub incoming_data : &'instr [u8],
@@ -160,9 +163,13 @@ pub struct Context<'info, 'refs, 'pid, 'instr> {
     pub handler_id : usize,
     pub instruction_data : &'instr [u8],
     
-    pub template_accounts : &'refs [AccountInfo<'info>],
-    pub template_address_data : &'instr [u8],
-    // container_segment_stores : Vec<Rc<SegmentStore<'info,'refs>>>,
+    pub generic_template_accounts : &'refs [AccountInfo<'info>],
+    pub generic_template_data : &'instr [u8],
+    pub collection_template_accounts : &'refs [AccountInfo<'info>],
+    pub collection_template_data : &'instr [u8],
+
+    // pub collection_accounts : &'refs [AccountInfo<'info>],
+    // pub collection_data : &'instr [u8],
 
     pub meta : RefCell<ContextMeta>,
     // pub runtime : 
@@ -287,8 +294,16 @@ impl<'info, 'refs, 'pid, 'instr>
         let index_accounts = &accounts[offset..offset+len];
         offset += len;
 
-        let len = payload.template_accounts_len as usize;
-        let template_accounts = &accounts[offset..offset+len];
+        let len = payload.collection_accounts_len as usize;
+        let collection_accounts = &accounts[offset..offset+len];
+        offset += len;
+
+        let len = payload.generic_template_accounts_len as usize;
+        let generic_template_accounts = &accounts[offset..offset+len];
+        offset += len;
+
+        let len = payload.collection_template_accounts_len as usize;
+        let collection_template_accounts = &accounts[offset..offset+len];
         offset += len;
 
         // log_trace!("| incoming accounts: {}", accounts.len());
@@ -335,8 +350,8 @@ impl<'info, 'refs, 'pid, 'instr>
         // );
 
 
-
-        let template_address_data_len = payload.instruction_data_offset as usize;
+        // let template_address_data_finish = payload.collection_data_offset as usize;
+        // let template_address_data_len = payload.instruction_data_offset as usize;
         // log_trace!("{} - instruction data - total: {} template data {} handler instruction buffer len {}",
         //     style("| Context").magenta(),
         //     style(instruction_data.len()).cyan(),
@@ -344,12 +359,22 @@ impl<'info, 'refs, 'pid, 'instr>
         //     style(instruction_data.len() - template_address_data_len).cyan(),
         // );
         // log_trace!("instruction data offset: {}", );
-        let template_address_data = &incoming_data[std::mem::size_of::<Payload>()..template_address_data_len];
-        let instruction_data = &incoming_data[template_address_data_len..];
+        // let template_address_data = &incoming_data[std::mem::size_of::<Payload>()..template_address_data_finish];
+        // let instruction_data_offset = payload.collection_data_offset + 
+        // let instruction_data = &incoming_data[template_address_data_len..];
+
+
+        let instruction_data_offset = payload.instruction_data_offset as usize;
+        let collection_template_data_offset = payload.collection_data_offset as usize;
+        let generic_template_data = &incoming_data[std::mem::size_of::<Payload>()..collection_template_data_offset];
+        let collection_template_data = &incoming_data[collection_template_data_offset..instruction_data_offset];
+        let instruction_data = &incoming_data[instruction_data_offset..];
 
         let meta = ContextMeta {
-            template_accounts_consumed : 0,
-            template_address_data_bytes_consumed : 0,
+            generic_template_accounts_consumed : 0,
+            generic_template_data_bytes_consumed : 0,
+            collection_template_accounts_consumed : 0,
+            collection_template_data_bytes_consumed : 0,
         };
 
         // let instruction_data_view = hexplay::HexViewBuilder::new(&instruction_data)
@@ -380,15 +405,18 @@ impl<'info, 'refs, 'pid, 'instr>
             system_accounts,
             token_accounts,
             index_accounts,
+            collection_accounts,
             handler_accounts,
 
-            template_accounts,
-            template_address_data,
+            generic_template_accounts,
+            generic_template_data,
+            collection_template_accounts,
+            collection_template_data,
 
             meta : RefCell::new(meta),
 
+            // TODO use Rent::get()? in bpf
             rent : Rent::default(),
-            // container_segment_stores : Vec::with_capacity(offset)
         };
 
         #[cfg(not(target_arch = "bpf"))]
@@ -434,7 +462,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             style("CTX").magenta(),
             total_bytes
         );
-        log_trace!("{} | accounts - total: {} ▷ auth: {} ident: {} token: {} index: {} handler: {} tpl: {}",
+        log_trace!("{} | accounts - total: {} ▷ auth: {} ident: {} token: {} index: {} collection: {} handler: {} gtpl: {} ctpl: {}",
             style("CTX").magenta(),
             style(self.accounts.len()).cyan(),
             style(authority_accounts).cyan(),
@@ -442,8 +470,10 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             // style(execution_accounts).cyan(),
             style(self.token_accounts.len()).cyan(),
             style(self.index_accounts.len()).cyan(),
+            style(self.collection_accounts.len()).cyan(),
             style(self.handler_accounts.len()).cyan(),
-            style(self.template_accounts.len()).cyan(),
+            style(self.generic_template_accounts.len()).cyan(),
+            style(self.collection_template_accounts.len()).cyan(),
         );
 
         let template_address_data_len = self.incoming_data.len() - self.instruction_data.len();
@@ -511,13 +541,13 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         Ok(())
     }
 
-    pub fn try_consume_program_address_data(&self) -> Result<(ProgramAddressData<'instr>, &'refs AccountInfo<'info>)> {
+    pub fn try_consume_collection_template_address_data(&self) -> Result<(ProgramAddressData<'instr>, &'refs AccountInfo<'info>)> {
 
         // log_trace!("try_consume_program_address_data()");
         
         let mut meta = self.meta.borrow_mut();
-        let account_index = meta.template_accounts_consumed;
-        let byte_offset = meta.template_address_data_bytes_consumed;
+        let account_index = meta.collection_template_accounts_consumed;
+        let byte_offset = meta.collection_template_data_bytes_consumed;
         // log_trace!("~~~ current byte offset: {}", byte_offset);
         // log_trace!("try_consume_program_address_data() A: byte_offset:{:?}", byte_offset);
         // log_trace!("self.template_address_data.len: {}", self.template_address_data.len());
@@ -528,16 +558,16 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         // trace_hex(&self.template_address_data[byte_offset..]);
 
         let (program_address_data_ref, bytes_used) = ProgramAddressData::try_from(
-            &self.template_address_data[byte_offset..]
+            &self.collection_template_data[byte_offset..]
         )?;
         // log_trace!("~~~ current bytes used: {}", bytes_used);
         // log_trace!("try_consume_program_address_data() B");
-        if byte_offset + bytes_used > self.template_address_data.len() {
+        if byte_offset + bytes_used > self.collection_template_data.len() {
             return Err(ErrorCode::PDAAccountArgumentData.into());
         }
         // log_trace!("try_consume_program_address_data() C");
-        meta.template_accounts_consumed += 1;
-        meta.template_address_data_bytes_consumed += bytes_used;
+        meta.collection_template_accounts_consumed += 1;
+        meta.collection_template_data_bytes_consumed += bytes_used;
         
         // log_trace!("try_consume_program_address_data() D");
         // let seed :[u8;32] = self.program_id.to_bytes();
@@ -551,7 +581,52 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         //     seed, bump, seed_suffix_str
         // };
 
-        let account_info = &self.template_accounts[account_index];
+        let account_info = &self.collection_template_accounts[account_index];
+
+        Ok((program_address_data_ref, account_info))
+    }
+
+    pub fn try_consume_generic_template_address_data(&self) -> Result<(ProgramAddressData<'instr>, &'refs AccountInfo<'info>)> {
+
+        // log_trace!("try_consume_program_address_data()");
+        
+        let mut meta = self.meta.borrow_mut();
+        let account_index = meta.generic_template_accounts_consumed;
+        let byte_offset = meta.generic_template_data_bytes_consumed;
+        // log_trace!("~~~ current byte offset: {}", byte_offset);
+        // log_trace!("try_consume_program_address_data() A: byte_offset:{:?}", byte_offset);
+        // log_trace!("self.template_address_data.len: {}", self.template_address_data.len());
+        
+        // log_trace!("all data:");
+        // trace_hex(self.template_address_data);
+        // log_trace!("template address data:");
+        // trace_hex(&self.template_address_data[byte_offset..]);
+
+        let (program_address_data_ref, bytes_used) = ProgramAddressData::try_from(
+            &self.generic_template_data[byte_offset..]
+        )?;
+        // log_trace!("~~~ current bytes used: {}", bytes_used);
+        // log_trace!("try_consume_program_address_data() B");
+        if byte_offset + bytes_used > self.generic_template_data.len() {
+            return Err(ErrorCode::PDAAccountArgumentData.into());
+        }
+        // log_trace!("try_consume_program_address_data() C");
+        meta.generic_template_accounts_consumed += 1;
+        meta.generic_template_data_bytes_consumed += bytes_used;
+        
+        // log_trace!("try_consume_program_address_data() D");
+        // let seed :[u8;32] = self.program_id.to_bytes();
+        // let bump: u8 = 255u8;
+        // let seed_suffix_str: String = String::from("");
+        
+        // ^ TODO: deserealize PAD from IB!
+        // ? TODO: deserealize PAD from IB!
+        
+        // let program_address_data = ProgramAddressData {
+        //     seed, bump, seed_suffix_str
+        // };
+
+        let account_info = &self.generic_template_accounts[account_index];
 
         Ok((program_address_data_ref, account_info))
     }
@@ -669,7 +744,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     ) -> Result<&'refs AccountInfo<'info>> {
 
         log_trace!("[pda] ... create_pda() starting ...");
-        let (tpl_program_address_data,tpl_account_info) = self.try_consume_program_address_data()?;
+        let (tpl_program_address_data,tpl_account_info) = self.try_consume_generic_template_address_data()?;
         log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
         
         // let user_seed = match &self.identity {

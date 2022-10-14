@@ -8,14 +8,26 @@ pub const PAYLOAD_HAS_IDENTITY_ACCOUNT : u16    = 0x0001;
 #[repr(packed)]
 pub struct Payload {
     pub version : u8,
+    pub flags : u16,
+
     pub system_accounts_len : u8,      
     pub token_accounts_len : u8,      
     pub index_accounts_len : u8,      
-    pub template_accounts_len : u8,   
-    // pub handler_accounts_len : u8,    
-    pub flags : u16,
+    pub collection_accounts_len : u8,   
+    pub generic_template_accounts_len : u8,   
+    pub collection_template_accounts_len : u8,   
 
-//    pub template_address_data_len : u8,
+/*
+
+    // dynamic_template_accounts_len
+    generic_template_accounts_len
+    collection_template_accounts_len
+
+    collection_accounts_len
+
+*/
+
+    pub collection_data_offset : u16,
     pub instruction_data_offset : u16,
 
     pub interface_id : u16,
@@ -30,7 +42,9 @@ impl Payload {
         self.system_accounts_len as usize
         + self.token_accounts_len as usize
         + self.index_accounts_len as usize
-        + self.template_accounts_len as usize
+        + self.collection_accounts_len as usize
+        + self.generic_template_accounts_len as usize
+        + self.collection_template_accounts_len as usize
     }
 
     pub fn to_vec(&self) -> Vec<u8> {
@@ -47,11 +61,14 @@ impl Payload {
     pub fn new<T : Into<u16>>(interface_id: usize, program_instruction: T) -> Self {
         Payload {
             version : 1,
+            flags : 0,
             system_accounts_len : 0,
             token_accounts_len : 0,
             index_accounts_len : 0,
-            template_accounts_len: 0,
-            flags : 0,
+            collection_accounts_len: 0,
+            generic_template_accounts_len: 0,
+            collection_template_accounts_len: 0,
+            collection_data_offset : 0,
             instruction_data_offset : 0,
             interface_id : interface_id as u16,
             handler_id : program_instruction.into(),

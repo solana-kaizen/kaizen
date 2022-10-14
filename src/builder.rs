@@ -95,18 +95,28 @@ pub struct InstructionBuilder {
     system_accounts : Vec<AccountMeta>,
     /// List of accounts used for token operations (SOL/SPL token accounts)
     token_accounts : Vec<AccountMeta>,
-    /// List of accounts for used for indexing purposes (BTree accounts)
+    /// List of accounts used for indexing purposes (BTree accounts)
     index_accounts : Vec<AccountMeta>,
+    /// List of accounts used by collections
+    collection_accounts : Vec<AccountMeta>,
     /// List of accounts intended for the handler function (specific to the current operation)
     handler_accounts : Vec<AccountMeta>,
     /// Instruction buffer received by the handler function (excludes the [Payload] header)
     handler_instruction_data : Vec<u8>,
+    
     /// List of template accounts used for PDA creation (The instruction buffer Payload header will  contain the corresponding PDA seed information)
-    template_accounts : Vec<AccountMeta>,
+    generic_template_accounts : Vec<AccountMeta>,
     /// List of seeds used for PDA creation
-    template_address_data : Vec<Vec<u8>>,
+    generic_template_address_data : Vec<Vec<u8>>,
     /// Chunk of serialized PDA seed data (used for Instruction Buffer assembly)
-    template_instruction_data : Vec<u8>,
+    generic_template_instruction_data : Vec<u8>,
+    
+    /// List of collection accounts used for PDA creation
+    collection_template_accounts : Vec<AccountMeta>,
+    /// List of bumps used for PDA creation
+    collection_template_address_data : Vec<Vec<u8>>,
+    /// Chunk of serialized PDA seed data (used for Instruction Buffer assembly)
+    collection_template_instruction_data : Vec<u8>,
 
     // signals if the Instruction Builder has been sealed (meaning the final Instruction Buffer has been integrated)
     is_sealed : bool,
@@ -162,11 +172,15 @@ impl InstructionBuilder {
             system_accounts : Vec::new(),
             token_accounts : Vec::new(),
             index_accounts : Vec::new(),
+            collection_accounts : Vec::new(),
             handler_accounts : Vec::new(),
             handler_instruction_data : Vec::new(),
-            template_accounts : Vec::new(),
-            template_address_data : Vec::new(),
-            template_instruction_data : Vec::new(),
+            generic_template_accounts : Vec::new(),
+            generic_template_address_data : Vec::new(),
+            generic_template_instruction_data : Vec::new(),
+            collection_template_accounts : Vec::new(),
+            collection_template_address_data : Vec::new(),
+            collection_template_instruction_data : Vec::new(),
             
             is_sealed : false,
             suffix_seed_seq, // : 0u64,
@@ -195,11 +209,15 @@ impl InstructionBuilder {
             system_accounts : Vec::new(),
             token_accounts : Vec::new(),
             index_accounts : Vec::new(),
+            collection_accounts : Vec::new(),
             handler_accounts : Vec::new(),
             handler_instruction_data : Vec::new(),
-            template_accounts : Vec::new(),
-            template_address_data : Vec::new(),
-            template_instruction_data : Vec::new(),
+            generic_template_accounts : Vec::new(),
+            generic_template_address_data : Vec::new(),
+            generic_template_instruction_data : Vec::new(),
+            collection_template_accounts : Vec::new(),
+            collection_template_address_data : Vec::new(),
+            collection_template_instruction_data : Vec::new(),
 
             is_sealed : false,
             suffix_seed_seq : 0u64,
@@ -210,12 +228,12 @@ impl InstructionBuilder {
         }
     }
 
-    pub fn template_accounts<'this>(&'this self) -> &'this Vec<AccountMeta> {
-        &self.template_accounts
+    pub fn generic_template_accounts<'this>(&'this self) -> &'this Vec<AccountMeta> {
+        &self.generic_template_accounts
     }
 
-    pub fn template_account_at<'this>(&'this self, idx : usize) -> &'this AccountMeta {
-        &self.template_accounts[idx]
+    pub fn generic_template_account_at<'this>(&'this self, idx : usize) -> &'this AccountMeta {
+        &self.generic_template_accounts[idx]
     }
 
     // pub fn template_accounts(&self) -> Vec<AccountMeta> {
@@ -224,7 +242,16 @@ impl InstructionBuilder {
 
     pub fn payload(&self) -> Payload {
 
-        let instruction_data_offset = std::mem::size_of::<Payload>() + self.template_instruction_data.len();
+        let collection_data_offset = 
+            std::mem::size_of::<Payload>()
+            + self.generic_template_instruction_data.len();
+
+        let instruction_data_offset = 
+            collection_data_offset
+            + self.collection_template_instruction_data.len();
+            // std::mem::size_of::<Payload>()
+            // + self.generic_template_instruction_data.len()
+
         //  log_trace!("* * * INSTRUCTION DATA OFFSET {}", instruction_data_offset);
 
         let mut flags: u16 = 0;
@@ -234,15 +261,18 @@ impl InstructionBuilder {
 
         Payload {
             version : Payload::version(),
+            
+            flags,
+
             system_accounts_len : self.system_accounts.len() as u8,
             token_accounts_len : self.token_accounts.len() as u8,
             index_accounts_len : self.index_accounts.len() as u8,
-            template_accounts_len : self.template_accounts.len() as u8,
-
+            collection_accounts_len : self.collection_accounts.len() as u8,
+            generic_template_accounts_len : self.generic_template_accounts.len() as u8,
+            collection_template_accounts_len : self.collection_template_accounts.len() as u8,
             // NOTE: handler accounts are the remaining accounts supplied to the program
 
-            flags,
-
+            collection_data_offset : collection_data_offset as u16,
             instruction_data_offset : instruction_data_offset as u16,
 
             interface_id : self.interface_id,
@@ -294,9 +324,11 @@ impl InstructionBuilder {
         self.program_id
     }
 
-    fn template_instruction_data(&self) -> Vec<u8> {
+    // fn encode_template_instruction_data(&self) -> Vec<u8> {
+    fn encode_template_instruction_data(&self, data : &Vec<Vec<u8>>) -> Vec<u8> {
         let mut template_address_data = Vec::new();
-        for data in self.template_address_data.iter() {
+        // for data in self.generic_template_address_data.iter() {
+        for data in data.iter() {
             let bytes = data.to_vec();
             let len = bytes.len();
             // log_trace!(" - - - > processing address data len: {}", len);
@@ -314,7 +346,8 @@ impl InstructionBuilder {
     pub fn instruction_data(&self) -> Vec<u8> {
 
         let mut data = Vec::new();
-        data.extend(&self.template_instruction_data);
+        data.extend(&self.generic_template_instruction_data);
+        data.extend(&self.collection_template_instruction_data);
         data.extend(&self.handler_instruction_data);
         data
     }
@@ -337,7 +370,9 @@ impl InstructionBuilder {
         vec.extend_from_slice(&self.system_accounts);
         vec.extend_from_slice(&self.token_accounts);
         vec.extend_from_slice(&self.index_accounts);
-        vec.extend_from_slice(&self.template_accounts);
+        vec.extend_from_slice(&self.collection_accounts);
+        vec.extend_from_slice(&self.generic_template_accounts);
+        vec.extend_from_slice(&self.collection_template_accounts);
         vec.extend_from_slice(&self.handler_accounts);
         Ok(vec)
     }
@@ -577,11 +612,12 @@ impl InstructionBuilder {
             seeds.push(seed_bump);            
             seeds.remove(0);
 
-            self.template_accounts.push(descriptor);
-            self.template_address_data.push(seeds.concat());
+            self.generic_template_accounts.push(descriptor);
+            self.generic_template_address_data.push(seeds.concat());
         }
 
-        self.template_instruction_data = self.template_instruction_data();
+        self.generic_template_instruction_data = self.encode_template_instruction_data(&self.generic_template_address_data);
+        self.collection_template_instruction_data = self.encode_template_instruction_data(&self.collection_template_address_data);
         
         match &self.track_suffix_seed_seq {
             None => {},
@@ -594,8 +630,12 @@ impl InstructionBuilder {
         Ok(self)
     }
 
-    pub fn templates(&self) -> Vec<AccountMeta> {
-        self.template_accounts.to_vec()
+    pub fn generic_templates(&self) -> Vec<AccountMeta> {
+        self.generic_template_accounts.to_vec()
+    }
+
+    pub fn collection_templates(&self) -> Vec<AccountMeta> {
+        self.collection_template_accounts.to_vec()
     }
 
 }
