@@ -63,7 +63,8 @@ mod client {
     use borsh::{BorshDeserialize, BorshSerialize};
     use owning_ref::OwningHandle;
     use serde::{Deserialize, Serialize};
-    use std::time::Instant;
+    //use std::time::Instant;
+    use workflow_allocator::time::Instant;
     use solana_program::account_info::IntoAccountInfo;
     use solana_program::account_info;
     use solana_program::clock::Epoch;
@@ -103,7 +104,7 @@ mod client {
     impl AccountDataReference {
         pub fn new(account_data : AccountData) -> Self {
             let key = Arc::new(account_data.key.clone());
-            let timestamp = Arc::new(Mutex::new(Instant::now()));
+            let timestamp = Arc::new(Mutex::new(Instant::now().unwrap()));
             let data_len = account_data.data.len() - ACCOUNT_DATA_OFFSET;
             let data_type = account_data.data_type;
             let container_type = if data_type == AccountType::Container {
