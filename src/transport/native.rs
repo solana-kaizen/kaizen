@@ -4,7 +4,7 @@ use std::*;
 use async_std::sync::RwLock;
 use std::time::Duration;
 use std::time::SystemTime;
-use std::sync::Arc;
+use std::sync::{Mutex, Arc};
 use async_std::path::Path;
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
@@ -48,9 +48,15 @@ pub struct Transport
     pub cache : Arc<Cache>,
     pub queue : Option<Arc<TransactionQueue>>,
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
+    pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
 }
 
 impl Transport {
+
+    pub fn set_custom_authority(&self, key:Pubkey)-> Result<()> {
+        (*self.custom_authority.lock()?) = Some(key);
+        Ok(())
+    }
 
     pub async fn root(&self) -> Pubkey {
         self.config.read().await.root
@@ -158,6 +164,7 @@ impl Transport {
             cache,
             queue,
             lookup_handler,
+            custom_authority:Arc::new(Mutex::new(None))
         };
 
         let transport = Arc::new(transport);
@@ -231,6 +238,9 @@ impl Transport {
             },
             
             Mode::Emulator => {
+                if let Some(key) = self.custom_authority.lock()?.as_ref(){
+                    return Ok(key.clone());
+                }
                 let home = home::home_dir().expect("unable to get home directory");
                 let home = Path::new(&home);
                 let payer_kp_path = home.join(".config/solana/id.json");
