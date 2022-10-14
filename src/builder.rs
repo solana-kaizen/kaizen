@@ -13,7 +13,7 @@ use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
 use workflow_allocator::address::AddressDomain;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
-use workflow_allocator::container::AccountAggregator;
+use workflow_allocator::container::{AccountAggregator,PdaCollectionBuilder};
 // use workflow_allocator::instruction::{
 //     // readonly,
 //     // writable
@@ -416,6 +416,25 @@ impl InstructionBuilder {
 
     pub fn sequence(&self) -> u64 {
         self.suffix_seed_seq
+    }
+
+    pub async fn with_pda_collection<A>(self, pda_collection_builder : &A) -> Result<Self> 
+    where A: PdaCollectionBuilder
+    {
+        let (meta, _bump) = pda_collection_builder.writable_account_meta(&self.program_id).await?;
+        let list = vec![meta];
+        Ok(
+            self
+
+
+// ^ TODO --- ACCOUNT FOR INSERTION (AS INDEX WITH CUSTOM BUMPS AS SEPARATE LIST?)
+// ^ TODO :::: AS TEMPLATES???  WE DON'T NEED TEMPLATES....
+// ^ TODO --- ACCOUNT FOR ACCESS 
+
+                .with_index_accounts(&list)
+                // .with_custom_account_templates_and_seeds(&list)
+                // .with_index_accounts(&list)
+        )
     }
 
     #[inline(always)]

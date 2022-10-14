@@ -263,6 +263,30 @@ cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
 
         use futures::{stream::FuturesOrdered, StreamExt};
+        use crate::container::interfaces::PdaCollectionBuilder;
+        use async_trait::async_trait;
+
+        #[async_trait(?Send)]
+        impl<'info,M> PdaCollectionBuilder for PdaCollectionInterface<'info,M> 
+        where M: CollectionMeta
+        {
+            async fn writable_account_meta(&self, program_id : &Pubkey) -> Result<(AccountMeta,u8)> {
+
+                let idx = self.len() + 1;
+                let (pubkey, bump) = self.get_pda_at(program_id, idx as u64)?;
+                Ok((AccountMeta::new(pubkey, false),bump))
+            }
+
+            async fn writable_account_meta_range(&self, program_id : &Pubkey, items : usize) -> Result<Vec<(AccountMeta,u8)>> {
+
+                let mut list = Vec::new();
+                for idx in self.len()+1 ..= self.len()+items {
+                    let (pubkey, bump) = self.get_pda_at(program_id, idx as u64)?;
+                    list.push((AccountMeta::new(pubkey, false),bump))
+                }
+                Ok(list)
+            }
+        }
 
         impl<'info,M> PdaCollectionInterface<'info,M> 
         where M: CollectionMeta
