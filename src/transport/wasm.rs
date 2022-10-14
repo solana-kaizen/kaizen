@@ -23,7 +23,7 @@ use crate::result::Result;
 use crate::error;
 use workflow_log::*;
 use async_trait::async_trait;
-use std::sync::Arc;
+use std::sync::{Mutex, Arc};
 // use async_std::sync::RwLock;
 use workflow_allocator::cache::Cache;
 use std::convert::From;
@@ -152,6 +152,8 @@ pub struct Transport {
     
     pub config : Arc<RwLock<TransportConfig>>,
 
+    pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
+
     connection : JsValue,
     // wallet : JsValue,
     // #[wasm_bindgen(skip)]
@@ -186,13 +188,18 @@ impl Transport {
         Ok(JsValue::from(true))
     }
 
-    pub fn wallet(&self) -> std::result::Result<JsValue, JsValue> {
+    pub fn wallet_adapter(&self) -> std::result::Result<JsValue, JsValue> {
         let wallet = js_sys::Reflect::get(&Self::workflow()?, &"wallet".into())?;
         if wallet == JsValue::UNDEFINED{
             log_trace!("wallet adapter is missing");
             return Err(error!("WalletAdapterIsMissing, use `transport.with_wallet(walletAdapter);`").into());
         }
         Ok(wallet.clone())
+    }
+
+    pub fn set_custom_authority(&self, key:Pubkey)-> Result<()> {
+        (*self.custom_authority.lock()?) = Some(key);
+        Ok(())
     }
 
     pub fn public_key_ctor() -> std::result::Result<JsValue,JsValue> {
@@ -292,7 +299,10 @@ impl Transport {
             },
 
             Mode::Emulator => {
-                let wallet_adapter = &self.wallet()?;
+                if let Some(key) = self.custom_authority.lock()?.as_ref(){
+                    return Ok(key.clone());
+                }
+                let wallet_adapter = &self.wallet_adapter()?;
                 let public_key = unsafe{js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))?};
                 let pubkey = Pubkey::new(&utils::try_get_vec_from_bn(&public_key)?);
                 Ok(pubkey)
@@ -303,7 +313,7 @@ impl Transport {
             //     unimplemented!("TODO")
             // },
             Mode::Validator => {
-                let wallet_adapter = &self.wallet()?;
+                let wallet_adapter = &self.wallet_adapter()?;
                 let public_key = unsafe{js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))?};
                 let pubkey = Pubkey::new(&utils::try_get_vec_from_bn(&public_key)?);
                 Ok(pubkey)
@@ -403,6 +413,7 @@ impl Transport {
             queue,
             cache,
             lookup_handler,
+            custom_authority:Arc::new(Mutex::new(None))
         });
 
         unsafe { TRANSPORT = Some(transport.clone()); }
@@ -520,7 +531,7 @@ impl Transport {
             },
             Mode::Validator => {
                 log_trace!("native A");
-                let wallet_adapter = &self.wallet()?;
+                let wallet_adapter = &self.wallet_adapter()?;
                 let accounts = &instruction.accounts;
                 let accounts_arg = js_sys::Array::new_with_length(accounts.len() as u32);
                 log_trace!("native B accounts.len():{}", accounts.len());
