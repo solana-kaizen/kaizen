@@ -58,6 +58,7 @@ pub enum Containers {
     TransportTestInterface,
     TransferTestInterface,
     PDATestInterface,
+    CollectionTestInterface,
 
     FrameworkContainers = Ranges::Framework as u32,
     Proxy,

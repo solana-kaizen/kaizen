@@ -1,5 +1,6 @@
 use cfg_if::cfg_if;
-use crate::address::ProgramAddressData;
+use workflow_log::log_info;
+// use crate::address::ProgramAddressData;
 use crate::container::Container;
 use crate::result::Result;
 use workflow_allocator::prelude::*;
@@ -132,18 +133,36 @@ where M: CollectionMeta
         self.meta.get_len() as usize
     }
 
-    pub fn get_seed_at(&self, idx : u64) -> Vec<u8> {
-        let domain = self.domain;
-        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_le()) };
-        [domain, &self.meta.get_seed(),&index_bytes].concat()
+    // pub fn get_seed_at(&self, idx : u64) -> Vec<u8> {
+    //     let domain = self.domain;
+    //     let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_be()) };
+    //     [domain, &self.meta.get_seed(),&index_bytes].concat()
+    // }
+
+    pub fn get_seed_at<'seed>(&'seed self, idx : &u64, suffix : Option<&'seed [u8]>) -> Vec<&'seed [u8]> {
+        let index_bytes: &[u8;8] = unsafe { std::mem::transmute(idx as * const u64) };
+        if let Some(suffix) = suffix {
+            vec![self.domain, &self.meta.get_seed(), index_bytes, suffix]
+        } else {
+            vec![self.domain, &self.meta.get_seed(), index_bytes]
+        }
     }
+
+    // pub fn get_seed_at<'seed>(&'seed self, idx : &u64, bump : Option<u8>) -> Vec<&[u8]> {
+    //     let index_bytes: &[u8;8] = unsafe { std::mem::transmute(idx as * const u64) };
+    //     if let Some(bump) = bump {
+    //         vec![self.domain, &self.meta.get_seed(), index_bytes, &[bump]]
+    //     } else {
+    //         vec![self.domain, &self.meta.get_seed(), index_bytes]
+    //     }
+    // }
 
     pub fn try_load_container<'refs,T>(&self, ctx: &ContextReference<'info,'refs,'_,'_>, suffix : &str, index: u64, bump_seed : u8) 
     -> Result<<T as Container<'info,'refs>>::T>
     where T : Container<'info,'refs>
     {
         assert!(index < self.meta.get_len());
-        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_le()) };
+        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(index.to_be()) };
 
         let pda = Pubkey::create_program_address(
             &[suffix.as_bytes(),&index_bytes,&[bump_seed]],
@@ -161,7 +180,8 @@ where M: CollectionMeta
     pub fn try_create_container<'refs,T>(
         &mut self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
-        seed_bump : u8,
+        tpl_seed_suffix : &[u8],
+        tpl_account_info : &'refs AccountInfo<'info>,
         data_len : Option<usize>,
     )
     -> Result<<T as Container<'info,'refs>>::T>
@@ -174,21 +194,24 @@ where M: CollectionMeta
         }
 
         let next_index = self.meta.get_len() + 1;
-        let mut program_address_data_bytes = self.get_seed_at(next_index);
-        program_address_data_bytes.push(seed_bump);
-        let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
+        log_info!("######################### stard {}",next_index);
+        // let seed_bump = &[seed_bump];
+        let tpl_seeds = self.get_seed_at(&next_index, Some(tpl_seed_suffix));
+        // program_address_data_bytes.push(&[seed_bump]);
+        // let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
 
-        let pda = Pubkey::create_program_address(
-            &[tpl_program_address_data.seed],
-            ctx.program_id
-        )?;
+        // let pda = Pubkey::create_program_address(
+        //     &tpl_seeds,
+        //     // &[tpl_program_address_data.seed],
+        //     ctx.program_id
+        // )?;
 
-        let tpl_account_info = match ctx.locate_index_account(&pda) {
-            Some(account_info) => account_info,
-            None => {
-                return Err(error_code!(ErrorCode::AccountCollectionNotFound))
-            }
-        };
+        // let tpl_account_info = match ctx.locate_index_account(&pda) {
+        //     Some(account_info) => account_info,
+        //     None => {
+        //         return Err(error_code!(ErrorCode::AccountCollectionNotFound))
+        //     }
+        // };
 
         let data_len = match data_len {
             Some(data_len) => data_len,
@@ -197,24 +220,26 @@ where M: CollectionMeta
 
         let allocation_args = AccountAllocationArgs::new(AddressDomain::None);
 
-        let account_info = ctx.try_create_pda_with_args(
+        // let account_info = 
+        ctx.try_create_pda_with_args(
             data_len,
             &allocation_args,
-            tpl_program_address_data,
+            &tpl_seeds,
+            // tpl_program_address_data,
             tpl_account_info,
             false
         )?;
 
         self.meta.set_len(next_index);
-
-        let container = T::try_create(account_info)?;
+log_info!("######################### end {}",next_index);
+        let container = T::try_create(tpl_account_info)?;
         Ok(container)
     }
 
     pub fn try_insert_container<'refs,T>(
         &mut self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
-        bump : u8,
+        seed_bump : u8,
         container: &T
     )
     -> Result<()>
@@ -227,9 +252,11 @@ where M: CollectionMeta
         }
 
         let next_index = self.meta.get_len() + 1;
-        let program_address_data_bytes = self.get_seed_at(next_index);
+        let seed_bump = &[seed_bump];
+        let tpl_seeds = self.get_seed_at(&next_index,Some(seed_bump));
         let pda = Pubkey::create_program_address(
-            &[&program_address_data_bytes,&[bump]],
+            &tpl_seeds,
+            // &[&program_address_data_bytes,&[bump]],
             ctx.program_id
         )?;
 
@@ -292,8 +319,12 @@ cfg_if! {
         where M: CollectionMeta
         {
             pub fn get_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {
+
+                // log_trace!("find pda: {:?}",self.get_seed_at(idx));
+
                 let (address, bump) = Pubkey::find_program_address(
-                    &[&self.get_seed_at(idx)],
+                    &self.get_seed_at(&idx,None),
+                    // &[&self.get_seed_at(idx)],
                     program_id
                 );
 

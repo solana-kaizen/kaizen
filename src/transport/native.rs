@@ -179,6 +179,17 @@ impl Transport {
         self.emulator.as_ref().expect("missing emulator interface")
     }
 
+    pub fn simulator<'transport>(&'transport self) -> Arc<Simulator> { ////&'transport Arc<dyn EmulatorInterface> {
+        // self.emulator.as_ref().expect("missing emulator interface")
+        let simulator = self.emulator
+            .clone()
+            .expect("Transport::simulator() - emulator interface not present")
+            .downcast_arc::<Simulator>()
+            .expect("Transport::simulator() - unable to downcast to Simulator");
+
+        simulator
+    }
+
     pub fn global() -> Result<Arc<Transport>> {
         let clone = unsafe { (&TRANSPORT).as_ref().unwrap().clone() };
         Ok(clone)

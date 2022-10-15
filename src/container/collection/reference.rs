@@ -1,5 +1,5 @@
 use cfg_if::cfg_if;
-use crate::address::ProgramAddressData;
+// use crate::address::ProgramAddressData;
 use crate::container::Container;
 use crate::result::Result;
 use workflow_allocator::prelude::*;
@@ -117,11 +117,29 @@ where M: CollectionMeta
         self.meta.get_len() as usize
     }
 
-    pub fn get_proxy_seed_at(&self, idx : u64) -> Vec<u8> {
-        let domain = self.domain;
-        let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_le()) };
-        [domain, &self.meta.get_seed(),&index_bytes].concat()
+    pub fn get_proxy_seed_at<'seed>(&'seed self, idx : &u64, suffix : Option<&'seed [u8]>) -> Vec<&'seed [u8]> {
+        let index_bytes: &[u8;8] = unsafe { std::mem::transmute(idx as * const u64) };
+        if let Some(suffix) = suffix {
+            vec![self.domain, &self.meta.get_seed(), index_bytes, suffix]
+        } else {
+            vec![self.domain, &self.meta.get_seed(), index_bytes]
+        }
     }
+
+    // pub fn get_proxy_seed_at(&self, idx : &u64, suffix : Option<u8>) -> Vec<&[u8]> {
+    //     let index_bytes: &[u8;8] = unsafe { std::mem::transmute(idx as * const u64) };
+    //     if let Some(suffix) = suffix {
+    //         vec![self.domain, &self.meta.get_seed(), index_bytes, &[suffix]]
+    //     } else {
+    //         vec![self.domain, &self.meta.get_seed(), index_bytes]
+    //     }
+    // }
+
+    // pub fn get_proxy_seed_at(&self, idx : u64) -> Vec<u8> {
+    //     let domain = self.domain;
+    //     let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_le()) };
+    //     [domain, &self.meta.get_seed(),&index_bytes].concat()
+    // }
 
     pub fn try_insert_reference<'refs,T>(
         &mut self,
@@ -139,12 +157,15 @@ where M: CollectionMeta
         }
 
         let next_index = self.meta.get_len() + 1;
-        let mut program_address_data_bytes = self.get_proxy_seed_at(next_index);
-        program_address_data_bytes.push(bump);
+        // let tpl_seeds = self.get_proxy_seed_at(&next_index,Some(&[bump]));
+        let bump = &[bump];
+        let tpl_seeds = self.get_proxy_seed_at(&next_index,Some(bump));
+        // program_address_data_bytes.push(bump);
 
-        let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
+        // let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
         let pda = Pubkey::create_program_address(
-            &[tpl_program_address_data.seed],
+            // &[tpl_program_address_data.seed],
+            &tpl_seeds,
             ctx.program_id
         )?;
 
@@ -156,15 +177,17 @@ where M: CollectionMeta
         };
 
         let allocation_args = AccountAllocationArgs::new(AddressDomain::None);
-        let account_info = ctx.try_create_pda_with_args(
+        // let account_info = 
+        ctx.try_create_pda_with_args(
             Proxy::data_len(),
             &allocation_args,
-            tpl_program_address_data,
+            &tpl_seeds,
+            // tpl_program_address_data,
             tpl_account_info,
             false
         )?;
 
-        Proxy::try_create(account_info, container.pubkey())?;
+        Proxy::try_create(tpl_account_info, container.pubkey())?;
         self.meta.set_len(next_index);
 
         Ok(())
@@ -187,7 +210,8 @@ cfg_if! {
 
             pub fn get_proxy_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {
                 let (address, bump) = Pubkey::find_program_address(
-                    &[&self.get_proxy_seed_at(idx)], //domain,&meta.get_seed_as_bytes(),&index_bytes],
+                    &self.get_proxy_seed_at(&idx,None),
+                    // &[&self.get_proxy_seed_at(idx)], //domain,&meta.get_seed_as_bytes(),&index_bytes],
                     program_id
                 );
 

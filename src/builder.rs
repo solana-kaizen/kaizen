@@ -3,7 +3,8 @@ use std::cell::RefCell;
 use crate::accounts::{
     IsSigner,
     Access,
-    SeedSuffix
+    SeedSuffix,
+    SeedBump
 };
 use crate::result::*;
 use crate::error;
@@ -71,7 +72,8 @@ impl InstructionBuilderConfig {
 }
 
 
-pub type TemplateAccessDescriptor = (IsSigner,Access,AddressDomain,SeedSuffix);
+pub type GenericTemplateAccountDescriptor = (IsSigner,Access,AddressDomain,SeedSuffix);
+pub type CollectionTemplateAccountDescriptor = (AccountMeta,SeedBump);
 
 /// # Helper for creating a structured program Instruction 
 /// Structured program instructions are used by the Workflow Allocator framework.
@@ -126,7 +128,8 @@ pub struct InstructionBuilder {
     sequencer : Option<Sequencer>,
 
     // TODO
-    template_access_descriptors : Vec<TemplateAccessDescriptor>,
+    generic_template_account_descriptors : Vec<GenericTemplateAccountDescriptor>,
+    collection_template_account_descriptors : Vec<CollectionTemplateAccountDescriptor>,
 
     // Reference to an external seed that should be used during PDA creation (allowing PDA seed 
     // sequence value to be tracked in an external object such as `InstructionBufferConfig`)
@@ -185,7 +188,8 @@ impl InstructionBuilder {
             is_sealed : false,
             suffix_seed_seq, // : 0u64,
             sequencer : config.sequencer.clone(),
-            template_access_descriptors : Vec::new(),
+            generic_template_account_descriptors : Vec::new(),
+            collection_template_account_descriptors : Vec::new(),
 
             track_suffix_seed_seq
         };
@@ -222,7 +226,8 @@ impl InstructionBuilder {
             is_sealed : false,
             suffix_seed_seq : 0u64,
             sequencer : None,
-            template_access_descriptors : Vec::new(),
+            generic_template_account_descriptors : Vec::new(),
+            collection_template_account_descriptors : Vec::new(),
 
             track_suffix_seed_seq : None
         }
@@ -299,6 +304,11 @@ impl InstructionBuilder {
         self.index_accounts.extend_from_slice(index_accounts);
         self
     }
+
+    // pub fn with_collection_accounts(mut self, index_accounts: &[AccountMeta]) -> Self {
+    //     self.index_accounts.extend_from_slice(index_accounts);
+    //     self
+    // }
 
     pub fn with_handler_accounts(mut self, handler_accounts: &[AccountMeta]) -> Self {
         self.handler_accounts.extend_from_slice(handler_accounts);
@@ -379,14 +389,14 @@ impl InstructionBuilder {
 
     pub fn with_account_templates(mut self, n : usize) -> Self {
         for _ in 0..n {
-            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Sequence))
+            self.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Sequence))
         }
         self
     }
 
     pub fn with_account_templates_with_custom_suffixes(mut self, suffixes : &[&str]) -> Self {
         for n in 0..suffixes.len() {
-            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffixes[n].to_string())))
+            self.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffixes[n].to_string())))
         }
         self
     }
@@ -395,7 +405,7 @@ impl InstructionBuilder {
     // pub fn with_account_templates_with_custom_seeds(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
     pub fn with_account_templates_with_seeds(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
         for (domain, suffix) in suffixes {
-            self.template_access_descriptors.push(
+            self.generic_template_account_descriptors.push(
                 (
                     IsSigner::NotSigner,
                     Access::Write,
@@ -411,7 +421,7 @@ impl InstructionBuilder {
         for n in 0..suffixes.len() {
             let mut suffix = prefix.to_string();
             suffix.push_str(suffixes[n]);
-            self.template_access_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffix)))
+            self.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffix)))
         }
         self
     }
@@ -433,7 +443,7 @@ impl InstructionBuilder {
         //         .map(|t|(t.0,t.1,SeedSuffix::Custom(t.2)))
         //         .collect();
         // self.template_access_descriptors.extend(template_access_descriptors);
-        self.template_access_descriptors.extend(templates.to_vec());
+        self.generic_template_account_descriptors.extend(templates.to_vec());
         self
     }
 
@@ -453,23 +463,17 @@ impl InstructionBuilder {
         self.suffix_seed_seq
     }
 
-    pub async fn with_pda_collection<A>(self, pda_collection_builder : &A) -> Result<Self> 
+    pub async fn with_collection_template<A>(mut self, pda_collection_builder : &A) -> Result<Self> 
     where A: PdaCollectionBuilder
     {
-        let (meta, _bump) = pda_collection_builder.writable_account_meta(&self.program_id).await?;
-        let list = vec![meta];
-        Ok(
-            self
+        let (meta, bump) = pda_collection_builder.writable_account_meta(&self.program_id).await?;
 
+        self.collection_template_account_descriptors.push((
+            meta,
+            bump
+        ));
 
-// ^ TODO --- ACCOUNT FOR INSERTION (AS INDEX WITH CUSTOM BUMPS AS SEPARATE LIST?)
-// ^ TODO :::: AS TEMPLATES???  WE DON'T NEED TEMPLATES....
-// ^ TODO --- ACCOUNT FOR ACCESS 
-
-                .with_index_accounts(&list)
-                // .with_custom_account_templates_and_seeds(&list)
-                // .with_index_accounts(&list)
-        )
+        Ok(self)
     }
 
     #[inline(always)]
@@ -527,12 +531,13 @@ impl InstructionBuilder {
         }
         self.is_sealed = true;
 
-        if self.template_access_descriptors.is_empty() {
-            return Ok(self);
-        } else {
+        if !self.generic_template_account_descriptors.is_empty() {
             if let Some(sequencer) = &self.sequencer {
-                sequencer.advance(self.template_access_descriptors.len());
+                sequencer.advance(self.generic_template_account_descriptors.len());
             }
+        } else if self.collection_template_account_descriptors.is_empty() {
+            // if both template sets are empty, there is nothing to do
+            return Ok(self);
         }
 
         // if we have templates, automatically include system account if not added by the user
@@ -553,23 +558,14 @@ impl InstructionBuilder {
         //     }
         // };
 
-        for (is_signer,is_writable, domain, seed_suffix) in self.template_access_descriptors.iter() {
+        for (is_signer,is_writable, domain, seed_suffix) in self.generic_template_account_descriptors.iter() {
         
-            // @seeds
-            // let mut seeds = vec![self.program_id.as_ref(), user_seed.as_ref()];
-            // let mut seeds = vec![user_seed.as_ref()];
             let domain_seed = domain.get_seed(
                 self.authority.as_ref(),
                 self.identity.as_ref()
             )?;
 
             let mut seeds = vec![domain_seed.as_slice()];
-            // match domain {
-            //     AddressDomain::None => vec![],
-            //     AddressDomain::Default => 
-            //     //vec![user_seed.as_ref()];
-            // };
-            // let mut seeds = vec![];
 
             let seed_suffix = match seed_suffix {
                 SeedSuffix::Blank => { 
@@ -614,6 +610,13 @@ impl InstructionBuilder {
 
             self.generic_template_accounts.push(descriptor);
             self.generic_template_address_data.push(seeds.concat());
+        }
+
+        for (meta, bump) in self.collection_template_account_descriptors.iter() {
+
+            self.collection_template_accounts.push(meta.clone());
+            self.collection_template_address_data.push(vec![*bump]);
+
         }
 
         self.generic_template_instruction_data = self.encode_template_instruction_data(&self.generic_template_address_data);

@@ -16,11 +16,13 @@ pub fn allocate_pda<
 >(
     payer: &'payer AccountInfo<'info>,
     program_id:&'pid Pubkey,
-    user_seed: &[u8],
+    // user_seed: &[u8],
 
     // account_template: &AccountInfoTemplate<'info, 'refs>,
     // tpl: &AccountInfoTemplate<'info, 'refs>,
-    tpl_address_data : &ProgramAddressData,
+    // tpl_address_data : &ProgramAddressData,
+    // tpl_address_data : &[&[u8]],
+    tpl_seeds : &[&[u8]],
     tpl_account_info: &'refs AccountInfo<'info>,
 
     // settings : &(usize,u64)
@@ -33,7 +35,8 @@ pub fn allocate_pda<
     // msg!("| pda: executing create_program_address()");
     if validate_pda {
         match Pubkey::create_program_address(
-            &[user_seed, tpl_address_data.seed],
+            tpl_seeds,
+            // &[user_seed, tpl_address_data.seed],
             // &[seed, seed_suffix, &[tpl_address_data.bump]],
             &program_id
         ) {
@@ -79,12 +82,14 @@ pub fn allocate_pda<
         // callee program, the final seed being a single-element slice
         // containing the `u8` bump seed.
         &[
-            &[
-                user_seed,
-                tpl_address_data.seed,
-                // seed_suffix,
-                // &[tpl_address_data.bump]
-            ]
+            tpl_seeds
+            // tpl_adderss_data
+            // &[
+            //     user_seed,
+            //     tpl_address_data.seed,
+            //     // seed_suffix,
+            //     // &[tpl_address_data.bump]
+            // ]
         ]
     );
     // msg!("invoke_signed:result: {:?}", result);

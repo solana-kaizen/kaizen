@@ -50,6 +50,8 @@ pub enum SeedSuffix {
     Custom(String)
 }
 
+pub type SeedBump = u8;
+
 #[cfg(not(target_arch = "bpf"))]
 mod client {
 

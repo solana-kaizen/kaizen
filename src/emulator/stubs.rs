@@ -7,16 +7,22 @@ use workflow_allocator::error::*;
 use workflow_allocator::address::ProgramAddressData;
 use workflow_allocator::accounts::*;
 
-pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
-    payer: &'payer_refs AccountInfo<'payer_info>,
+// pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
+pub fn allocate_pda<'info,'pid>(
+    // payer: &'payer_refs AccountInfo<'payer_info>,
+    // payer: &AccountInfo<'payer_info>,
+    payer: &AccountInfo<'info>,
     program_id: &'pid Pubkey,
-    domain_seed: &[u8],
-    tpl_adderss_data: &ProgramAddressData,
-    tpl_account_info: &'refs AccountInfo<'info>,
+    // domain_seed: &[u8],
+    // tpl_adderss_data: &ProgramAddressData,
+    tpl_seeds: &[&[u8]],
+    tpl_account_info: &AccountInfo<'info>,
+    // tpl_account_info: &'refs AccountInfo<'info>,
     space: usize,
     lamports: u64,
     validate_pda : bool,
-) -> Result<&'refs AccountInfo<'info>> {
+// ) -> Result<&'refs AccountInfo<'info>> {
+) -> Result<()> {
 
     if space > ACCOUNT_DATA_TEMPLATE_SIZE {
         panic!("create_pda() account size is too large (current limit is: {} bytes", ACCOUNT_DATA_TEMPLATE_SIZE);
@@ -34,7 +40,8 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
 
     if validate_pda {
         match Pubkey::create_program_address(
-            &[domain_seed, tpl_adderss_data.seed],
+            tpl_seeds,
+            // &[domain_seed, tpl_adderss_data.seed],
             &program_id
         ) {
             Ok(address)=>{
@@ -84,7 +91,8 @@ pub fn allocate_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     let mut ref_tpl_account_info_lamports = tpl_account_info.lamports.borrow_mut();
     **ref_tpl_account_info_lamports = (**ref_tpl_account_info_lamports).saturating_add(lamports);
 
-    Ok(tpl_account_info)
+    // Ok(tpl_account_info)
+    Ok(())
 }
 
 pub fn allocate_multiple_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(

@@ -53,6 +53,15 @@ where T: workflow_allocator::container::Container<'this,'this>
     load_container_with_transport::<T>(&transport,pubkey).await
 }
 
+pub async fn reload_container_clone<'this,T> (pubkey : &Pubkey) 
+-> Result<Option<AccountDataContainer<'this,T>>> 
+where T: workflow_allocator::container::Container<'this,'this>
+{
+    let transport = Transport::global()?;
+    transport.purge(pubkey)?;
+    load_container_clone_with_transport::<T>(&transport,pubkey).await
+}
+
 // pub async fn execute_and_load<'this,T> ((pubkey, instruction) : (Pubkey, Instruction))
 // -> Result<Option<ContainerReference<'this,T>>> 
 // where T: workflow_allocator::container::Container<'this,'this>

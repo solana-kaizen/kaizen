@@ -47,7 +47,7 @@ impl<'info,'refs,'seed> Default for AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
             lamports : LamportAllocation::Auto,
             payer : AllocationPayer::Authority,
-            domain : AddressDomain::Identity,
+            domain : AddressDomain::Default,
             seed : None,
             // reserve_data_len : 0,
         }
@@ -476,12 +476,20 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             style(self.collection_template_accounts.len()).cyan(),
         );
 
-        let template_address_data_len = self.incoming_data.len() - self.instruction_data.len();
-        log_trace!("{} | incoming data - total: {} template data {} instruction data {}",
+        // let collection_template_data_len = //self.incoming_data.len() - self.instruction_
+        // let template_address_data_len = self.incoming_data.len() - self.instruction_data.len();
+        let instruction_data_len = self.incoming_data.len()
+            - std::mem::size_of::<Payload>()
+            - self.generic_template_data.len()
+            - self.collection_template_data.len();
+
+        log_trace!("{} | incoming data - total: {} header: {} gtpl: {} ctpl: {} handler: {}",
             style("CTX").magenta(),
             style(self.incoming_data.len()).cyan(),
-            style(template_address_data_len).cyan(),
-            style(self.incoming_data.len() - template_address_data_len).cyan(),
+            style(std::mem::size_of::<Payload>()).cyan(),
+            style(self.generic_template_data.len()).cyan(),
+            style(self.collection_template_data.len()).cyan(),
+            style(instruction_data_len).cyan(),
         );
 
         // log_trace!("\n");
@@ -636,10 +644,12 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         data_len : usize,
         allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
         // pda_domain : &[u8],
-        tpl_program_address_data : ProgramAddressData,
-        tpl_account_info : &'refs AccountInfo<'info>,
+        // tpl_program_address_data : ProgramAddressData,
+        tpl_seeds : &[&[u8]],
+        tpl_account_info : &AccountInfo<'info>,
         validate_pda : bool
-    ) -> Result<&'refs AccountInfo<'info>> {
+    // ) -> Result<&'refs AccountInfo<'info>> {
+    ) -> Result<()> {
 
         cfg_if! {
             if #[cfg(not(target_arch = "bpf"))] {
@@ -683,6 +693,49 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         };
 
+
+
+
+        // let account_info = 
+        crate::allocate_pda(
+            payer,
+            self.program_id,
+            tpl_seeds,
+            //&[&domain_seed,&tpl_program_address_data.seed],
+            tpl_account_info,
+            data_len,
+            lamports,
+            validate_pda,
+        )?;
+
+        // match allocation_args.domain {
+        //     AddressDomain::D
+        // }
+
+
+        // Ok(account_info)
+        Ok(())
+
+    }
+
+    pub fn try_create_pda(
+        &self,
+        data_len : usize,
+        allocation_args : &AccountAllocationArgs<'info,'refs,'_>
+    ) -> Result<&'refs AccountInfo<'info>> {
+    // ) -> Result<()> {
+
+        log_trace!("[pda] ... create_pda() starting ...");
+        let (tpl_program_address_data,tpl_account_info) = self.try_consume_generic_template_address_data()?;
+        log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
+        
+        // let user_seed = match &self.identity {
+        //     Some(identity) => identity.pubkey().to_bytes(),
+        //     None => {
+        //         self.authority.key.to_bytes()
+        //     }
+        // };
+            
         let mut advance_pda_sequence = false;
         let domain_seed = match &allocation_args.domain {
             AddressDomain::None => { vec![] },
@@ -713,62 +766,27 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             // AddressDomain::Custom(seed) => seed.to_vec()
         };
 
-
-        let account_info = crate::allocate_pda(
-            payer,
-            self.program_id,
-            &domain_seed,
-            &tpl_program_address_data,
-            tpl_account_info,
+        // let account_info = 
+        self.try_create_pda_with_args(
             data_len,
-            lamports,
-            validate_pda,
+            allocation_args,
+            // &user_seed,
+            &[&domain_seed,tpl_program_address_data.seed],
+            tpl_account_info,
+            true
         )?;
-
-        // match allocation_args.domain {
-        //     AddressDomain::D
-        // }
 
         if advance_pda_sequence {
             self.identity.as_ref().unwrap().advance_pda_sequence()?;
         }
-
-        Ok(account_info)
-
-    }
-
-    pub fn try_create_pda(
-        &self,
-        data_len : usize,
-        allocation_args : &AccountAllocationArgs<'info,'refs,'_>
-    ) -> Result<&'refs AccountInfo<'info>> {
-
-        log_trace!("[pda] ... create_pda() starting ...");
-        let (tpl_program_address_data,tpl_account_info) = self.try_consume_generic_template_address_data()?;
-        log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
-        
-        // let user_seed = match &self.identity {
-        //     Some(identity) => identity.pubkey().to_bytes(),
-        //     None => {
-        //         self.authority.key.to_bytes()
-        //     }
-        // };
-            
-        let account_info = self.try_create_pda_with_args(
-            data_len,
-            allocation_args,
-            // &user_seed,
-            tpl_program_address_data,
-            tpl_account_info,
-            true
-        )?;
 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // if let Some(identity) = &self.identity {
         //     identity.advance_pda_sequence()?;
         // }
 
-        Ok(account_info)
+        // Ok(account_info)
+        Ok(tpl_account_info)
     }
 
     pub fn sync_rent(&self, account_info : &'refs AccountInfo<'info>, _rent_collector : &RentCollector<'info,'refs>) -> Result<()> {
