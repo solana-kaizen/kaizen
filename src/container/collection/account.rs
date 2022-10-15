@@ -290,30 +290,9 @@ cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
 
         use futures::{stream::FuturesOrdered, StreamExt};
-        use crate::container::interfaces::PdaCollectionBuilder;
+        use crate::container::interfaces::PdaCollectionCreator;
+        use crate::container::interfaces::PdaCollectionAccessor;
         use async_trait::async_trait;
-
-        #[async_trait(?Send)]
-        impl<'info,M> PdaCollectionBuilder for PdaCollectionInterface<'info,M> 
-        where M: CollectionMeta
-        {
-            async fn writable_account_meta(&self, program_id : &Pubkey) -> Result<(AccountMeta,u8)> {
-
-                let idx = self.len() + 1;
-                let (pubkey, bump) = self.get_pda_at(program_id, idx as u64)?;
-                Ok((AccountMeta::new(pubkey, false),bump))
-            }
-
-            async fn writable_account_meta_range(&self, program_id : &Pubkey, items : usize) -> Result<Vec<(AccountMeta,u8)>> {
-
-                let mut list = Vec::new();
-                for idx in self.len()+1 ..= self.len()+items {
-                    let (pubkey, bump) = self.get_pda_at(program_id, idx as u64)?;
-                    list.push((AccountMeta::new(pubkey, false),bump))
-                }
-                Ok(list)
-            }
-        }
 
         impl<'info,M> PdaCollectionInterface<'info,M> 
         where M: CollectionMeta
@@ -373,5 +352,51 @@ cfg_if! {
                 Ok(futures.collect::<Vec<_>>().await)
             }
         }
+
+        #[async_trait(?Send)]
+        impl<'info,M> PdaCollectionCreator for PdaCollectionInterface<'info,M> 
+        where M: CollectionMeta
+        {
+            async fn writable_account_meta(&self, program_id : &Pubkey) -> Result<(AccountMeta,u8)> {
+
+                let idx = self.len() + 1;
+                let (pubkey, bump) = self.get_pda_at(program_id, idx as u64)?;
+                Ok((AccountMeta::new(pubkey, false),bump))
+            }
+
+            async fn writable_account_meta_range(&self, program_id : &Pubkey, items : usize) -> Result<Vec<(AccountMeta,u8)>> {
+
+                let mut list = Vec::new();
+                for idx in self.len()+1 ..= self.len()+items {
+                    let (pubkey, bump) = self.get_pda_at(program_id, idx as u64)?;
+                    list.push((AccountMeta::new(pubkey, false),bump))
+                }
+                Ok(list)
+            }
+        }
+
+        #[async_trait(?Send)]
+        impl<'info,M> PdaCollectionAccessor for PdaCollectionInterface<'info,M> 
+        where M: CollectionMeta
+        {
+            async fn writable_account_meta(&self, program_id : &Pubkey, idx: usize) -> Result<AccountMeta> {
+                let (pubkey, _) = self.get_pda_at(program_id, idx as u64)?;
+                Ok(AccountMeta {
+                    pubkey,
+                    is_signer : false,
+                    is_writable : true,
+                })
+            }
+
+            async fn writable_account_meta_range(&self, program_id : &Pubkey, range : std::ops::Range<usize>) -> Result<Vec<AccountMeta>> {
+                let mut list = Vec::new();
+                for idx in range {
+                    let (pubkey, _) = self.get_pda_at(program_id, idx as u64)?;
+                    list.push(AccountMeta::new(pubkey, false))
+                }
+                Ok(list)
+            }
+        }
+
     }
 }

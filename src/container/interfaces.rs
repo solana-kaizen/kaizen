@@ -13,9 +13,14 @@ pub trait AccountAggregator {
 
 
 #[async_trait(?Send)]
-pub trait PdaCollectionBuilder {
-    // type Key;
+pub trait PdaCollectionCreator {
     async fn writable_account_meta(&self, program_id : &Pubkey) -> Result<(AccountMeta,u8)>;
     async fn writable_account_meta_range(&self, program_id : &Pubkey, items : usize) -> Result<Vec<(AccountMeta,u8)>>;
+}
+
+#[async_trait(?Send)]
+pub trait PdaCollectionAccessor {
+    async fn writable_account_meta(&self, program_id : &Pubkey, index : usize) -> Result<AccountMeta>;
+    async fn writable_account_meta_range(&self, program_id : &Pubkey, range : std::ops::Range<usize>) -> Result<Vec<AccountMeta>>;
     // async fn readonly_account_metas(&self, index: usize) -> Result<Vec<AccountMeta>>;
 }

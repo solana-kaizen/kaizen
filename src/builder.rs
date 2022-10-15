@@ -14,7 +14,11 @@ use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
 use workflow_allocator::address::AddressDomain;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
-use workflow_allocator::container::{AccountAggregator,PdaCollectionBuilder};
+use workflow_allocator::container::{
+    AccountAggregator,
+    PdaCollectionCreator,
+    PdaCollectionAccessor,
+};
 // use workflow_allocator::instruction::{
 //     // readonly,
 //     // writable
@@ -305,10 +309,10 @@ impl InstructionBuilder {
         self
     }
 
-    // pub fn with_collection_accounts(mut self, index_accounts: &[AccountMeta]) -> Self {
-    //     self.index_accounts.extend_from_slice(index_accounts);
-    //     self
-    // }
+    pub fn with_collection_accounts(mut self, index_accounts: &[AccountMeta]) -> Self {
+        self.index_accounts.extend_from_slice(index_accounts);
+        self
+    }
 
     pub fn with_handler_accounts(mut self, handler_accounts: &[AccountMeta]) -> Self {
         self.handler_accounts.extend_from_slice(handler_accounts);
@@ -464,16 +468,25 @@ impl InstructionBuilder {
     }
 
     pub async fn with_collection_template<A>(mut self, pda_collection_builder : &A) -> Result<Self> 
-    where A: PdaCollectionBuilder
+    where A: PdaCollectionCreator
     {
         let (meta, bump) = pda_collection_builder.writable_account_meta(&self.program_id).await?;
-
-        self.collection_template_account_descriptors.push((
-            meta,
-            bump
-        ));
-
+        self.collection_template_account_descriptors.push((meta,bump));
         Ok(self)
+    }
+
+    pub async fn with_collection_index<A>(self, pda_collection_accessor : &A, idx : usize) -> Result<Self> 
+    where A: PdaCollectionAccessor
+    {
+        let meta = pda_collection_accessor.writable_account_meta(&self.program_id, idx).await?;
+        Ok(self.with_collection_accounts(&[meta]))
+    }
+
+    pub async fn with_collection_index_range<A>(self, pda_collection_accessor : &A, range : std::ops::Range<usize>) -> Result<Self> 
+    where A: PdaCollectionAccessor
+    {
+        let list = pda_collection_accessor.writable_account_meta_range(&self.program_id, range).await?;
+        Ok(self.with_collection_accounts(&list))
     }
 
     #[inline(always)]
