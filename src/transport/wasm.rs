@@ -230,10 +230,17 @@ impl Transport {
         self.wallet.clone()
     }
 
+    pub fn is_emulator(&self)->Result<bool>{
+        match self.mode {
+            Mode::Inproc | Mode::Emulator => Ok(true),
+            _=>Ok(false)
+        }
+    }
+
     pub async fn balance(&self) -> Result<u64> {
 
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
-        match self.mode { //&self.emulator {
+        match self.mode {
             Mode::Inproc | Mode::Emulator => {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.emulator().lookup(&pubkey).await?;
@@ -243,6 +250,7 @@ impl Transport {
                         return Err(error!("[Emulator] - WASM::Transport::balance() unable to lookup account: {}", pubkey)); 
                     }
                 }
+
                 // Ok(0u64)
                 // match simulator.store.lookup(&simulator.authority()).await? {
                 //     Some(authority) => {
