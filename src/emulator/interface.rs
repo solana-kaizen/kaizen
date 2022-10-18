@@ -29,20 +29,19 @@ impl ExecutionResponse {
 
 #[async_trait]
 pub trait EmulatorInterface : AnySync
-// where Arc<Self> : Sized// + Send + Sync + 'static
 {
-    // fn ctor(self : Arc<Self>) { }
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn execute(
         &self,
         instruction : &instruction::Instruction,
     ) -> Result<ExecutionResponse>;
+
+    /// funds account key from Pubkey::default() account.  If account 'key' is not present, creates
+    /// and funds this account.  This fundtion requires presense of Pubkey::default() (SystemProgram) account
+    /// that is sufficiently funded.
+    /// Please not that in Unit Tests, authority account is automatically funded, i.e. unit tests do not
+    /// require presense of SystemProgram account.
     async fn fund(&self, key: &Pubkey, owner: &Pubkey, lamports: u64) -> Result<()>;
-    // async fn lookup(self : &Arc<Self>, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
-    // async fn execute(
-    //     self : Arc<Self>,
-    //     instruction : &instruction::Instruction,
-    // ) -> Result<ExecutionResponse>;
 }
 
 downcast_sync!(dyn EmulatorInterface);
