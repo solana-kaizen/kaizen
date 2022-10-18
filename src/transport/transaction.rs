@@ -29,6 +29,14 @@ pub struct TransactionMeta {
 }
 
 impl TransactionMeta {
+    pub fn new_without_accounts(name: &str) -> TransactionMeta {
+        TransactionMeta {
+            name: name.to_string(),
+            signature: None,
+            accounts : Vec::new(),
+        }
+    }
+
     pub fn new_with_accounts(name: &str, accounts: &[&Pubkey]) -> TransactionMeta {
         TransactionMeta {
             name: name.to_string(),
@@ -49,6 +57,20 @@ pub struct Transaction {
 }
 
 impl Transaction {
+
+    pub fn new_without_accounts(name: &str, instruction: Instruction) -> Transaction {
+        let meta = TransactionMeta::new_without_accounts(name);
+        let (sender,receiver) = unbounded::<TransactionResult>();
+        Transaction {
+            id : Id::new(),
+            status : Arc::new(Mutex::new(TransactionStatus::Pending)),
+            meta : Arc::new(Mutex::new(meta)),
+            instruction,
+            sender,
+            receiver,
+        }
+    }
+    
     pub fn new_with_accounts(name: &str, accounts: &[&Pubkey], instruction: Instruction) -> Transaction {
 
         let meta = TransactionMeta::new_with_accounts(name, accounts);
