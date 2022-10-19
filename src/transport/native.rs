@@ -46,7 +46,7 @@ pub struct Transport
     pub wallet : Arc<dyn Wallet>,
     pub config : Arc<RwLock<TransportConfig>>,
     pub cache : Arc<Cache>,
-    pub queue : Option<Arc<TransactionQueue>>,
+    pub queue : Arc<TransactionQueue>,
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
     pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
 }
@@ -150,7 +150,7 @@ impl Transport {
         let wallet = Arc::new(native::Wallet::try_new()?);
 
         // TODO implement transaction queue support
-        let queue = None;
+        let queue = Arc::new(TransactionQueue::new());
         let cache = Arc::new(Cache::new_with_default_capacity());
         let config = Arc::new(RwLock::new(config));
         let lookup_handler = LookupHandler::new();
@@ -362,6 +362,11 @@ impl super::Interface for Transport {
 
     fn purge(&self, pubkey: &Pubkey) -> Result<()> {
         Ok(self.cache.purge(pubkey)?)
+    }
+
+    async fn post(&self, tx: Arc<super::transaction::Transaction>) -> Result<()> { 
+        self.queue.enqueue(tx).await?;
+        Ok(())
     }
 
     // async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 

@@ -108,8 +108,8 @@ impl TransactionQueue {
     
         let queue = self.clone();
         let tx_chain = {
-
-            let tx_chain = match *transaction.status.lock()? {
+            let locked = transaction.status.lock()?.clone();
+            let tx_chain = match locked {
 
                 // should not occur - received already completed transaction
                 TransactionStatus::Success => {
@@ -152,6 +152,11 @@ impl TransactionQueue {
                     queue.tx_chains.lock()?.insert(tx_chain.id.clone(), tx_chain.clone());
                     for observer in queue.observers()?.iter() {
                         observer.tx_chain_created(&tx_chain).await;
+                    }
+
+                    tx_chain.enqueue(&transaction)?;
+                    for observer in queue.observers()?.iter() {
+                        observer.tx_created(&tx_chain, &transaction).await;
                     }
                 
                     tx_chain

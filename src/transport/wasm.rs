@@ -27,7 +27,7 @@ use std::sync::{Mutex, Arc};
 // use async_std::sync::RwLock;
 use workflow_allocator::cache::Cache;
 use std::convert::From;
-use crate::transport::TransportConfig;
+use crate::transport::{Transaction, TransportConfig};
 use crate::transport::lookup::{LookupHandler,RequestType};
 use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
@@ -146,7 +146,7 @@ pub struct Transport {
     pub wallet : Arc<dyn Wallet>,
 
     // #[wasm_bindgen(skip)]
-    pub queue : Option<TransactionQueue>,
+    pub queue : Arc<TransactionQueue>,
     // #[wasm_bindgen(skip)]
     cache : Cache, //Arc<Store>,
     
@@ -403,7 +403,7 @@ impl Transport {
         log_trace!("Transport interface creation ok...");
         
         // let entrypoints = Arc::new(RwLock::new(HashMap::new()));
-        let queue  = None;
+        let queue  = Arc::new(TransactionQueue::new());
         log_trace!("Creating caching store");
         let cache = Cache::new_with_default_capacity();
         log_trace!("Creating lookup handler");
@@ -646,6 +646,10 @@ impl super::Interface for Transport {
         //     }
         // }
 
+    }
+
+    async fn post(&self, tx : Arc<Transaction>) -> Result<()> { 
+        self.queue.enqueue(tx).await
     }
 
     async fn execute(&self, instruction : &Instruction) -> Result<()> { 
