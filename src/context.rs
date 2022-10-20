@@ -642,7 +642,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     pub fn try_create_pda_with_args(
         &self,
         data_len : usize,
-        allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
+        allocation_args : &AccountAllocationArgs<'info,'_,'_>,
         // pda_domain : &[u8],
         // tpl_program_address_data : ProgramAddressData,
         tpl_seeds : &[&[u8]],
@@ -718,11 +718,14 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
 
     }
 
+    // pub fn try_create_pda<'ctx : 'info + 'refs>(
     pub fn try_create_pda(
         &self,
+        // &'ctx self,
         data_len : usize,
-        allocation_args : &AccountAllocationArgs<'info,'refs,'_>
+        allocation_args : &AccountAllocationArgs<'info,'_,'_>
     ) -> Result<&'refs AccountInfo<'info>> {
+    // ) -> Result<&'ctx AccountInfo<'info>> {
     // ) -> Result<()> {
 
         log_trace!("[pda] ... create_pda() starting ...");
@@ -844,6 +847,14 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     pub fn locate_index_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
         if let Some(index) = self.index_accounts.iter().position(|account| account.key == pubkey) {
             Some(&self.index_accounts[index])
+        } else { None } 
+    }
+
+    #[inline(always)]
+    // pub fn locate_index_account<'ctx>(&'ctx self, pubkey : &Pubkey) -> Option<&'ctx AccountInfo<'info>> {
+    pub fn locate_collection_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
+        if let Some(index) = self.collection_accounts.iter().position(|account| account.key == pubkey) {
+            Some(&self.collection_accounts[index])
         } else { None } 
     }
 

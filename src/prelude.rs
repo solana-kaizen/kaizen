@@ -21,9 +21,11 @@ pub use crate::hash::PubkeyHashMap;
 pub use crate::container::segment::{Segment, SegmentStore, Layout};
 pub use crate::container::array::Array;
 pub use crate::container::collection::{
-    KeystoreCollection,
-    OrderedCollectionMeta,
-    OrderedCollectionStore,
+    // KeystoreCollection,
+    PubkeyCollection,
+    PubkeyCollectionReference,
+    PubkeyCollectionMeta,
+    PubkeyCollectionStore,
 
     PdaCollectionInterface,
     PdaProxyCollectionInterface,
@@ -34,7 +36,8 @@ pub use crate::container::collection::{
     PdaCollectionMeta,
     // AccountCollectionMeta,
     // AccountCollectionSegment,
-    TsPubkey,
+    // TsPubkey,
+    // Utf8String,
 };
 pub use crate::container::ContainerHeader;
 pub use crate::identity::Identity;

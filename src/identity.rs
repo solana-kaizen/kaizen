@@ -1,6 +1,6 @@
 use workflow_allocator::prelude::*;
 use std::cell::RefCell;
-use std::rc::Rc;
+// use std::rc::Rc;
 use workflow_allocator::result::Result;
 use workflow_allocator::error::*;
 // use solana_program::account_info::AccountInfo;
@@ -63,7 +63,8 @@ impl Into<IdentityRecord> for &IdentityRecordStore {
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum Op {
     CreateRecords(Vec<IdentityRecordStore>),
-    CreateCollections(Vec<u32>),
+    CreateCollections(Vec<(u32,Option<u32>)>),
+    // CreateCollections(Vec<u32>),
     // ChangeEntryFlags(u32),
     // ChangeDataFlags(u32),
 }
@@ -137,7 +138,7 @@ pub struct Identity<'info,'refs> {
     // ---
     #[segment(reserve(Array::<IdentityRecord>::calculate_data_len(5)))]
     pub records : Array<'info,'refs, IdentityRecord>,
-    pub collections : Array<'info,'refs, OrderedCollectionMeta>,
+    pub collections : Array<'info,'refs, PubkeyCollectionMeta>,
 }
 
 impl<'info,'refs> std::fmt::Debug for Identity<'info,'refs> {
@@ -236,7 +237,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     // pub fn create_(ctx:&ContextReference<'info,'refs,'_,'_>) -> ProgramResult { //Result<()> {
 
         let mut records : Vec<IdentityRecordStore> = Vec::new();
-        let mut collection_data_types : Vec<u32> = Vec::new();
+        let mut collection_data_types : Vec<(u32,Option<u32>)> = Vec::new();
         if ctx.instruction_data.len() > 0 {
             match Instr::try_from_slice(&ctx.instruction_data)? {
                 Instr::Ops(ops) => {
@@ -261,7 +262,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
         let data_len = 
             (1 + records.len()) * std::mem::size_of::<IdentityRecord>() +
-            collection_data_types.len() * std::mem::size_of::<OrderedCollectionMeta>();
+            collection_data_types.len() * std::mem::size_of::<PubkeyCollectionMeta>();
         // let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
         // let mut identity = Identity::<'info,'refs>::try_allocate(ctx, &allocation_args, data_len)?;
         let mut identity = Identity::try_allocate(ctx, &allocation_args, data_len)?;
@@ -276,16 +277,67 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         }
 
         // for idx in 0..collections.len() {
-        for data_type in collection_data_types.iter() {
-            // let allocation_args = AccountAllocationArgs::<'info,'_,'_>::new(AddressDomain::Identity);
-            let allocation_args = AccountAllocationArgs::new_with_payer(AddressDomain::Authority, AllocationPayer::Authority);
+        for (data_type,container_type) in collection_data_types.iter() {
+            let allocation_args = AccountAllocationArgs::<'_,'_,'_>::new(AddressDomain::Identity);
+            // let allocation_args = AccountAllocationArgs::new_with_payer(AddressDomain::Authority, AllocationPayer::Authority);
             // let collection_data_type = collections[idx];
             // let allocation_args = AccountAllocationArgs::default();
             // let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;
             // collection_store.try_init(collection_data_type)?;
             let collection_meta = unsafe { identity.collections.try_allocate(false)? };
-            let mut collection = OrderedCollection::<TsPubkey>::try_from_meta(collection_meta)?;
-            collection.try_create(ctx, &allocation_args,*data_type)?;
+
+            // let mut collection = PubkeyCollectionReference::try_create_from_meta(
+            // let mut collection = PubkeyCollectionReference::try_load_from_meta(
+            //     collection_meta
+            // )?;
+
+            // // let mut collection = PubkeyCollectionReference::try_create_container(
+            // let mut collection = collection.try_create_container(
+            //     // collection_meta,
+            //     ctx, 
+            //     &allocation_args,
+            //     // Some(*data_type),
+            //     // *container_type
+            // )?;
+
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // TODO: CASE 1
+            // let collection_store = PubkeyCollectionStore::try_allocate(ctx, &allocation_args, 0)?;
+            // let mut meta = PubkeyCollectionMetaInterface::new(collection_meta);
+            // meta.try_create(collection_store.pubkey(), Some(*data_type), *container_type)?;
+            
+            // let mut collection = PubkeyCollectionInterface::<PubkeyCollectionMetaInterface>::try_new(
+            //     meta
+            // )?;
+
+            // collection.container = Some(collection_store);
+
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+            // let mut collection = 
+            // ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // TODO: CASE 2
+            // collection.try_create_from_meta(
+            PubkeyCollectionReference::try_create_with_meta(
+                ctx, 
+                &allocation_args,
+                collection_meta, 
+                Some(*data_type),
+                *container_type
+            )?;
+            // let mut collection = PubkeyCollectionReference::try_from_meta(
+            //     collection_meta, 
+            //     // Some(*data_type),
+            //     // *container_type
+            // )?;
+            // let mut collection = collection.try_create(
+            //     ctx, 
+            //     &allocation_args,
+            //     Some(*data_type),
+            //     *container_type
+            // )?;
+            // ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // collection.try_create(ctx, &allocation_args,*data_type)?;
             // collection.init(collection_store.pubkey(), collection_data_type);
         }
 
@@ -294,20 +346,43 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
     // pub fn locate_collection
 
-    pub fn locate_collection(&self, data_type : u32) -> Result<OrderedCollection<'info,'refs,TsPubkey>> {
+    // pub fn locate_collection(&self, ctx: &ContextReference, data_type : u32) -> Result<PubkeyCollectionReference> { //PubkeyCollection<'info,'refs>> {
+    // pub fn locate_collection(&self, ctx: &ContextReference<'info,'refs,'_,'_>, data_type : u32) -> Result<PubkeyCollectionReference> { //PubkeyCollection<'info,'refs>> {
+    // pub fn locate_collection(&self, ctx: &ContextReference<'info,'refs,'_,'_>, data_type : u32) -> Result<PubkeyCollectionReference<'info,'refs>> { //PubkeyCollection<'info,'refs>> {
+    //     let collections = self.collections.as_slice_mut();
+    //     // for idx in 0..self.collections.len() {
+    //     for collection_meta in collections.iter_mut() {
+    //         // let collection_meta: &'refs mut CollectionMeta = &mut self.collections[idx];
+    //         // let collection_meta: &'refs mut CollectionMeta = &mut collections[idx];  //&mut self.collections[idx];
+    //         // let collection_meta = &mut collections[idx];  //&mut self.collections[idx];
+    //         // let mut collection_meta = &collections[idx];  //&mut self.collections[idx];
+    //         if collection_meta.get_data_type() == data_type {
+    //             // let c = 
+    //             let collection = PubkeyCollectionReference::try_load_from_meta(ctx,collection_meta)?;
+    //             // let mut collection = PubkeyCollectionReference::try_from_meta(collection_meta)?;
+    //             // // let collection = 
+    //             // collection.try_load(ctx)?;
+    //             return Ok(collection);
+    //         }
+    //     }
+    //     Err(program_error_code!(ErrorCode::PubkeyCollectionDataTypeNotFound))
+    // }
+
+    pub fn locate_collection(&self, data_type : u32) -> Result<PubkeyCollectionReference<'info,'refs>> { //PubkeyCollection<'info,'refs>> {
         let collections = self.collections.as_slice_mut();
-        // for idx in 0..self.collections.len() {
         for collection_meta in collections.iter_mut() {
-            // let collection_meta: &'refs mut CollectionMeta = &mut self.collections[idx];
-            // let collection_meta: &'refs mut CollectionMeta = &mut collections[idx];  //&mut self.collections[idx];
-            // let collection_meta = &mut collections[idx];  //&mut self.collections[idx];
-            // let mut collection_meta = &collections[idx];  //&mut self.collections[idx];
             if collection_meta.get_data_type() == data_type {
-                let collection = OrderedCollection::try_from_meta(collection_meta)?;
+                let collection = PubkeyCollectionReference::try_from_meta(collection_meta)?;
                 return Ok(collection);
             }
         }
-        Err(program_error_code!(ErrorCode::OrderedCollectionDataTypeNotFound))
+        Err(program_error_code!(ErrorCode::PubkeyCollectionDataTypeNotFound))
+    }
+
+    pub fn load_collection(&self, ctx: &ContextReference<'info,'refs,'_,'_>, data_type : u32) -> Result<PubkeyCollectionReference<'info,'refs>> { //PubkeyCollection<'info,'refs>> {
+        let mut collection = self.locate_collection(data_type)?;
+        collection.try_load(ctx)?;
+        Ok(collection)
     }
 
     pub fn locate_collection_root(&self, data_type : u32) -> Option<Pubkey> {
@@ -320,28 +395,28 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         None
     }
 
-    pub fn locate_collection_pubkeys(&self, data_type : u32) -> Option<Vec<Pubkey>> {
-        for idx in 0..self.collections.len() {
-            let collection = &self.collections[idx];
-            if collection.get_data_type() == data_type {
-                return Some(vec![collection.get_pubkey()]);
-            }
-        }
-        None
-    }
+    // pub fn locate_collection_pubkeys(&self, data_type : u32) -> Option<Vec<Pubkey>> {
+    //     for idx in 0..self.collections.len() {
+    //         let collection = &self.collections[idx];
+    //         if collection.get_data_type() == data_type {
+    //             return Some(vec![collection.get_pubkey()]);
+    //         }
+    //     }
+    //     None
+    // }
 
-    pub fn locate_collection_v1(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<OrderedCollectionStore<'info,'refs, Pubkey>> {
-        for idx in 0..self.collections.len() {
-            let collection = &self.collections[idx];
-            if collection.get_data_type() == data_type {
-                let pubkey = collection.get_pubkey();
-                let collection_account = ctx.locate_index_account(&pubkey).ok_or(program_error_code!(ErrorCode::OrderedCollectionAccountNotFound))?;
-                let collection_store = OrderedCollectionStore::<Pubkey>::try_load(collection_account)?;
-                return Ok(collection_store);
-            }
-        }
-        Err(program_error_code!(ErrorCode::OrderedCollectionDataTypeNotFound))
-    }
+    // pub fn locate_collection_v1(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<PubkeyCollectionStore<'info,'refs, Pubkey>> {
+    //     for idx in 0..self.collections.len() {
+    //         let collection = &self.collections[idx];
+    //         if collection.get_data_type() == data_type {
+    //             let pubkey = collection.get_pubkey();
+    //             let collection_account = ctx.locate_index_account(&pubkey).ok_or(program_error_code!(ErrorCode::OrderedCollectionAccountNotFound))?;
+    //             let collection_store = PubkeyCollectionStore::<Pubkey>::try_load(collection_account)?;
+    //             return Ok(collection_store);
+    //         }
+    //     }
+    //     Err(program_error_code!(ErrorCode::OrderedCollectionDataTypeNotFound))
+    // }
 
     // TODO: testing sandbox
     /// Register a separate authority with an identity and create a new proxy account for the authority being registered

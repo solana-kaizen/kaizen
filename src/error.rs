@@ -102,13 +102,13 @@ pub enum ErrorCode {
 
     InvalidProxyContainerType,
 
-    OrderedCollectionMissingMeta,
-    OrderedCollectionMetaSegmentSizeTooSmall,
-    OrderedCollectionCollision,
-    OrderedCollectionNotFound,
-    OrderedCollectionNotLoaded,
-    OrderedCollectionDataTypeNotFound,
-    OrderedCollectionAccountNotFound,
+    PubkeyCollectionMissingMeta,
+    PubkeyCollectionMetaSegmentSizeTooSmall,
+    PubkeyCollectionCollision,
+    PubkeyCollectionNotFound,
+    PubkeyCollectionNotLoaded,
+    PubkeyCollectionDataTypeNotFound,
+    PubkeyCollectionAccountNotFound,
 
     MappedArrayBounds,
     MappedArrayMetaNotBlank,

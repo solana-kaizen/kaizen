@@ -1,6 +1,6 @@
-use super::ordered::OrderedCollection;
+use super::pubkey::OrderedCollectionInterface;
 
-pub type KeystoreCollection<'info,'refs> = OrderedCollection<'info,'refs,TsPubkey>;
+pub type KeystoreCollection<'info,'refs> = OrderedCollectionInterface<'info,'refs,TsPubkey>;
 
 use std::cmp::Ordering;
 

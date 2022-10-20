@@ -7,10 +7,10 @@ pub enum LamportAllocation {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum AllocationPayer<'info,'refs> {
+pub enum AllocationPayer<'info,'data> {
     Authority,
     Identity,
-    Account(&'refs AccountInfo<'info>)
+    Account(&'data AccountInfo<'info>)
 }
 
 #[derive(Debug, Copy, Clone)]

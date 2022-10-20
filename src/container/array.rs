@@ -292,6 +292,7 @@ where T: Copy + 'info
     }
 
     // pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> {
+    // pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> 
     pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> 
     // where T : 'info
     {

@@ -11,7 +11,7 @@ use super::meta::*;
 pub type PdaCollection<'info,'refs> = PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info,'refs>>;
 pub type PdaCollectionReference<'info> = PdaCollectionInterface<'info, PdaCollectionMetaInterface<'info>>;
 
-pub struct PdaCollectionInterface<'info, M>{
+pub struct PdaCollectionInterface<'info, M> {
     pub domain : &'info [u8],
     meta : M,
 }
@@ -72,24 +72,6 @@ where M: CollectionMeta
             )
         )
     }
-
-    // pub fn try_create_from_segment<'refs>(
-    //     segment : Rc<Segment<'info, 'refs>>,
-    // ) -> Result<PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
-    //     PdaCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
-    //         segment.account().key.as_ref(),
-    //         PdaCollectionSegmentInterface::new(segment),
-    //     )
-    // }
-
-    // pub fn try_load_from_segment<'refs>(
-    //         segment : Rc<Segment<'info, 'refs>>
-    // ) -> Result<PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info, 'refs>>> {
-    //     PdaCollectionInterface::<PdaCollectionSegmentInterface>::try_load_impl(
-    //         segment.account().key.as_ref(),
-    //         PdaCollectionSegmentInterface::new(segment)
-    //     )
-    // }
 
     pub fn try_create_from_segment_with_collection_args<'refs>(
         segment : Rc<Segment<'info, 'refs>>,
@@ -169,7 +151,7 @@ where M: CollectionMeta
             ctx.program_id
         )?;
 
-        if let Some(account_info) = ctx.locate_index_account(&pda) {
+        if let Some(account_info) = ctx.locate_collection_account(&pda) {
             let container = T::try_load(account_info)?;
             Ok(container)
         } else {
@@ -264,12 +246,15 @@ log_info!("######################### end {}",next_index);
             return Err(error_code!(ErrorCode::AccountCollectionInvalidAddress));
         }
 
-        let account = match ctx.locate_index_account(&pda) {
-            Some(account_info) => account_info,
-            None => {
-                return Err(error_code!(ErrorCode::AccountCollectionNotFound))
-            }
-        };
+        let account = ctx.locate_collection_account(&pda)
+            .ok_or(error_code!(ErrorCode::AccountCollectionNotFound))?;
+        //  {
+        // let account = match ctx.locate_collection_account(&pda) {
+        //     Some(account_info) => account_info,
+        //     None => {
+        //         return Err(error_code!(ErrorCode::AccountCollectionNotFound))
+        //     }
+        // };
 
         if account.data_len() < std::mem::size_of::<u32>() {
             return Err(error_code!(ErrorCode::AccountCollectionInvalidAccount))

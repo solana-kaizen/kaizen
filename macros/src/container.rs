@@ -1045,7 +1045,8 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             pub fn try_allocate_default<'pid,'instr>(
                 ctx: &std::rc::Rc<std::boxed::Box<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>>,
                 allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs,'_>,
-            ) -> workflow_allocator::result::Result<Self> {
+            // ) -> workflow_allocator::result::Result<Self> {
+            ) -> workflow_allocator::result::Result<#struct_name #struct_params> {
                 
                 Ok(Self::try_allocate(ctx,allocation_args,0)?)
             }
@@ -1054,9 +1055,10 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             pub fn try_allocate(
                 // ctx: &std::rc::Rc<std::boxed::Box<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>>,
                 ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
-                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs,'_>,
+                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'_,'_>,
                 reserve_data_len : usize
-            ) -> workflow_allocator::result::Result<Self> {
+            ) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            // ) -> workflow_allocator::result::Result<Self> {
 
                 let data_len = Self::initial_data_len() + reserve_data_len;
                 let account_info = ctx.try_create_pda(data_len,allocation_args)?;
