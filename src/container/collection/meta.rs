@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use workflow_allocator_macros::Meta;
 use crate::result::Result;
 use workflow_allocator::prelude::*;
@@ -184,3 +185,321 @@ impl<'info,'refs> CollectionMeta for PdaCollectionSegmentInterface<'info,'refs> 
     }
 
 }
+
+// ~~~
+
+
+
+#[derive(Meta, Copy, Clone)]
+#[repr(packed)]
+pub struct PubkeyCollectionMeta {
+    pubkey: Pubkey,
+    collection_len : u64,
+    sequence : u64,
+    data_type : u32,
+    container_type : u32,
+}
+
+impl PubkeyCollectionMeta {
+    pub fn try_create(
+        &mut self,
+        pubkey : &Pubkey,
+        data_type : Option<u32>,
+        container_type : Option<u32>,
+    ) -> Result<()> {
+        self.pubkey = *pubkey;
+        self.set_data_type(data_type.unwrap_or(0));
+        self.set_container_type(container_type.unwrap_or(0));
+        Ok(())
+    }
+
+    pub fn advance_sequence(&mut self) -> u32 {
+        let seq = self.get_sequence() + 1;
+        self.set_sequence(seq);
+        seq as u32
+    }
+
+}
+
+pub trait PubkeyCollectionMetaTrait {
+    fn try_create(
+        &mut self,
+        pubkey : &Pubkey,
+        data_type : Option<u32>,
+        container_type : Option<u32>,
+    ) -> Result<()>;
+    fn try_load(&mut self) -> Result<()>;
+    fn min_data_len() -> usize;
+    fn pubkey<'key>(&'key self) -> &'key Pubkey;
+    fn get_len(&self) -> u64;
+    fn set_len(&mut self, count: u64);
+    fn advance_sequence(&mut self) -> u32;
+    fn get_data_type(&self) -> Option<u32>;
+    fn get_container_type(&self) -> Option<u32>;
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+pub struct PubkeyCollectionMetaInterface<'data> {
+    data : &'data mut PubkeyCollectionMeta,
+}
+
+impl<'data> PubkeyCollectionMetaInterface<'data> {
+
+    pub fn new(
+        data : &'data mut PubkeyCollectionMeta,
+    ) -> Self {
+        Self { 
+            data,
+        }
+    }
+
+    pub fn data_ref<'t>(&'t self) -> &'t PubkeyCollectionMeta {
+        self.data
+    }
+
+    pub fn data_mut<'t>(&'t mut self) -> &'t mut PubkeyCollectionMeta {
+        self.data
+    }
+}
+
+impl<'info> PubkeyCollectionMetaTrait for PubkeyCollectionMetaInterface<'info> {
+    fn try_create(
+        &mut self,
+        pubkey : &Pubkey,
+        data_type : Option<u32>,
+        container_type : Option<u32>,
+    ) -> Result<()> {
+        self.data_mut().try_create(pubkey,data_type,container_type)
+    }
+
+    fn try_load(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn min_data_len() -> usize {
+        std::mem::size_of::<PubkeyCollectionMeta>()
+    }
+
+    fn pubkey<'key>(&'key self) -> &'key Pubkey {
+        &self.data_ref().pubkey
+    }
+    
+    fn get_len(&self) -> u64 {
+        self.data_ref().get_collection_len()
+    }
+    
+    fn set_len(&mut self, len : u64) {
+        self.data_mut().set_collection_len(len);
+    }
+    
+    fn advance_sequence(&mut self) -> u32 {
+        self.data_mut().advance_sequence()
+    }
+
+    fn get_data_type(&self) -> Option<u32> {
+        let data_type = self.data_ref().get_data_type();
+        if data_type == 0 {
+            None
+        } else {
+            Some(data_type)
+        }
+    }
+
+    fn get_container_type(&self) -> Option<u32> {
+        let container_type = self.data_ref().get_container_type();
+        if container_type == 0 {
+            None
+        } else {
+            Some(container_type)
+        }
+    }
+
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+pub struct PubkeyCollectionSegmentInterface<'info,'refs> {
+    segment : Rc<Segment<'info,'refs>>,
+}
+
+impl<'info,'refs> PubkeyCollectionSegmentInterface<'info,'refs> {
+    pub fn new(
+        segment : Rc<Segment<'info,'refs>>,
+    ) -> Self {
+        Self {
+            segment,
+        }
+    }
+
+    pub fn data_ref<'data>(&'data self) -> &'data PubkeyCollectionMeta {
+        self.segment.as_struct_ref::<PubkeyCollectionMeta>()
+    }
+
+    pub fn data_mut<'data>(&'data self) -> &'data mut PubkeyCollectionMeta {
+        self.segment.as_struct_mut::<PubkeyCollectionMeta>()
+    }
+}
+
+impl<'info,'refs> PubkeyCollectionMetaTrait for PubkeyCollectionSegmentInterface<'info,'refs> {
+
+    fn try_create(
+        &mut self,
+        pubkey : &Pubkey,
+        data_type : Option<u32>,
+        container_type : Option<u32>,
+    ) -> Result<()> {
+        self.data_mut().try_create(pubkey,data_type,container_type)
+    }
+
+    fn try_load(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn min_data_len() -> usize {
+        std::mem::size_of::<PubkeyCollectionMeta>()
+    }
+
+    fn pubkey<'key>(&'key self) -> &'key Pubkey {
+        &self.data_ref().pubkey
+    }
+
+    fn get_len(&self) -> u64 {
+        self.data_ref().get_collection_len()
+    }
+    
+    fn set_len(&mut self, len : u64) {
+        self.data_mut().set_collection_len(len)
+    }
+    
+    fn advance_sequence(&mut self) -> u32 {
+        self.data_mut().advance_sequence()
+    }
+
+    fn get_data_type(&self) -> Option<u32> {
+        let data_type = self.data_ref().get_data_type();
+        if data_type == 0 {
+            None
+        } else {
+            Some(data_type)
+        }
+    }
+
+    fn get_container_type(&self) -> Option<u32> {
+        let container_type = self.data_ref().get_container_type();
+        if container_type == 0 {
+            None
+        } else {
+            Some(container_type)
+        }
+    }
+
+}
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#[derive(Meta, Copy, Clone)]
+#[repr(packed)]
+pub struct PubkeyMeta {
+    seq : u32,
+    pub key : Pubkey
+}
+
+impl PubkeyMeta {
+    pub fn new(seq : u32, key : Pubkey) -> Self {
+        PubkeyMeta { seq, key }
+    }
+}
+
+impl Ord for PubkeyMeta {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.seq, &self.key).cmp(&(other.seq, &other.key))
+    }
+}
+
+impl PartialOrd for PubkeyMeta {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for PubkeyMeta {
+    fn eq(&self, other: &Self) -> bool {
+        (self.seq, &self.key) == (other.seq, &other.key)
+    }
+}
+
+impl Eq for PubkeyMeta { }
+
+#[derive(Meta, Copy, Clone)]
+#[repr(packed)]
+pub struct PubkeySequence {
+    seq : u32,
+    pub key : Pubkey
+}
+
+impl PubkeySequence {
+    pub fn new(seq : u32, key : Pubkey) -> Self {
+        PubkeySequence { seq, key }
+    }
+}
+
+impl Ord for PubkeySequence {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // (self.seq, &self.key).cmp(&(other.seq, &other.key))
+        self.get_seq().cmp(&other.get_seq())
+    }
+}
+
+impl PartialOrd for PubkeySequence {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for PubkeySequence {
+    fn eq(&self, other: &Self) -> bool {
+        self.seq == other.seq
+    }
+}
+
+impl Eq for PubkeySequence { }
+
+
+#[derive(Meta, Copy, Clone)]
+#[repr(packed)]
+pub struct PubkeyReference {
+    seq : u32,
+    pub key : Pubkey
+}
+
+
+impl PubkeyReference {
+    pub fn new(seq : u32, key : Pubkey) -> Self {
+        PubkeyReference { seq, key }
+    }
+}
+
+impl Ord for PubkeyReference {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // (self.seq, &self.key).cmp(&(other.seq, &other.key))
+        self.key.cmp(&other.key)
+    }
+}
+
+impl PartialOrd for PubkeyReference {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for PubkeyReference {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl Eq for PubkeyReference { }
+

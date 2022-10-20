@@ -241,6 +241,14 @@ where T: Copy + 'info
             utils::account_buffer_as_slice_mut(self.account,self.get_data_offset(),self.len())
     }
 
+    pub fn as_struct_slice<S>(&self) -> &'info [S] {
+        utils::account_buffer_as_slice(self.account,self.get_data_offset(),self.len())
+    }
+
+    pub fn as_struct_slice_mut<S>(&self) -> &'info mut [S] {
+            utils::account_buffer_as_slice_mut(self.account,self.get_data_offset(),self.len())
+    }
+
     #[inline(always)]
     pub fn get_at(&self, idx: usize) -> &'refs T {
         let data_offset = self.get_data_offset();

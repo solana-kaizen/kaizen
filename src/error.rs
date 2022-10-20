@@ -109,6 +109,7 @@ pub enum ErrorCode {
     PubkeyCollectionNotLoaded,
     PubkeyCollectionDataTypeNotFound,
     PubkeyCollectionAccountNotFound,
+    PubkeyCollectionRecordNotFound,
 
     MappedArrayBounds,
     MappedArrayMetaNotBlank,
