@@ -24,7 +24,7 @@ impl ToString for TransactionStatus{
             TransactionStatus::Pending=>"Pending".to_string(),
             TransactionStatus::Success=>"Success".to_string(),
             TransactionStatus::Timeout=>"Timeout".to_string(),
-            TransactionStatus::Error(e)=>e.clone()
+            TransactionStatus::Error(e)=>format!("Error: {}", e)
         }
     }
 }
@@ -32,8 +32,6 @@ impl ToString for TransactionStatus{
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionMeta {
-    /// Transaction caption
-    name : String,
     /// Optional transaction signature during processing
     pub signature : Option<Signature>,
     /// Accounts affected by this transaction
@@ -41,43 +39,60 @@ pub struct TransactionMeta {
 }
 
 impl TransactionMeta {
-    pub fn new_without_accounts(name: &str) -> TransactionMeta {
+    pub fn new_without_accounts() -> TransactionMeta {
         TransactionMeta {
-            name: name.to_string(),
             signature: None,
             accounts : Vec::new(),
         }
     }
 
-    pub fn new_with_accounts(name: &str, accounts: &[&Pubkey]) -> TransactionMeta {
+    pub fn new_with_accounts(accounts: &[&Pubkey]) -> TransactionMeta {
         TransactionMeta {
-            name: name.to_string(),
             signature: None,
             accounts : accounts.iter().map(|pk|*pk.clone()).collect::<Vec<Pubkey>>(),
         }
     }
 }
 
-#[derive(Debug, Clone)] //, Serialize, Deserialize)]
+#[derive(Clone)] //, Serialize, Deserialize)]
 pub struct Transaction {
+    /// Transaction caption
+    pub name : String,
     pub id : Id,
-    pub instruction : Instruction,
+    pub instruction : Option<Instruction>,
     pub status : Arc<Mutex<TransactionStatus>>,
     pub meta : Arc<Mutex<TransactionMeta>>,
     pub receiver : Receiver<TransactionResult>,
     pub sender : Sender<TransactionResult>,
+    pub callback: Option<Arc<dyn Fn(Id, Id)->Result<()> + core::marker::Send + core::marker::Sync>>,
+}
+
+impl std::fmt::Debug for Transaction{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Transaction")
+            .field("name", &self.name)
+            .field("id", &self.id)
+            .field("instruction", &self.instruction)
+            .field("status", &self.status)
+            .field("receiver", &self.receiver)
+            .field("sender", &self.sender)
+            .field("with-callback", &self.callback.is_some());
+        Ok(())
+    }
 }
 
 impl Transaction {
 
     pub fn new_without_accounts(name: &str, instruction: Instruction) -> Transaction {
-        let meta = TransactionMeta::new_without_accounts(name);
+        let meta = TransactionMeta::new_without_accounts();
         let (sender,receiver) = unbounded::<TransactionResult>();
         Transaction {
+            name : name.to_string(),
+            callback: None,
             id : Id::new(),
             status : Arc::new(Mutex::new(TransactionStatus::Pending)),
             meta : Arc::new(Mutex::new(meta)),
-            instruction,
+            instruction: Some(instruction),
             sender,
             receiver,
         }
@@ -85,15 +100,17 @@ impl Transaction {
     
     pub fn new_with_accounts(name: &str, accounts: &[&Pubkey], instruction: Instruction) -> Transaction {
 
-        let meta = TransactionMeta::new_with_accounts(name, accounts);
+        let meta = TransactionMeta::new_with_accounts(accounts);
 
         let (sender,receiver) = unbounded::<TransactionResult>();
 
         Transaction {
+            name: name.to_string(),
+            callback: None,
             id : Id::new(),
             status : Arc::new(Mutex::new(TransactionStatus::Pending)),
             meta : Arc::new(Mutex::new(meta)),
-            instruction,
+            instruction: Some(instruction),
             sender,
             receiver,
         }
@@ -110,9 +127,17 @@ impl Transaction {
         Ok(accounts)
     }
 
+    /*
     pub async fn execute(&self) -> Result<()> {
         let transport = Transport::global()?;
         transport.execute(&self.instruction).await?;
+        Ok(())
+    }
+    */
+
+    pub async fn post(self) -> Result<()> {
+        let transport = Transport::global()?;
+        transport.post(Arc::new(self)).await?;
         Ok(())
     }
 
@@ -133,8 +158,12 @@ impl Transaction {
     {
         let pubkey = self.target_account()?;
         let transport = Transport::global()?;
-        transport.execute(&self.instruction).await?;
-        load_container_with_transport::<T>(&transport,&pubkey).await
+        if let Some(instruction) = &self.instruction{
+            transport.execute(instruction).await?;
+            load_container_with_transport::<T>(&transport,&pubkey).await
+        }else{
+            Ok(None)
+        }
     }
 
 }

@@ -209,10 +209,19 @@ impl TransactionQueue {
 
                 for observer in observers.iter() {
                     observer.tx_processing(tx_chain, &tx).await;
-                }        
+                }
+                       
 
                 let transport = Transport::global()?;
-                match transport.execute(&tx.instruction).await {
+                let result = match &tx.instruction{
+                    Some(instruction)=>{
+                        transport.execute(instruction).await
+                    }
+                    None=>{
+                        Ok(())
+                    }
+                };
+                match result {
                     Ok(_) => {
                         { *tx.status.lock().unwrap() = TransactionStatus::Success; }
 
