@@ -278,8 +278,8 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
         // for idx in 0..collections.len() {
         for (data_type,container_type) in collection_data_types.iter() {
-            let allocation_args = AccountAllocationArgs::<'_,'_,'_>::new(AddressDomain::Identity);
-            // let allocation_args = AccountAllocationArgs::new_with_payer(AddressDomain::Authority, AllocationPayer::Authority);
+            // let allocation_args = AccountAllocationArgs::<'_,'_,'_>::new(AddressDomain::Identity);
+            let allocation_args = AccountAllocationArgs::new_with_payer(AddressDomain::Authority, AllocationPayer::Authority);
             // let collection_data_type = collections[idx];
             // let allocation_args = AccountAllocationArgs::default();
             // let collection_store = CollectionStore::<Pubkey>::try_allocate(ctx, &allocation_args, 0)?;
