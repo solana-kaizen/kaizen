@@ -226,7 +226,7 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
                 unsafe { self.records.try_remove_at(idx,true)?; }
                 Ok(())
             },
-            Err(idx) => {
+            Err(_idx) => {
                 Err(error_code!(ErrorCode::PubkeyCollectionRecordNotFound))
             }
         }
