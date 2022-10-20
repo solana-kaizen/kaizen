@@ -18,6 +18,18 @@ pub enum TransactionStatus {
     Error(String)
 }
 
+impl ToString for TransactionStatus{
+    fn to_string(&self) -> String {
+        match self{
+            TransactionStatus::Pending=>"Pending".to_string(),
+            TransactionStatus::Success=>"Success".to_string(),
+            TransactionStatus::Timeout=>"Timeout".to_string(),
+            TransactionStatus::Error(e)=>e.clone()
+        }
+    }
+}
+
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionMeta {
     /// Transaction caption

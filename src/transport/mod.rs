@@ -20,8 +20,10 @@ cfg_if! {
             async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
-            
+            async fn post(&self, tx : Arc<Transaction>) -> Result<()>;
+
             fn purge(&self, pubkey:&Pubkey) -> Result<()>;
+
         }
     } else {
         #[async_trait]
@@ -32,7 +34,8 @@ cfg_if! {
             async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
-            
+            async fn post(&self, tx : Arc<Transaction>) -> Result<()>;
+    
             fn purge(&self, pubkey:&Pubkey) -> Result<()>;
         }
     }

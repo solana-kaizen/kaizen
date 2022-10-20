@@ -27,7 +27,7 @@ use std::sync::{Mutex, Arc};
 // use async_std::sync::RwLock;
 use workflow_allocator::cache::Cache;
 use std::convert::From;
-use crate::transport::TransportConfig;
+use crate::transport::{Transaction, TransportConfig};
 use crate::transport::lookup::{LookupHandler,RequestType};
 use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
@@ -146,7 +146,7 @@ pub struct Transport {
     pub wallet : Arc<dyn Wallet>,
 
     // #[wasm_bindgen(skip)]
-    pub queue : Option<TransactionQueue>,
+    pub queue : Arc<TransactionQueue>,
     // #[wasm_bindgen(skip)]
     cache : Cache, //Arc<Store>,
     
@@ -230,10 +230,17 @@ impl Transport {
         self.wallet.clone()
     }
 
+    pub fn is_emulator(&self)->Result<bool>{
+        match self.mode {
+            Mode::Inproc | Mode::Emulator => Ok(true),
+            _=>Ok(false)
+        }
+    }
+
     pub async fn balance(&self) -> Result<u64> {
 
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
-        match self.mode { //&self.emulator {
+        match self.mode {
             Mode::Inproc | Mode::Emulator => {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.emulator().lookup(&pubkey).await?;
@@ -243,6 +250,7 @@ impl Transport {
                         return Err(error!("[Emulator] - WASM::Transport::balance() unable to lookup account: {}", pubkey)); 
                     }
                 }
+
                 // Ok(0u64)
                 // match simulator.store.lookup(&simulator.authority()).await? {
                 //     Some(authority) => {
@@ -395,7 +403,7 @@ impl Transport {
         log_trace!("Transport interface creation ok...");
         
         // let entrypoints = Arc::new(RwLock::new(HashMap::new()));
-        let queue  = None;
+        let queue  = Arc::new(TransactionQueue::new());
         log_trace!("Creating caching store");
         let cache = Cache::new_with_default_capacity();
         log_trace!("Creating lookup handler");
@@ -638,6 +646,10 @@ impl super::Interface for Transport {
         //     }
         // }
 
+    }
+
+    async fn post(&self, tx : Arc<Transaction>) -> Result<()> { 
+        self.queue.enqueue(tx).await
     }
 
     async fn execute(&self, instruction : &Instruction) -> Result<()> { 
