@@ -272,6 +272,7 @@ impl Emulator {
         &self,
         instruction : &solana_program::instruction::Instruction
     ) -> Result<()> {
+        std::thread::sleep(std::time::Duration::from_millis(5000));
 
         let entrypoint = {
             match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
