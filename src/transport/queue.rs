@@ -69,9 +69,10 @@ impl TransactionQueue {
     // ~~~
 
     pub async fn discard_chain(&self, id : &Id) -> Result<()> {
-        if let Some(tx_chain) = self.tx_chains.lock().unwrap().remove(&id) {
+        let chain_opt = self.tx_chains.lock().unwrap().remove(&id);
+        if let Some(tx_chain) = chain_opt {
             for observer in self.observers()?.iter() {
-                observer.tx_chain_discarded(&tx_chain).await;
+                observer.tx_chain_discarded(tx_chain.clone()).await;
             }
         }
 
@@ -134,7 +135,7 @@ impl TransactionQueue {
                     if let Some(tx_chain) = queue.find_tx_chain_account_intersection(&transaction)? {
                         tx_chain.enqueue(&transaction)?;
                         for observer in queue.observers()?.iter() {
-                            observer.tx_created(&tx_chain, &transaction).await;
+                            observer.tx_created(tx_chain.clone(), transaction.clone()).await;
                         }
                         return Ok(())
                     }
@@ -151,12 +152,12 @@ impl TransactionQueue {
                     let tx_chain = Arc::new(TransactionChain::new());
                     queue.tx_chains.lock()?.insert(tx_chain.id.clone(), tx_chain.clone());
                     for observer in queue.observers()?.iter() {
-                        observer.tx_chain_created(&tx_chain).await;
+                        observer.tx_chain_created(tx_chain.clone()).await;
                     }
 
                     tx_chain.enqueue(&transaction)?;
                     for observer in queue.observers()?.iter() {
-                        observer.tx_created(&tx_chain, &transaction).await;
+                        observer.tx_created(tx_chain.clone(), transaction.clone()).await;
                     }
                 
                     tx_chain
@@ -172,7 +173,7 @@ impl TransactionQueue {
 
                     if tx_chain.is_done().unwrap() {
                         for observer in queue.observers().unwrap().iter() {
-                            observer.tx_chain_complete(&tx_chain).await;
+                            observer.tx_chain_complete(tx_chain.clone()).await;
                         }
                         
                         queue.tx_chains.lock().unwrap().remove(&tx_chain.id);
@@ -208,7 +209,7 @@ impl TransactionQueue {
             if let Some(tx) = tx {
 
                 for observer in observers.iter() {
-                    observer.tx_processing(tx_chain, &tx).await;
+                    observer.tx_processing(tx_chain.clone(), tx.clone()).await;
                 }
                        
 
@@ -229,7 +230,11 @@ impl TransactionQueue {
                         tx.sender.send(Ok(())).await?;
 
                         for observer in observers.iter() {
-                            observer.tx_success(tx_chain, &tx).await;
+                            observer.tx_success(tx_chain.clone(), tx.clone()).await;
+                        }
+
+                        if let Some(cb) = &tx.callback{
+                            (*cb.lock()?)(tx_chain.clone(), tx.clone())?;
                         }
                         
                         // at this point, transaction gets dropped...
@@ -242,7 +247,7 @@ impl TransactionQueue {
                         tx.sender.send(Err(err.clone())).await?;
 
                         for observer in observers.iter() {
-                            observer.tx_failure(tx_chain, &tx, err.clone()).await;
+                            observer.tx_failure(tx_chain.clone(), tx.clone(), err.clone()).await;
                         }
 
                         return Err(err);

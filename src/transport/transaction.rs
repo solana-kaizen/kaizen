@@ -54,6 +54,8 @@ impl TransactionMeta {
     }
 }
 
+pub type TxCallback = Arc<dyn Fn(Arc<TransactionChain>, Arc<Transaction>)->Result<()> + core::marker::Send + Sync>;
+
 #[derive(Clone)] //, Serialize, Deserialize)]
 pub struct Transaction {
     /// Transaction caption
@@ -64,7 +66,7 @@ pub struct Transaction {
     pub meta : Arc<Mutex<TransactionMeta>>,
     pub receiver : Receiver<TransactionResult>,
     pub sender : Sender<TransactionResult>,
-    pub callback: Option<Arc<dyn Fn(Id, Id)->Result<()> + core::marker::Send + core::marker::Sync>>,
+    pub callback: Option<Arc<Mutex<TxCallback>>>,
 }
 
 impl std::fmt::Debug for Transaction{
@@ -82,6 +84,21 @@ impl std::fmt::Debug for Transaction{
 }
 
 impl Transaction {
+
+    pub fn new_with_callback(name: &str, callback: TxCallback) -> Transaction {
+        let meta = TransactionMeta::new_without_accounts();
+        let (sender,receiver) = unbounded::<TransactionResult>();
+        Transaction {
+            name : name.to_string(),
+            callback:Some(Arc::new(Mutex::new(callback))),
+            id : Id::new(),
+            status : Arc::new(Mutex::new(TransactionStatus::Pending)),
+            meta : Arc::new(Mutex::new(meta)),
+            instruction: None,
+            sender,
+            receiver,
+        }
+    }
 
     pub fn new_without_accounts(name: &str, instruction: Instruction) -> Transaction {
         let meta = TransactionMeta::new_without_accounts();

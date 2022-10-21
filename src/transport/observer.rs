@@ -43,22 +43,22 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait Observer : Send + Sync {
     /// Called when a new transaction is added to the queue.
-    async fn tx_chain_created(&self, tx_chain : &Arc<TransactionChain>);
+    async fn tx_chain_created(&self, tx_chain : Arc<TransactionChain>);
     /// Called when transaction execution has completed successfully.
-    async fn tx_chain_complete(&self, tx_chain : &Arc<TransactionChain>);
+    async fn tx_chain_complete(&self, tx_chain : Arc<TransactionChain>);
     /// Called in response to `TransactionQueue::discard_chain()`.
-    async fn tx_chain_discarded(&self, tx_chain : &Arc<TransactionChain>);
+    async fn tx_chain_discarded(&self, tx_chain : Arc<TransactionChain>);
 
     /// Called when transaction is posted in the queue (chain).
-    async fn tx_created(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>);
+    async fn tx_created(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>);
     /// Called when transaction processing begins.
-    async fn tx_processing(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>);
+    async fn tx_processing(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>);
     /// Called on successful completion of a transaction
-    async fn tx_success(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>);
+    async fn tx_success(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>);
     /// Called on transaction timeout (chain is left dangling)
-    async fn tx_timeout(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>);
+    async fn tx_timeout(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>);
     /// Called on transaction failure (chain is left dangling)
-    async fn tx_failure(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>, error: Error);
+    async fn tx_failure(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>, error: Error);
 }
 
 pub struct BasicObserver {
@@ -67,35 +67,35 @@ pub struct BasicObserver {
 
 #[async_trait]
 impl Observer for BasicObserver {
-    async fn tx_chain_created(&self, tx_chain : &Arc<TransactionChain>) {
+    async fn tx_chain_created(&self, tx_chain : Arc<TransactionChain>) {
         log_trace!("BasicObserver::tx_chain_created {}", tx_chain.id);
     }
 
-    async fn tx_chain_complete(&self, tx_chain : &Arc<TransactionChain>) {
+    async fn tx_chain_complete(&self, tx_chain : Arc<TransactionChain>) {
         log_trace!("BasicObserver::tx_chain_complete {}", tx_chain.id);
     }
 
-    async fn tx_chain_discarded(&self, tx_chain : &Arc<TransactionChain>) {
+    async fn tx_chain_discarded(&self, tx_chain : Arc<TransactionChain>) {
         log_trace!("BasicObserver::tx_chain_discarded {}", tx_chain.id);
     }
 
-    async fn tx_created(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>) {
+    async fn tx_created(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>) {
         log_trace!("BasicObserver::tx_created {} {:#?}", tx_chain.id, transaction);
     }
 
-    async fn tx_processing(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>) {
+    async fn tx_processing(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>) {
         log_trace!("BasicObserver::tx_processing {} {:#?}", tx_chain.id, transaction);
     }
 
-    async fn tx_success(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>) {
+    async fn tx_success(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>) {
         log_trace!("BasicObserver::tx_success {} {:#?}", tx_chain.id, transaction);
     }
 
-    async fn tx_timeout(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>) {
+    async fn tx_timeout(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>) {
         log_trace!("BasicObserver::tx_timeout {} {:#?}", tx_chain.id, transaction);
     }
 
-    async fn tx_failure(&self, tx_chain : &Arc<TransactionChain>, transaction: &Arc<Transaction>, err: Error) {
+    async fn tx_failure(&self, tx_chain : Arc<TransactionChain>, transaction: Arc<Transaction>, err: Error) {
         log_trace!("BasicObserver::tx_failure {} {:#?} {:#?}", tx_chain.id, err, transaction);
     }
 
