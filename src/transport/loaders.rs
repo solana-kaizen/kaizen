@@ -68,7 +68,7 @@ pub async fn load_reference_with_transport(transport : &Arc<Transport>, pubkey :
     Ok(transport.lookup(pubkey).await?)
 }
 
-pub async fn reload_reference<'this,T> (pubkey : &Pubkey) 
+pub async fn reload_reference(pubkey : &Pubkey) 
 -> Result<Option<Arc<AccountDataReference>>> 
 {
     let transport = Transport::global()?;
