@@ -17,7 +17,7 @@ impl Sequencer {
 
     pub fn create_from_identity(reference: &Arc<AccountDataReference>) -> Result<Sequencer> {
     // pub fn create_from_identity(identity: &Identity) -> Result<Sequencer> {
-        let identity = reference.try_load_container::<Identity>()?;
+        let identity = reference.try_into_container::<Identity>()?;
         let seq = identity.meta.borrow().get_pda_sequence();
         Ok(Sequencer {
             sequence : Arc::new(AtomicU64::new(seq))
@@ -26,7 +26,7 @@ impl Sequencer {
 
     pub fn load_from_identity(&self, reference: &Arc<AccountDataReference>) -> Result<()> {
     // pub fn load_from_identity(&self, identity: &Identity) -> Result<()> {
-        let identity = reference.try_load_container::<Identity>()?;
+        let identity = reference.try_into_container::<Identity>()?;
         let seq = identity.meta.borrow().get_pda_sequence();
         self.sequence.store(seq, Ordering::SeqCst);
         Ok(())

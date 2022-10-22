@@ -165,19 +165,19 @@ mod client {
             Ok(Arc::new(replica))
         }
 
-        pub fn try_load_container<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
+        pub fn try_into_container<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
         where T: workflow_allocator::container::Container<'this,'this>
         {
-            self.try_load_container_replica::<T>(true)
+            self.try_into_container_replica::<T>(true)
         }
 
-        pub fn try_load_container_cache<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
+        pub fn try_into_container_cache<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
         where T: workflow_allocator::container::Container<'this,'this>
         {
-            self.try_load_container_replica::<T>(false)
+            self.try_into_container_replica::<T>(false)
         }
 
-        pub fn try_load_container_replica<'this,T> (self : &Arc<Self>, replicate : bool) -> Result<ContainerReference<'this, T>> 
+        pub fn try_into_container_replica<'this,T> (self : &Arc<Self>, replicate : bool) -> Result<ContainerReference<'this, T>> 
         where T: workflow_allocator::container::Container<'this,'this>
         {
             let target = if replicate {

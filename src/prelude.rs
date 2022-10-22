@@ -62,6 +62,9 @@ pub use workflow_allocator_macros::{
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
+
+        pub use workflow_core::workflow_async_trait;
+        
         pub use workflow_allocator::builder::{
             InstructionBuilder,
             InstructionBuilderConfig,
@@ -79,7 +82,7 @@ cfg_if::cfg_if! {
             // AccountDataContainer 
         };
         pub use workflow_allocator_macros::declare_client;
-        
+        // pub use workflow_allocator::transport::
     }
 
 }

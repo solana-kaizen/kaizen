@@ -328,7 +328,7 @@ cfg_if! {
                 let mut containers = Vec::new();
                 for reference in references.iter() {
                     if reference.container_type() == T::container_type() {
-                        let container = reference.try_load_container::<T>()?;
+                        let container = reference.try_into_container::<T>()?;
                         containers.push(container);
                     }
                 }
@@ -339,7 +339,8 @@ cfg_if! {
         }        
 
 
-        #[async_trait(?Send)]
+        // #[async_trait(?Send)]
+        #[workflow_async_trait]
         impl<'info,'refs,M> AccountAggregator for PubkeyCollectionInterface<'info,'refs,M> 
         // where T : Copy + Eq + PartialEq + Ord + 'info
         where M : PubkeyCollectionMetaTrait

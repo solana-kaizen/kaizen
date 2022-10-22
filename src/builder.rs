@@ -10,9 +10,10 @@ use crate::result::*;
 use crate::error;
 use crate::payload::Payload;
 use crate::sequencer::Sequencer;
-use crate::transport::load_container;
+// use crate::transport::load_container;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
+use workflow_allocator::prelude::*;
 use workflow_allocator::address::AddressDomain;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
 use workflow_allocator::container::{
@@ -544,20 +545,27 @@ impl InstructionBuilder {
         match self.identity.as_ref() {
             Some(identity) => {
                 // TODO handle processing of concurrent requests!
-                let identity = load_container::<Identity>(&identity.pubkey).await?;
+                // let identity = load_container::<Identity>(&identity.pubkey).await?;
+                let identity = load_reference(&identity.pubkey).await?;
                 match identity {
                     Some(identity) => {
 
-                        let mut aggregators = Vec::new();
-                        for (writable,data_type) in collections.iter() {
-                            let collection = identity.locate_collection(*data_type)?;
-                            aggregators.push((*writable,collection));
-                        }
+                        let aggregators = {
+                            let identity = identity.try_into_container::<Identity>()?;
+                            let mut aggregators = Vec::new();
+                            for (writable,data_type) in collections.iter() {
+                                let collection = identity.locate_collection(*data_type)?;
+                                aggregators.push((*writable,collection));
+                            }
+                            aggregators
 
+                        };
+                        
                         let aggregators = aggregators
                             .iter()
                             .map(|c|(c.0,&c.1))
                             .collect::<Vec<_>>();
+
                         Ok(self.with_account_aggregators(aggregators.as_slice()).await?)
                     },
                     None => {

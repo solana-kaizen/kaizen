@@ -40,7 +40,7 @@ where T: workflow_allocator::container::Container<'this,'this>
         None => return Ok(None)
     };
 
-    let container = account_data_reference.try_load_container::<T>()?;
+    let container = account_data_reference.try_into_container::<T>()?;
     Ok(Some(container))
 }
 
@@ -51,6 +51,29 @@ where T: workflow_allocator::container::Container<'this,'this>
     let transport = Transport::global()?;
     transport.purge(pubkey)?;
     load_container_with_transport::<T>(&transport,pubkey).await
+}
+
+// ~
+
+pub async fn load_reference(pubkey : &Pubkey) 
+-> Result<Option<Arc<AccountDataReference>>> 
+{
+    let transport = Transport::global()?;
+    load_reference_with_transport(&transport,pubkey).await
+}
+
+pub async fn load_reference_with_transport(transport : &Arc<Transport>, pubkey : &Pubkey) 
+-> Result<Option<Arc<AccountDataReference>>> 
+{
+    Ok(transport.lookup(pubkey).await?)
+}
+
+pub async fn reload_reference<'this,T> (pubkey : &Pubkey) 
+-> Result<Option<Arc<AccountDataReference>>> 
+{
+    let transport = Transport::global()?;
+    transport.purge(pubkey)?;
+    load_reference_with_transport(&transport,pubkey).await
 }
 
 // pub async fn reload_container_clone<'this,T> (pubkey : &Pubkey) 

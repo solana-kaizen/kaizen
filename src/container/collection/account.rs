@@ -360,7 +360,8 @@ cfg_if! {
             }
         }
 
-        #[async_trait(?Send)]
+        // #[async_trait(?Send)]
+        #[workflow_async_trait]
         impl<'info,M> PdaCollectionAccessor for PdaCollectionInterface<'info,M> 
         where M: CollectionMeta
         {
