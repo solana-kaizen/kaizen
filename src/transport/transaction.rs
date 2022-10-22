@@ -171,12 +171,14 @@ impl Transaction {
 
     /// Used for unit tests
     pub async fn execute_and_load<'this,T> (&self) -> Result<Option<ContainerReference<'this,T>>> 
+    // pub async fn execute_and_load<'this,T> (&self) -> Result<Option<AccountDataContainer<'this,T>>> 
     where T: workflow_allocator::container::Container<'this,'this> 
     {
         let pubkey = self.target_account()?;
         let transport = Transport::global()?;
         if let Some(instruction) = &self.instruction{
             transport.execute(instruction).await?;
+            // load_container_clone_with_transport::<T>(&transport,&pubkey).await
             load_container_with_transport::<T>(&transport,&pubkey).await
         }else{
             Ok(None)

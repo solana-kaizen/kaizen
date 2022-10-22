@@ -77,6 +77,10 @@ impl RpcHandler<EmulatorOps> for Server
                 Ok(resp.try_to_vec()?)
             },
             EmulatorOps::Execute => {
+
+                std::thread::sleep(std::time::Duration::from_millis(5000));
+
+
                 let req = ExecuteReq::try_from_slice(data)?;
                 let instruction : Instruction = req.into();
                 let resp = self.emulator.execute(&instruction).await?;
