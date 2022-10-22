@@ -285,6 +285,7 @@ cfg_if! {
             pub async fn load_reference_at(&self, idx: usize) -> Result<Arc<AccountDataReference>> {
                 let pubkey = self.get_pubkey_at(idx).await?;
                 let transport = Transport::global()?;
+                // Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
                 match transport.lookup(&pubkey).await? {
                     Some(reference) => Ok(reference),
                     None => Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
