@@ -136,7 +136,7 @@ pub struct Identity<'info,'refs> {
     pub meta : RefCell<&'info mut IdentityMeta>,
     pub store : SegmentStore<'info,'refs>,
     // ---
-    #[segment(reserve(Array::<IdentityRecord>::calculate_data_len(5)))]
+    // #[segment(reserve(Array::<IdentityRecord>::calculate_data_len(5)))]
     pub records : Array<'info,'refs, IdentityRecord>,
     pub collections : Array<'info,'refs, PubkeyCollectionMeta>,
 }

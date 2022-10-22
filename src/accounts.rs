@@ -60,9 +60,11 @@ mod client {
 
     use super::*;
     use std::cell::UnsafeCell;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::{AtomicBool, 
+        // Ordering
+    };
     use std::sync::{ Arc, Mutex, MutexGuard, 
-        RwLock, RwLockReadGuard 
+        // RwLock, RwLockReadGuard 
     };
     // use async_std::sync::RwLock;
     use borsh::{BorshDeserialize, BorshSerialize};
