@@ -118,7 +118,7 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
                 .expect("invalid primitive handler")
             }
 
-            fn execution_context_for(handler: HandlerFn) -> InstructionBuilder {
+            fn execution_context_for(handler: HandlerFn) -> Arc<InstructionBuilder> {
                 // let program_id = crate::program_id(); 
                 let interface_id = crate::interface_id(#interface_dispatch_method);
                 let handler_id = Self::handler_id(handler);

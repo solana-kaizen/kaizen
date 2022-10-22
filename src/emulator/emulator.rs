@@ -108,7 +108,7 @@ impl Emulator {
 
     pub async fn execute_handler(
         self : Arc<Self>,
-        builder: InstructionBuilder,
+        builder: Arc<InstructionBuilder>,
         handler: SimulationHandlerFn,
     ) -> Result<()> {
 

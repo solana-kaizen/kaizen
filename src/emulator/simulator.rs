@@ -131,7 +131,7 @@ impl Simulator {
 
     pub fn new_instruction_builder(
         &self,
-    ) -> InstructionBuilder {
+    ) -> Arc<InstructionBuilder> {
         let InProcMockData { program_id, authority} = self.inproc_mock_data();
 
         // let inner = self.inner().unwrap();
@@ -149,7 +149,7 @@ impl Simulator {
     
     pub async fn execute_handler(
         &self,
-        builder: InstructionBuilder,
+        builder: Arc<InstructionBuilder>,
         handler: SimulationHandlerFn,
     ) -> Result<()> {
         self.emulator.clone().execute_handler(builder,handler).await

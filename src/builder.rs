@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::sync::{Mutex, LockResult, MutexGuard};
 use crate::accounts::{
     IsSigner,
     Access,
@@ -89,7 +90,7 @@ pub type CollectionTemplateAccountDescriptor = (AccountMeta,SeedBump);
 /// Accounts and instruction data are serialized into the Solana instruction buffer
 /// and deserialized into the [crate::context::Context] during the program execution.
 #[derive(Debug)]
-pub struct InstructionBuilder {
+pub struct Inner {
     /// Operation authority (user wallet account)
     pub authority : Option<AccountMeta>,
     /// Operation identity (user identity account)
@@ -144,8 +145,38 @@ pub struct InstructionBuilder {
     track_suffix_seed_seq : Option<Rc<RefCell<u64>>>,
 }
 
+pub struct InstructionBuilder {
+    inner : Arc<Mutex<Inner>>,
+}
+
 impl InstructionBuilder {
 
+    pub fn inner(&self) -> MutexGuard<Inner> {
+        self.inner.lock().expect("Unable to lock instruction builder")
+    }
+
+    fn with_inner_with_result<F : FnMut(MutexGuard<Inner>) -> Result<()>>(self: Arc<Self>, mut cb : F) -> Result<Arc<Self>> {
+        cb(self.inner())?;
+        Ok(self)
+    } 
+
+    fn with_inner<F : FnMut(MutexGuard<Inner>)>(self: Arc<Self>, mut cb : F) -> Arc<Self> {
+        cb(self.inner());
+        self
+    } 
+
+    pub fn is_sealed(&self) -> bool {
+        self.inner().is_sealed
+    }
+
+    pub fn program_id(&self) -> Pubkey {
+        self.inner().program_id
+    }
+
+    pub fn identity_pubkey(&self) -> Option<Pubkey> {
+        self.inner().identity.as_ref().map(|m|m.pubkey.clone())//.clone()
+        // match self.inner().identity.as_ref()
+    }
     
     /// Creates a default [InstructionBuilder] copying Authority, optional Identity and an optional PDA seed sequence
     /// from the InstructionBuilderConfig 
@@ -153,13 +184,13 @@ impl InstructionBuilder {
     /// The receiver Interface and Program Instruction are set to zero.
     /// 
     /// This function is used for testing purposes.
-    pub fn new_with_config_for_testing(config : &InstructionBuilderConfig) -> InstructionBuilder {
+    pub fn new_with_config_for_testing(config : &InstructionBuilderConfig) -> Arc<InstructionBuilder> {
         Self::new_with_config(config,0,0u16)
     }
 
     /// Creates a default InstructionBuilder copying Authority, optional Identity and an optional PDA seed sequence
     /// from the InstructionBuilderConfig
-    pub fn new_with_config<T : Into<u16>>(config : &InstructionBuilderConfig, interface_id: usize, program_instruction: T) -> InstructionBuilder {
+    pub fn new_with_config<T : Into<u16>>(config : &InstructionBuilderConfig, interface_id: usize, program_instruction: T) -> Arc<InstructionBuilder> {
 
         // let track_suffix_seed_seq = match config.suffix_seed_seq {
         //     Some(ref) => 
@@ -173,7 +204,7 @@ impl InstructionBuilder {
             }
         };
 
-        let builder = InstructionBuilder {
+        let inner = Inner {
             authority : config.authority.clone(),
             identity : config.identity.clone(),
             program_id : config.program_id,
@@ -202,16 +233,16 @@ impl InstructionBuilder {
             track_suffix_seed_seq
         };
 
-        builder
+        Arc::new(InstructionBuilder { inner : Arc::new(Mutex::new(inner)) })
 
     }
 
-    pub fn new_for_testing(program_id: &Pubkey) -> InstructionBuilder {
+    pub fn new_for_testing(program_id: &Pubkey) -> Arc<InstructionBuilder> {
         Self::new(program_id,0,0u16)
     }
     
-    pub fn new<T : Into<u16>>(program_id: &Pubkey, interface_id: usize, handler_id: T) -> InstructionBuilder {
-        InstructionBuilder {
+    pub fn new<T : Into<u16>>(program_id: &Pubkey, interface_id: usize, handler_id: T) -> Arc<InstructionBuilder> {
+        let inner = Inner {
             authority : None,
             identity : None,
             program_id : program_id.clone(),
@@ -238,15 +269,21 @@ impl InstructionBuilder {
             collection_template_account_descriptors : Vec::new(),
 
             track_suffix_seed_seq : None
-        }
+        };
+
+        Arc::new(InstructionBuilder { inner : Arc::new(Mutex::new(inner)) })
     }
 
-    pub fn generic_template_accounts<'this>(&'this self) -> &'this Vec<AccountMeta> {
-        &self.generic_template_accounts
+    // pub fn generic_template_accounts<'this>(&'this self) -> &'this Vec<AccountMeta> {
+    pub fn generic_template_accounts<'this>(&'this self) -> Vec<AccountMeta> {
+        // &self.generic_template_accounts
+        self.inner().generic_template_accounts.clone()
+
     }
 
-    pub fn generic_template_account_at<'this>(&'this self, idx : usize) -> &'this AccountMeta {
-        &self.generic_template_accounts[idx]
+    // pub fn generic_template_account_at<'this>(&'this self, idx : usize) -> &'this AccountMeta {
+    pub fn generic_template_account_at<'this>(&'this self, idx : usize) -> AccountMeta {
+        self.inner().generic_template_accounts[idx].clone()
     }
 
     // pub fn template_accounts(&self) -> Vec<AccountMeta> {
@@ -255,20 +292,22 @@ impl InstructionBuilder {
 
     pub fn payload(&self) -> Payload {
 
+        let inner = self.inner();
+
         let collection_data_offset = 
             std::mem::size_of::<Payload>()
-            + self.generic_template_instruction_data.len();
+            + inner.generic_template_instruction_data.len();
 
         let instruction_data_offset = 
             collection_data_offset
-            + self.collection_template_instruction_data.len();
+            + inner.collection_template_instruction_data.len();
             // std::mem::size_of::<Payload>()
             // + self.generic_template_instruction_data.len()
 
         //  log_trace!("* * * INSTRUCTION DATA OFFSET {}", instruction_data_offset);
 
         let mut flags: u16 = 0;
-        if self.identity.is_some() {
+        if inner.identity.is_some() {
             flags |= crate::payload::PAYLOAD_HAS_IDENTITY_ACCOUNT;
         }
 
@@ -277,73 +316,69 @@ impl InstructionBuilder {
             
             flags,
 
-            system_accounts_len : self.system_accounts.len() as u8,
-            token_accounts_len : self.token_accounts.len() as u8,
-            index_accounts_len : self.index_accounts.len() as u8,
-            collection_accounts_len : self.collection_accounts.len() as u8,
-            generic_template_accounts_len : self.generic_template_accounts.len() as u8,
-            collection_template_accounts_len : self.collection_template_accounts.len() as u8,
+            system_accounts_len : inner.system_accounts.len() as u8,
+            token_accounts_len : inner.token_accounts.len() as u8,
+            index_accounts_len : inner.index_accounts.len() as u8,
+            collection_accounts_len : inner.collection_accounts.len() as u8,
+            generic_template_accounts_len : inner.generic_template_accounts.len() as u8,
+            collection_template_accounts_len : inner.collection_template_accounts.len() as u8,
             // NOTE: handler accounts are the remaining accounts supplied to the program
 
             collection_data_offset : collection_data_offset as u16,
             instruction_data_offset : instruction_data_offset as u16,
 
-            interface_id : self.interface_id,
-            handler_id : self.handler_id,
+            interface_id : inner.interface_id,
+            handler_id : inner.handler_id,
         }
     }
 
-    pub fn with_system_program_account(mut self) -> Self {
-        self.system_accounts.push(AccountMeta::new(solana_sdk::system_program::id(), false));
+    pub fn with_system_program_account(self: Arc<Self>) -> Arc<Self> {
+        self.inner().system_accounts.push(AccountMeta::new(solana_sdk::system_program::id(), false));
         self
     }
 
-    pub fn with_system_accounts(mut self, system_accounts: &[AccountMeta]) -> Self {
-        self.system_accounts.extend_from_slice(system_accounts);
+    pub fn with_system_accounts(self: Arc<Self>, system_accounts: &[AccountMeta]) -> Arc<Self> {
+        self.inner().system_accounts.extend_from_slice(system_accounts);
         self
     }
 
-    pub fn with_token_accounts(mut self, token_accounts: &[AccountMeta]) -> Self {
-        self.token_accounts.extend_from_slice(token_accounts);
+    pub fn with_token_accounts(self: Arc<Self>, token_accounts: &[AccountMeta]) -> Arc<Self> {
+        self.inner().token_accounts.extend_from_slice(token_accounts);
         self
     }
 
-    pub fn with_index_accounts(mut self, index_accounts: &[AccountMeta]) -> Self {
-        self.index_accounts.extend_from_slice(index_accounts);
+    pub fn with_index_accounts(self: Arc<Self>, index_accounts: &[AccountMeta]) -> Arc<Self> {
+        self.inner().index_accounts.extend_from_slice(index_accounts);
         self
     }
 
-    pub fn with_collection_accounts(mut self, index_accounts: &[AccountMeta]) -> Self {
-        self.index_accounts.extend_from_slice(index_accounts);
+    pub fn with_collection_accounts(self: Arc<Self>, index_accounts: &[AccountMeta]) -> Arc<Self> {
+        self.inner().index_accounts.extend_from_slice(index_accounts);
         self
     }
 
-    pub fn with_handler_accounts(mut self, handler_accounts: &[AccountMeta]) -> Self {
-        self.handler_accounts.extend_from_slice(handler_accounts);
+    pub fn with_handler_accounts(self: Arc<Self>, handler_accounts: &[AccountMeta]) -> Arc<Self> {
+        self.inner().handler_accounts.extend_from_slice(handler_accounts);
         self
     }
 
-    pub fn with_instruction_data(mut self, instruction_data : &[u8]) -> Self {
-        self.handler_instruction_data.extend(instruction_data);
+    pub fn with_instruction_data(self: Arc<Self>, instruction_data : &[u8]) -> Arc<Self> {
+        self.inner().handler_instruction_data.extend(instruction_data);
         self
     }
 
-    pub fn with_authority(mut self, authority : &Pubkey) -> Self {
-        self.authority = Some(AccountMeta::new(*authority,true));
+    pub fn with_authority(self: Arc<Self>, authority : &Pubkey) -> Arc<Self> {
+        self.inner().authority = Some(AccountMeta::new(*authority,true));
         self
     }
 
-    pub fn with_identity(mut self, identity : &Pubkey) -> Self {
-        self.identity = Some(AccountMeta::new(*identity,false));
+    pub fn with_identity(self: Arc<Self>, identity : &Pubkey) -> Arc<Self> {
+        self.inner().identity = Some(AccountMeta::new(*identity,false));
         self
-    }
-
-    pub fn program_id(&self) -> Pubkey {
-        self.program_id
     }
 
     // fn encode_template_instruction_data(&self) -> Vec<u8> {
-    fn encode_template_instruction_data(&self, data : &Vec<Vec<u8>>) -> Vec<u8> {
+    fn encode_template_instruction_data(data : &Vec<Vec<u8>>) -> Vec<u8> {
         let mut template_address_data = Vec::new();
         // for data in self.generic_template_address_data.iter() {
         for data in data.iter() {
@@ -363,78 +398,93 @@ impl InstructionBuilder {
     
     pub fn instruction_data(&self) -> Vec<u8> {
 
+        let inner = self.inner();
         let mut data = Vec::new();
-        data.extend(&self.generic_template_instruction_data);
-        data.extend(&self.collection_template_instruction_data);
-        data.extend(&self.handler_instruction_data);
+        data.extend(&inner.generic_template_instruction_data);
+        data.extend(&inner.collection_template_instruction_data);
+        data.extend(&inner.handler_instruction_data);
         data
     }
     
+    // pub fn try_accounts(self : &Arc<Self>) -> Result<Vec<AccountMeta>> {
     pub fn try_accounts(&self) -> Result<Vec<AccountMeta>> {
+        let inner = self.inner();
+
         let mut vec = Vec::new();
 
-        if let Some(authority) = &self.authority {
+        if let Some(authority) = &inner.authority {
             vec.push(authority.clone());
         }
 
-        if let Some(identity) = &self.identity {
+        if let Some(identity) = &inner.identity {
             vec.push(identity.clone());
 
-            if self.authority.is_none() {
+            if inner.authority.is_none() {
                 return Err(error!("InstructionBuilder::try_account(): missing authority - required when using identity"));
             }
         }
 
-        vec.extend_from_slice(&self.system_accounts);
-        vec.extend_from_slice(&self.token_accounts);
-        vec.extend_from_slice(&self.index_accounts);
-        vec.extend_from_slice(&self.collection_accounts);
-        vec.extend_from_slice(&self.generic_template_accounts);
-        vec.extend_from_slice(&self.collection_template_accounts);
-        vec.extend_from_slice(&self.handler_accounts);
+        vec.extend_from_slice(&inner.system_accounts);
+        vec.extend_from_slice(&inner.token_accounts);
+        vec.extend_from_slice(&inner.index_accounts);
+        vec.extend_from_slice(&inner.collection_accounts);
+        vec.extend_from_slice(&inner.generic_template_accounts);
+        vec.extend_from_slice(&inner.collection_template_accounts);
+        vec.extend_from_slice(&inner.handler_accounts);
         Ok(vec)
     }
 
-    pub fn with_account_templates(mut self, n : usize) -> Self {
-        for _ in 0..n {
-            self.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Sequence))
-        }
-        self
+    pub fn with_account_templates(self: Arc<Self>, n : usize) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            for _ in 0..n {
+                inner.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Sequence))
+            }
+        })
     }
 
-    pub fn with_account_templates_with_custom_suffixes(mut self, suffixes : &[&str]) -> Self {
-        for n in 0..suffixes.len() {
-            self.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffixes[n].to_string())))
-        }
-        self
+    pub fn with_account_templates_with_custom_suffixes(self: Arc<Self>, suffixes : &[&str]) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            for n in 0..suffixes.len() {
+                inner.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffixes[n].to_string())))
+            }
+        })
     }
 
-    // pub fn with_account_templates_with_custom_domains_and_suffixes(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
-    // pub fn with_account_templates_with_custom_seeds(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
-    pub fn with_account_templates_with_seeds(mut self, suffixes : &[(AddressDomain,&str)]) -> Self {
-        for (domain, suffix) in suffixes {
-            self.generic_template_account_descriptors.push(
-                (
-                    IsSigner::NotSigner,
-                    Access::Write,
-                    domain.clone(),
-                    SeedSuffix::Custom(suffix.to_string())
+    // pub fn with_account_templates_with_custom_domains_and_suffixes(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
+    // pub fn with_account_templates_with_custom_seeds(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
+    pub fn with_account_templates_with_seeds(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            for (domain, suffix) in suffixes {
+                inner.generic_template_account_descriptors.push(
+                    (
+                        IsSigner::NotSigner,
+                        Access::Write,
+                        domain.clone(),
+                        SeedSuffix::Custom(suffix.to_string())
+                    )
                 )
-            )
-        }
-        self
+            }
+        })
     }
 
-    pub fn with_account_templates_with_custom_suffixes_prefixed(mut self, prefix : &str, suffixes : &[&str]) -> Self {
-        for n in 0..suffixes.len() {
-            let mut suffix = prefix.to_string();
-            suffix.push_str(suffixes[n]);
-            self.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffix)))
-        }
-        self
+    pub fn with_account_templates_with_custom_suffixes_prefixed(self: Arc<Self>, prefix : &str, suffixes : &[&str]) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            // let mut inner = self.inner();
+            for n in 0..suffixes.len() {
+                let mut suffix = prefix.to_string();
+                suffix.push_str(suffixes[n]);
+                inner.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffix)))
+            }
+        })
     }
 
-    // pub fn with_custom_account_templates(mut self, templates : &[(IsSigner,Access)]) -> Self {
+
+    // fn aaa(self : Arc<Self>) {
+    //     self.with_inner(|inner| {
+
+    //     })
+    // }
+    // pub fn with_custom_account_templates(self: Arc<Self>, templates : &[(IsSigner,Access)]) -> Arc<Self> {
     //     let template_access_descriptors: Vec<TemplateAccessDescriptor> = 
     //         templates
     //             .iter()
@@ -444,57 +494,61 @@ impl InstructionBuilder {
     //     self
     // }
 
-    pub fn with_custom_account_templates_and_seeds(mut self, templates : &[(IsSigner,Access,AddressDomain,SeedSuffix)]) -> Self {
+    pub fn with_custom_account_templates_and_seeds(self: Arc<Self>, templates : &[(IsSigner,Access,AddressDomain,SeedSuffix)]) -> Arc<Self> {
         // let template_access_descriptors: Vec<TemplateAccessDescriptor> = 
         //     templates
         //         .iter()
         //         .map(|t|(t.0,t.1,SeedSuffix::Custom(t.2)))
         //         .collect();
         // self.template_access_descriptors.extend(template_access_descriptors);
-        self.generic_template_account_descriptors.extend(templates.to_vec());
+        self.inner().generic_template_account_descriptors.extend(templates.to_vec());
         self
     }
 
-    pub fn with_sequence(mut self, seq : u64) -> Self {
-        assert_eq!(self.track_suffix_seed_seq,None);
-        self.suffix_seed_seq = seq;
-        self
+    pub fn with_sequence(self: Arc<Self>, seq : u64) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            assert_eq!(inner.track_suffix_seed_seq,None);
+            inner.suffix_seed_seq = seq;
+        })
     }
 
-    pub fn with_sequencer(mut self, sequencer : &Sequencer) -> Self {
-        self.suffix_seed_seq = sequencer.get();
-        self.sequencer = Some(sequencer.clone());
-        self
+    pub fn with_sequencer(self: Arc<Self>, sequencer : &Sequencer) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            inner.suffix_seed_seq = sequencer.get();
+            inner.sequencer = Some(sequencer.clone());
+        })
     }
 
     pub fn sequence(&self) -> u64 {
-        self.suffix_seed_seq
+        self.inner().suffix_seed_seq
     }
 
-    pub async fn with_collection_template<A>(mut self, pda_collection_builder : &A) -> Result<Self> 
+    pub async fn with_collection_template<A>(self: Arc<Self>, pda_collection_builder : &A) -> Result<Arc<Self>> 
     where A: PdaCollectionCreator
     {
-        let (meta, bump) = pda_collection_builder.writable_account_meta(&self.program_id).await?;
-        self.collection_template_account_descriptors.push((meta,bump));
+        // let inner = self.inner();
+        // let program_id = { self.inner().program_id };
+        let (meta, bump) = pda_collection_builder.writable_account_meta(&self.program_id()).await?;
+        self.inner().collection_template_account_descriptors.push((meta,bump));
         Ok(self)
     }
 
-    pub async fn with_collection_index<A>(self, pda_collection_accessor : &A, idx : usize) -> Result<Self> 
+    pub async fn with_collection_index<A>(self : Arc<Self>, pda_collection_accessor : &A, idx : usize) -> Result<Arc<Self>> 
     where A: PdaCollectionAccessor
     {
-        let meta = pda_collection_accessor.writable_account_meta(&self.program_id, idx).await?;
+        let meta = pda_collection_accessor.writable_account_meta(&self.program_id(), idx).await?;
         Ok(self.with_collection_accounts(&[meta]))
     }
 
-    pub async fn with_collection_index_range<A>(self, pda_collection_accessor : &A, range : std::ops::Range<usize>) -> Result<Self> 
+    pub async fn with_collection_index_range<A>(self : Arc<Self>, pda_collection_accessor : &A, range : std::ops::Range<usize>) -> Result<Arc<Self>> 
     where A: PdaCollectionAccessor
     {
-        let list = pda_collection_accessor.writable_account_meta_range(&self.program_id, range).await?;
+        let list = pda_collection_accessor.writable_account_meta_range(&self.program_id(), range).await?;
         Ok(self.with_collection_accounts(&list))
     }
 
     #[inline(always)]
-    pub async fn with_writable_account_aggregator<A>(self, aggregator : &A) -> Result<Self> 
+    pub async fn with_writable_account_aggregator<A>(self : Arc<Self>, aggregator : &A) -> Result<Arc<Self>> 
     where A: AccountAggregator
     {
         let list = aggregator.aggregator()?.writable_account_metas(None).await?;
@@ -502,7 +556,7 @@ impl InstructionBuilder {
     }
 
     #[inline(always)]
-    pub async fn with_readonly_account_aggregator<A>(self, aggregator : &A) -> Result<Self> 
+    pub async fn with_readonly_account_aggregator<A>(self : Arc<Self>, aggregator : &A) -> Result<Arc<Self>> 
     where A: AccountAggregator
     {
         let list = aggregator.aggregator()?.readonly_account_metas(None).await?;
@@ -510,7 +564,7 @@ impl InstructionBuilder {
     }
 
     #[inline(always)]
-    pub async fn with_account_aggregators<A>(self, accessors : &[(bool,A)]) -> Result<Self> 
+    pub async fn with_account_aggregators<A>(self : Arc<Self>, accessors : &[(bool,A)]) -> Result<Arc<Self>> 
     where A: AccountAggregator
     {
         let mut list = Vec::new();
@@ -526,7 +580,7 @@ impl InstructionBuilder {
     }
 
     #[inline(always)]
-    pub async fn with_async_account_aggregators<A>(self, aggregators : &[(bool,Arc<A>)]) -> Result<Self> 
+    pub async fn with_async_account_aggregators<A>(self : Arc<Self>, aggregators : &[(bool,Arc<A>)]) -> Result<Arc<Self>> 
     where A: AsyncAccountAggregator
     {
         let mut list = Vec::new();
@@ -557,16 +611,13 @@ impl InstructionBuilder {
     //     Ok(self.with_index_accounts(&list))
     // }
 
-    pub async fn with_identity_collections(self, collections : &[(bool,u32)]) -> Result<Self> {
+    pub async fn with_identity_collections(self : Arc<Self>, collections : &[(bool,u32)]) -> Result<Arc<Self>> {
 
-        match self.identity.as_ref() {
-            Some(identity) => {
+        match self.identity_pubkey().as_ref() {
+            Some(pubkey) => {
                 // TODO handle processing of concurrent requests!
 
-                // ASYNC PROBLEM
-
-                /*
-                let identity = load_reference(&identity.pubkey).await?;
+                let identity = load_reference(&pubkey).await?;
                 match identity {
                     Some(identity) => {
 
@@ -587,8 +638,6 @@ impl InstructionBuilder {
                         Err(error!("InstructionBuilder::with_identity_collection() missing on-chain identity account"))
                     }
                 }
-                */
-                Ok(self)
             },
             None => {
                 Err(error!("InstructionBuilder::with_identity_collection() missing identity record (please use with_identity())"))
@@ -597,142 +646,145 @@ impl InstructionBuilder {
 
     }
 
-    pub fn seal(mut self) -> Result<Self> {
+    pub fn seal(self: Arc<Self>) -> Result<Arc<Self>> {
 
-        if self.is_sealed {
-            return Err(error!("InstructionBuilder::seal(): has already been invoked"));
-        }
-        self.is_sealed = true;
+        self.with_inner_with_result(|mut inner| {
 
-        if !self.generic_template_account_descriptors.is_empty() {
-            if let Some(sequencer) = &self.sequencer {
-                sequencer.advance(self.generic_template_account_descriptors.len());
+            // let mut inner = self.inner();
+
+            if inner.is_sealed {
+                return Err(error!("InstructionBuilder::seal(): has already been invoked"));
             }
-        } else if self.collection_template_account_descriptors.is_empty() {
-            // if both template sets are empty, there is nothing to do
-            return Ok(self);
-        }
+            inner.is_sealed = true;
 
-        // if we have templates, automatically include system account if not added by the user
-        if self.system_accounts.iter().position(|meta| meta.pubkey == solana_sdk::system_program::id()).is_none() {
-            self.system_accounts.insert(0, AccountMeta::new(solana_sdk::system_program::id(), false));
-        }
-
-        // @seeds
-        // let user_seed = match &self.identity {
-        //     Some(identity) => identity.pubkey.clone(),
-        //     None => {
-        //         match &self.authority {
-        //             Some(authority) => authority.pubkey.clone(),
-        //             None => {
-        //                 return Err(error!("InstructionBuilder::seal(): missing identity and/or authority"))
-        //             }
-        //         }
-        //     }
-        // };
-
-        for (is_signer,is_writable, domain, seed_suffix) in self.generic_template_account_descriptors.iter() {
-        
-            let domain_seed = domain.get_seed(
-                self.authority.as_ref(),
-                self.identity.as_ref()
-            )?;
-
-            let mut seeds = vec![domain_seed.as_slice()];
-
-            let seed_suffix = match seed_suffix {
-                SeedSuffix::Blank => { 
-                    vec![]
-                },
-                SeedSuffix::Sequence => {
-                    self.suffix_seed_seq += 1;
-                    let bytes: [u8; 8] = unsafe { std::mem::transmute(self.suffix_seed_seq.to_le()) };
-                    let mut bytes = bytes.to_vec();
-
-                    loop {
-                        match bytes[bytes.len()-1] {
-                            0 => { bytes.pop(); },
-                            _ => break
-                        }
-                    }
-
-                    bytes
-                },
-                SeedSuffix::Custom(seed_suffix_str) => {
-                    let bytes = seed_suffix_str.as_bytes();
-                    // seeds.push(bytes);
-                    bytes.to_vec()
+            if !inner.generic_template_account_descriptors.is_empty() {
+                if let Some(sequencer) = &inner.sequencer {
+                    sequencer.advance(inner.generic_template_account_descriptors.len());
                 }
-            };
-
-            seeds.push(&seed_suffix[..]);
-
-            let (pda, seed_bump) = Pubkey::find_program_address(
-                &seeds[..],
-                &self.program_id
-            );
-
-            let descriptor = match is_writable {
-                Access::Write => { AccountMeta::new(pda,(*is_signer).into()) },
-                Access::Read => { AccountMeta::new_readonly(pda,(*is_signer).into()) },
-            };
-
-            let seed_bump = &[seed_bump];
-            seeds.push(seed_bump);            
-            seeds.remove(0);
-
-            self.generic_template_accounts.push(descriptor);
-            self.generic_template_address_data.push(seeds.concat());
-        }
-
-        for (meta, bump) in self.collection_template_account_descriptors.iter() {
-
-            self.collection_template_accounts.push(meta.clone());
-            self.collection_template_address_data.push(vec![*bump]);
-
-        }
-
-        self.generic_template_instruction_data = self.encode_template_instruction_data(&self.generic_template_address_data);
-        self.collection_template_instruction_data = self.encode_template_instruction_data(&self.collection_template_address_data);
-        
-        match &self.track_suffix_seed_seq {
-            None => {},
-            Some(suffix_seed_seq_refcell) => {
-                let mut suffix_seed_seq = suffix_seed_seq_refcell.borrow_mut();
-                *suffix_seed_seq = self.suffix_seed_seq;
+            } else if inner.collection_template_account_descriptors.is_empty() {
+                // if both template sets are empty, there is nothing to do
+                return Ok(());
             }
-        }
 
-        Ok(self)
+            // if we have templates, automatically include system account if not added by the user
+            if inner.system_accounts.iter().position(|meta| meta.pubkey == solana_sdk::system_program::id()).is_none() {
+                inner.system_accounts.insert(0, AccountMeta::new(solana_sdk::system_program::id(), false));
+            }
+
+            // @seeds
+            // let user_seed = match &self.identity {
+            //     Some(identity) => identity.pubkey.clone(),
+            //     None => {
+            //         match &self.authority {
+            //             Some(authority) => authority.pubkey.clone(),
+            //             None => {
+            //                 return Err(error!("InstructionBuilder::seal(): missing identity and/or authority"))
+            //             }
+            //         }
+            //     }
+            // };
+            let generic_template_account_descriptors = inner.generic_template_account_descriptors.clone();
+            for (is_signer,is_writable, domain, seed_suffix) in generic_template_account_descriptors.iter() {
+            
+                let domain_seed = domain.get_seed(
+                    inner.authority.as_ref(),
+                    inner.identity.as_ref()
+                )?;
+
+                let mut seeds = vec![domain_seed.as_slice()];
+
+                let seed_suffix = match seed_suffix {
+                    SeedSuffix::Blank => { 
+                        vec![]
+                    },
+                    SeedSuffix::Sequence => {
+                        inner.suffix_seed_seq += 1;
+                        let bytes: [u8; 8] = unsafe { std::mem::transmute(inner.suffix_seed_seq.to_le()) };
+                        let mut bytes = bytes.to_vec();
+
+                        loop {
+                            match bytes[bytes.len()-1] {
+                                0 => { bytes.pop(); },
+                                _ => break
+                            }
+                        }
+
+                        bytes
+                    },
+                    SeedSuffix::Custom(seed_suffix_str) => {
+                        let bytes = seed_suffix_str.as_bytes();
+                        // seeds.push(bytes);
+                        bytes.to_vec()
+                    }
+                };
+
+                seeds.push(&seed_suffix[..]);
+
+                let (pda, seed_bump) = Pubkey::find_program_address(
+                    &seeds[..],
+                    &inner.program_id
+                );
+
+                let descriptor = match is_writable {
+                    Access::Write => { AccountMeta::new(pda,(*is_signer).into()) },
+                    Access::Read => { AccountMeta::new_readonly(pda,(*is_signer).into()) },
+                };
+
+                let seed_bump = &[seed_bump];
+                seeds.push(seed_bump);            
+                seeds.remove(0);
+
+                inner.generic_template_accounts.push(descriptor);
+                inner.generic_template_address_data.push(seeds.concat());
+            }
+
+            let collection_template_account_descriptors = inner.collection_template_account_descriptors.clone();
+            for (meta, bump) in collection_template_account_descriptors.iter() {
+
+                inner.collection_template_accounts.push(meta.clone());
+                inner.collection_template_address_data.push(vec![*bump]);
+
+            }
+
+            inner.generic_template_instruction_data = Self::encode_template_instruction_data(&inner.generic_template_address_data);
+            inner.collection_template_instruction_data = Self::encode_template_instruction_data(&inner.collection_template_address_data);
+            
+            match &inner.track_suffix_seed_seq {
+                None => {},
+                Some(suffix_seed_seq_refcell) => {
+                    let mut suffix_seed_seq = suffix_seed_seq_refcell.borrow_mut();
+                    *suffix_seed_seq = inner.suffix_seed_seq;
+                }
+            }
+
+            Ok(())
+        })
+        // Ok(self)
     }
 
-    pub fn generic_templates(&self) -> Vec<AccountMeta> {
-        self.generic_template_accounts.to_vec()
+    pub fn generic_templates(self : Arc<Self>) -> Vec<AccountMeta> {
+        self.inner().generic_template_accounts.to_vec()
     }
 
-    pub fn collection_templates(&self) -> Vec<AccountMeta> {
-        self.collection_template_accounts.to_vec()
+    pub fn collection_templates(self : Arc<Self>) -> Vec<AccountMeta> {
+        self.inner().collection_template_accounts.to_vec()
     }
 
-}
 
+    pub fn try_into(self: Arc<Self>) -> Result<solana_program::instruction::Instruction> {
 
+        // let inner = self.inner();
 
-impl TryFrom<InstructionBuilder> for solana_program::instruction::Instruction {
-    type Error = crate::error::Error;
-
-    fn try_from(builder: InstructionBuilder) -> std::result::Result<Self,Self::Error> {
-
-        if !builder.is_sealed {
+        if !self.is_sealed() {
             return Err(error!("InstructionBuilder is not sealed!"));
         }
 
-        let program_id = builder.program_id();
+        let program_id = self.program_id(); //inner.program_id;
 
         let mut instruction_data: Vec<u8> = Vec::new();
-        instruction_data.extend(builder.payload().to_vec());
-        instruction_data.extend(builder.instruction_data().to_vec());
-        let accounts = builder.try_accounts()?;
+        instruction_data.extend(self.payload().to_vec());
+        instruction_data.extend(self.instruction_data().to_vec());
+        let accounts = self.try_accounts()?;
 
         let instruction = solana_program::instruction::Instruction {
             program_id,
@@ -742,4 +794,34 @@ impl TryFrom<InstructionBuilder> for solana_program::instruction::Instruction {
 
         Ok(instruction)
     }
+
+
 }
+
+
+
+// impl TryFrom<&InstructionBuilder> for solana_program::instruction::Instruction {
+//     type Error = crate::error::Error;
+
+//     fn try_from(builder: &InstructionBuilder) -> std::result::Result<Self,Self::Error> {
+
+//         if !builder.is_sealed() {
+//             return Err(error!("InstructionBuilder is not sealed!"));
+//         }
+
+//         let program_id = builder.program_id();
+
+//         let mut instruction_data: Vec<u8> = Vec::new();
+//         instruction_data.extend(builder.payload().to_vec());
+//         instruction_data.extend(builder.instruction_data().to_vec());
+//         let accounts = builder.try_accounts()?;
+
+//         let instruction = solana_program::instruction::Instruction {
+//             program_id,
+//             data : instruction_data,
+//             accounts,                
+//         };
+
+//         Ok(instruction)
+//     }
+// }
