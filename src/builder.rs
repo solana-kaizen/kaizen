@@ -43,7 +43,7 @@ pub struct InstructionBuilderConfig {
     pub authority : Option<AccountMeta>,
     pub identity : Option<AccountMeta>,
     pub program_id : Pubkey,
-    pub suffix_seed_seq : Option<Rc<RefCell<u64>>>,
+    pub suffix_seed_seq : Option<Arc<Mutex<u64>>>,
     pub sequencer : Option<Sequencer>,
 }
 
@@ -69,7 +69,7 @@ impl InstructionBuilderConfig {
     }
 
     pub fn with_sequence(mut self, sequence : u64) -> Self {
-        self.suffix_seed_seq = Some(Rc::new(RefCell::new(sequence)));
+        self.suffix_seed_seq = Some(Arc::new(Mutex::new(sequence)));
         self
     }
 
@@ -142,7 +142,8 @@ pub struct Inner {
 
     // Reference to an external seed that should be used during PDA creation (allowing PDA seed 
     // sequence value to be tracked in an external object such as `InstructionBufferConfig`)
-    track_suffix_seed_seq : Option<Rc<RefCell<u64>>>,
+    // track_suffix_seed_seq : Option<Rc<RefCell<u64>>>,
+    track_suffix_seed_seq : Option<Arc<Mutex<u64>>>,
 }
 
 pub struct InstructionBuilder {
@@ -200,7 +201,7 @@ impl InstructionBuilder {
         let suffix_seed_seq = match &track_suffix_seed_seq {
             None => 0u64,
             Some(suffix_seed_seq_refcell) => {
-                *suffix_seed_seq_refcell.borrow()
+                *suffix_seed_seq_refcell.lock().unwrap()
             }
         };
 
@@ -507,7 +508,7 @@ impl InstructionBuilder {
 
     pub fn with_sequence(self: Arc<Self>, seq : u64) -> Arc<Self> {
         self.with_inner(|mut inner| {
-            assert_eq!(inner.track_suffix_seed_seq,None);
+            assert!(inner.track_suffix_seed_seq.is_none());
             inner.suffix_seed_seq = seq;
         })
     }
@@ -616,7 +617,7 @@ impl InstructionBuilder {
         match self.identity_pubkey().as_ref() {
             Some(pubkey) => {
                 // TODO handle processing of concurrent requests!
-
+// Ok(self)
                 let identity = load_reference(&pubkey).await?;
                 match identity {
                     Some(identity) => {
@@ -752,7 +753,7 @@ impl InstructionBuilder {
             match &inner.track_suffix_seed_seq {
                 None => {},
                 Some(suffix_seed_seq_refcell) => {
-                    let mut suffix_seed_seq = suffix_seed_seq_refcell.borrow_mut();
+                    let mut suffix_seed_seq = suffix_seed_seq_refcell.lock().unwrap();
                     *suffix_seed_seq = inner.suffix_seed_seq;
                 }
             }
