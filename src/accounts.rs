@@ -128,6 +128,10 @@ mod client {
             &*self.key
         }
 
+        pub fn container_type(&self) -> u32 {
+            self.container_type
+        }
+
         pub fn lamports(&self) -> Result<u64> {
             Ok(self.account_data.lock()?.lamports)
         }

@@ -1,11 +1,12 @@
 use cfg_if::cfg_if;
 use solana_program::pubkey::Pubkey;
 use workflow_allocator_macros::{Meta, container};
-use crate::container::Container;
-use crate::result::Result;
-use workflow_allocator::prelude::*;
+use workflow_allocator::error;
 use workflow_allocator::error::ErrorCode;
 use workflow_allocator::container::Containers;
+use workflow_allocator::container::Container;
+use workflow_allocator::result::Result;
+use workflow_allocator::prelude::*;
 use super::meta::*;
 
 pub type PubkeyCollection<'info,'refs> = PubkeyCollectionInterface<'info,'refs, PubkeyCollectionSegmentInterface<'info,'refs>>;
@@ -122,20 +123,26 @@ where M : PubkeyCollectionMetaTrait
         Ok(())
     }
 
-    pub fn try_insert_pubkey(&mut self, key: &Pubkey) -> Result<()> {
+    pub fn try_insert_pubkey(
+        &mut self,
+        key: &Pubkey
+    ) -> Result<()> {
         if let Some(container) = &self.container {
             let seq = self.meta.advance_sequence();
             container.try_insert(seq,key)?;
             let len = self.meta.get_len();
             self.meta.set_len(len + 1);
-            
+            // self.sync_rent(ctx, rent_collector)
             Ok(())
         } else {
             Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded))
         }
     }
 
-    pub fn try_remove(&mut self, record: &PubkeySequence) -> Result<()> {
+    pub fn try_remove(
+        &mut self,
+        record: &PubkeySequence
+    ) -> Result<()> {
         {
             if self.container.is_none() {
                 return Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded));
@@ -147,24 +154,27 @@ where M : PubkeyCollectionMetaTrait
         // let meta = self.meta_mut()?;
         let len = self.meta.get_len();
         self.meta.set_len(len - 1);
+
+        // self.sync_rent(ctx, rent_collector);
+
         Ok(())
     }
 
-    pub fn as_slice(&self) -> Result<&[PubkeyMeta]> {
-        if let Some(container) = &self.container {
-            Ok(container.as_slice())
-        } else {
-            Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded))
-        }
-    }
+    // pub fn as_slice(&self) -> Result<&[PubkeyMeta]> {
+    //     if let Some(container) = &self.container {
+    //         Ok(container.as_slice())
+    //     } else {
+    //         Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded))
+    //     }
+    // }
 
-    pub fn as_slice_mut(&mut self) -> Result<&mut [PubkeyMeta]> {
-        if let Some(container) = &mut self.container {
-            Ok(container.as_slice_mut())
-        } else {
-            Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded))
-        }
-    }
+    // pub fn as_slice_mut(&mut self) -> Result<&mut [PubkeyMeta]> {
+    //     if let Some(container) = &mut self.container {
+    //         Ok(container.as_slice_mut())
+    //     } else {
+    //         Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded))
+    //     }
+    // }
 
     pub fn sync_rent(
         &self,
@@ -248,8 +258,86 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
         use async_trait::async_trait;
-        use workflow_allocator::container::AccountAggregator;
         use solana_program::instruction::AccountMeta;
+        use workflow_allocator::container::AccountAggregator;
+
+        impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
+        where M : PubkeyCollectionMetaTrait
+        {
+
+            pub async fn get_pubkey_at(&self, idx: usize) -> Result<Pubkey> {
+                let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
+
+                if idx >= self.len() {
+                    log_trace!("idx: {}",idx);
+                    log_trace!("self.len(): {}",self.len());
+                    log_trace!("self.records.len(): {}",container.as_ref().unwrap().records.len());
+                }
+                assert!(idx < self.len());
+                if let Some(container) = container {
+                    let pubkey = container.records.get_at(idx).key;
+                    Ok(pubkey)
+                } else {
+                    // Err(error_code!(ErrorCode::PubkeyCollectionMissing))
+                    Err(error!("Error: missing collection container {}", self.meta.pubkey()))
+                }
+            }
+
+            pub async fn load_reference_at(&self, idx: usize) -> Result<Arc<AccountDataReference>> {
+                let pubkey = self.get_pubkey_at(idx).await?;
+                let transport = Transport::global()?;
+                match transport.lookup(&pubkey).await? {
+                    Some(reference) => Ok(reference),
+                    None => Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+                }
+            }
+
+            pub async fn collect_pubkeys(&self) -> Result<Vec<Pubkey>> {
+                let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
+                if let Some(container) = container {
+                    let pubkeys = container
+                        .as_slice()
+                        .iter()
+                        .map(|r|r.get_key())
+                        .collect::<Vec<Pubkey>>();
+                    Ok(pubkeys)
+                } else {
+                    // Err(error_code!(ErrorCode::PubkeyCollectionMissing))
+                    Err(error!("Error: missing collection container {}", self.meta.pubkey()))
+                }
+            }
+
+            pub async fn load_references(&self) -> Result<Vec<Arc<AccountDataReference>>> {
+                let pubkeys = self.collect_pubkeys().await?;
+                let mut references = Vec::new();
+                let transport = Transport::global()?;
+                for pubkey in pubkeys.iter() {
+                    if let Some(reference) = transport.lookup(pubkey).await? {
+                        references.push(reference);
+                    }
+                }
+
+                Ok(references)
+            }
+
+            pub async fn load_containers<'this, T>(&self)
+            -> Result<Vec<ContainerReference<'this, T>>>
+            where T: workflow_allocator::container::Container<'this,'this>
+            {
+                let references = self.load_references().await?;
+                let mut containers = Vec::new();
+                for reference in references.iter() {
+                    if reference.container_type() == T::container_type() {
+                        let container = reference.try_load_container::<T>()?;
+                        containers.push(container);
+                    }
+                }
+
+                Ok(containers)
+            }
+
+        }        
+
 
         #[async_trait(?Send)]
         impl<'info,'refs,M> AccountAggregator for PubkeyCollectionInterface<'info,'refs,M> 

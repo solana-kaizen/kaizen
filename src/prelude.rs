@@ -40,7 +40,7 @@ pub use crate::container::collection::{
     // Utf8String,
 };
 pub use crate::container::ContainerHeader;
-pub use crate::identity::Identity;
+pub use crate::identity::program::Identity;
 
 pub use workflow_log::log_trace;
 

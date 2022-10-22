@@ -19,7 +19,7 @@ use workflow_allocator::accounts::{
 use workflow_allocator::error::*;
 use workflow_allocator::result::*;
 use workflow_allocator::rent::RentCollector;
-use workflow_allocator::identity::Identity;
+use workflow_allocator::identity::program::Identity;
 use workflow_allocator::payload::Payload;
 use workflow_allocator::container;
 use workflow_log::*;

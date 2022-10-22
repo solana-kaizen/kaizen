@@ -10,6 +10,7 @@ use crate::result::*;
 use crate::error;
 use crate::payload::Payload;
 use crate::sequencer::Sequencer;
+use crate::transport::load_container;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
 use workflow_allocator::address::AddressDomain;
@@ -19,6 +20,7 @@ use workflow_allocator::container::{
     PdaCollectionCreator,
     PdaCollectionAccessor,
 };
+use workflow_allocator::identity::program::Identity;
 // use workflow_allocator::instruction::{
 //     // readonly,
 //     // writable
@@ -535,6 +537,39 @@ impl InstructionBuilder {
     {
         let list = aggregator.readonly_account_metas(Some(key)).await?;
         Ok(self.with_index_accounts(&list))
+    }
+
+    pub async fn with_identity_collections(self, collections : &[(bool,u32)]) -> Result<Self> {
+
+        match self.identity.as_ref() {
+            Some(identity) => {
+                // TODO handle processing of concurrent requests!
+                let identity = load_container::<Identity>(&identity.pubkey).await?;
+                match identity {
+                    Some(identity) => {
+
+                        let mut aggregators = Vec::new();
+                        for (writable,data_type) in collections.iter() {
+                            let collection = identity.locate_collection(*data_type)?;
+                            aggregators.push((*writable,collection));
+                        }
+
+                        let aggregators = aggregators
+                            .iter()
+                            .map(|c|(c.0,&c.1))
+                            .collect::<Vec<_>>();
+                        Ok(self.with_account_aggregators(aggregators.as_slice()).await?)
+                    },
+                    None => {
+                        Err(error!("InstructionBuilder::with_identity_collection() missing on-chain identity account"))
+                    }
+                }
+            },
+            None => {
+                Err(error!("InstructionBuilder::with_identity_collection() missing identity record (please use with_identity())"))
+            }
+        }
+
     }
 
     pub fn seal(mut self) -> Result<Self> {

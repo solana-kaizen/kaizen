@@ -107,6 +107,7 @@ pub enum ErrorCode {
     PubkeyCollectionCollision,
     PubkeyCollectionNotFound,
     PubkeyCollectionNotLoaded,
+    PubkeyCollectionMissing,
     PubkeyCollectionDataTypeNotFound,
     PubkeyCollectionAccountNotFound,
     PubkeyCollectionRecordNotFound,

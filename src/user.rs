@@ -36,14 +36,20 @@ impl User {
         }
     }
 
+    // pub async fn load<'cr>() -> Result<Option<ContainerReference<'cr,IdentityContainer<'cr,'cr>>>> {
+
     pub async fn load_identity(&self, program_id : &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    // pub async fn load_identity<'cr>(&self, program_id : &Pubkey) -> Result<Option<ContainerReference<'cr,Identity<'cr,'cr>>>> {
     
         match workflow_allocator::identity::client::load_identity(program_id).await? {
             Some(identity) => {
+                // let identity = identity.try_load_container::<Identity>()?;
+                // self.sequencer.load_from_identity(&identity_container)?;
+
                 self.sequencer.load_from_identity(&identity)?;
                 let mut inner = self.inner.lock()?;
                 inner.identity_state = IdentityState::Present;
-                inner.identity_pubkey = Some(*identity.pubkey());
+                inner.identity_pubkey = Some(identity.pubkey().clone());
                 Ok(Some(identity))
             },
             None => {

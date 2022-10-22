@@ -16,7 +16,8 @@ cfg_if! {
     }
 }
 
-const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
+const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 64u64; // 64 megabytes
+// const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {

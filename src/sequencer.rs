@@ -1,6 +1,6 @@
 use workflow_allocator::prelude::*;
 use std::sync::{atomic::{AtomicU64, Ordering}, Arc};
-use workflow_allocator::identity::Identity;
+use workflow_allocator::identity::program::Identity;
 use workflow_allocator::result::Result;
 
 #[derive(Debug, Clone)]
@@ -16,6 +16,7 @@ impl Sequencer {
     }
 
     pub fn create_from_identity(reference: &Arc<AccountDataReference>) -> Result<Sequencer> {
+    // pub fn create_from_identity(identity: &Identity) -> Result<Sequencer> {
         let identity = reference.try_load_container::<Identity>()?;
         let seq = identity.meta.borrow().get_pda_sequence();
         Ok(Sequencer {
@@ -24,6 +25,7 @@ impl Sequencer {
     }
 
     pub fn load_from_identity(&self, reference: &Arc<AccountDataReference>) -> Result<()> {
+    // pub fn load_from_identity(&self, identity: &Identity) -> Result<()> {
         let identity = reference.try_load_container::<Identity>()?;
         let seq = identity.meta.borrow().get_pda_sequence();
         self.sequence.store(seq, Ordering::SeqCst);
