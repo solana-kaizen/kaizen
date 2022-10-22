@@ -259,7 +259,7 @@ cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
         use async_trait::async_trait;
         use solana_program::instruction::AccountMeta;
-        use workflow_allocator::container::AccountAggregator;
+        use workflow_allocator::container::{AccountAggregator,AsyncAccountAggregator};
 
         impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
         where M : PubkeyCollectionMetaTrait
@@ -338,28 +338,76 @@ cfg_if! {
 
         }        
 
+        // impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
+        // where M : PubkeyCollectionMetaTrait
+        // {
+        //     pub fn aggregator(&self) -> Result<PubkeyCollectionAsyncAccountAggregator> {
+        //         let metas = vec![AccountMeta::new(*self.meta.pubkey(), false)];
+        //         Ok(PubkeyCollectionAsyncAccountAggregator::new(metas))
+        //     }
 
-        // #[async_trait(?Send)]
-        #[workflow_async_trait]
+        //     pub fn aggregator(&self) -> Result<PubkeyCollectionAsyncAccountAggregator> {
+        //         let metas = vec![AccountMeta::new(*self.meta.pubkey(), false)];
+        //         Ok(PubkeyCollectionAsyncAccountAggregator::new(metas))
+        //     }
+        // }
+
         impl<'info,'refs,M> AccountAggregator for PubkeyCollectionInterface<'info,'refs,M> 
+        where M : PubkeyCollectionMetaTrait {
+            type Aggregator = PubkeyCollectionAsyncAccountAggregator;
+
+            fn aggregator(&self) -> Result<Arc<Self::Aggregator>> {
+                let pubkeys = vec![*self.meta.pubkey()];
+                Ok(Arc::new(PubkeyCollectionAsyncAccountAggregator::new(pubkeys)))
+            }
+        }
+
+        pub struct PubkeyCollectionAsyncAccountAggregator {
+            pubkeys: Vec<Pubkey>,
+        }
+
+        impl PubkeyCollectionAsyncAccountAggregator {
+            pub fn new(pubkeys: Vec<Pubkey>) -> PubkeyCollectionAsyncAccountAggregator {
+                PubkeyCollectionAsyncAccountAggregator {
+                    pubkeys
+                }
+            }
+        }
+
+        #[workflow_async_trait]
+        impl AsyncAccountAggregator for PubkeyCollectionAsyncAccountAggregator//PubkeyCollectionInterface<'info,'refs,M> 
+        // impl<'info,'refs,M> AccountAggregator for GenericAccountAggregator//PubkeyCollectionInterface<'info,'refs,M> 
         // where T : Copy + Eq + PartialEq + Ord + 'info
-        where M : PubkeyCollectionMetaTrait
+        // where M : PubkeyCollectionMetaTrait
         {
             type Key = Pubkey;
             async fn writable_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
                 if key.is_some() {
                     return Err(error_code!(ErrorCode::NotImplemented));
                 }
-                // let meta = self.meta()?;
-                Ok(vec![AccountMeta::new(*self.meta.pubkey(), false)])
+
+                let metas = self
+                    .pubkeys
+                    .iter()
+                    .map(|pubkey|
+                        AccountMeta::new(*pubkey, true)
+                    ).collect();
+
+                Ok(metas)
             }
 
             async fn readonly_account_metas(&self, key: Option<&Self::Key>) -> Result<Vec<AccountMeta>> {
                 if key.is_some() {
                     return Err(error_code!(ErrorCode::NotImplemented));
                 }
-                // let meta = self.meta()?;
-                Ok(vec![AccountMeta::new_readonly(*self.meta.pubkey(), false)])
+                let metas = self
+                    .pubkeys
+                    .iter()
+                    .map(|pubkey|
+                        AccountMeta::new(*pubkey, true)
+                    ).collect();
+
+                Ok(metas)
             }
         
         }

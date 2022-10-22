@@ -18,6 +18,7 @@ use workflow_allocator::address::AddressDomain;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
 use workflow_allocator::container::{
     AccountAggregator,
+    AsyncAccountAggregator,
     PdaCollectionCreator,
     PdaCollectionAccessor,
 };
@@ -496,7 +497,7 @@ impl InstructionBuilder {
     pub async fn with_writable_account_aggregator<A>(self, aggregator : &A) -> Result<Self> 
     where A: AccountAggregator
     {
-        let list = aggregator.writable_account_metas(None).await?;
+        let list = aggregator.aggregator()?.writable_account_metas(None).await?;
         Ok(self.with_index_accounts(&list))
     }
 
@@ -504,13 +505,29 @@ impl InstructionBuilder {
     pub async fn with_readonly_account_aggregator<A>(self, aggregator : &A) -> Result<Self> 
     where A: AccountAggregator
     {
-        let list = aggregator.readonly_account_metas(None).await?;
+        let list = aggregator.aggregator()?.readonly_account_metas(None).await?;
         Ok(self.with_index_accounts(&list))
     }
 
     #[inline(always)]
-    pub async fn with_account_aggregators<A>(self, aggregators : &[(bool,&A)]) -> Result<Self> 
+    pub async fn with_account_aggregators<A>(self, accessors : &[(bool,A)]) -> Result<Self> 
     where A: AccountAggregator
+    {
+        let mut list = Vec::new();
+        for (writable,accessor) in accessors.iter() {
+            let aggregator_list = if *writable {
+                accessor.aggregator()?.writable_account_metas(None).await?
+            } else {
+                accessor.aggregator()?.readonly_account_metas(None).await?
+            };
+            list.extend_from_slice(&aggregator_list);
+        }
+        Ok(self.with_index_accounts(&list))
+    }
+
+    #[inline(always)]
+    pub async fn with_async_account_aggregators<A>(self, aggregators : &[(bool,Arc<A>)]) -> Result<Self> 
+    where A: AsyncAccountAggregator
     {
         let mut list = Vec::new();
         for (writable,aggregator) in aggregators.iter() {
@@ -524,28 +541,31 @@ impl InstructionBuilder {
         Ok(self.with_index_accounts(&list))
     }
 
-    #[inline(always)]
-    pub async fn with_writable_account_aggregator_for_key<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
-    where A: AccountAggregator
-    {
-        let list = aggregator.writable_account_metas(Some(key)).await?;
-        Ok(self.with_index_accounts(&list))
-    }
+    // #[inline(always)]
+    // pub async fn with_writable_account_aggregator_for_key<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
+    // where A: AccountAggregator
+    // {
+    //     let list = aggregator.writable_account_metas(Some(key)).await?;
+    //     Ok(self.with_index_accounts(&list))
+    // }
 
-    #[inline(always)]
-    pub async fn with_readonly_account_aggregator_for_key<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
-    where A: AccountAggregator
-    {
-        let list = aggregator.readonly_account_metas(Some(key)).await?;
-        Ok(self.with_index_accounts(&list))
-    }
+    // #[inline(always)]
+    // pub async fn with_readonly_account_aggregator_for_key<A>(self, key: &<A as AccountAggregator>::Key, aggregator : &A) -> Result<Self> 
+    // where A: AccountAggregator
+    // {
+    //     let list = aggregator.readonly_account_metas(Some(key)).await?;
+    //     Ok(self.with_index_accounts(&list))
+    // }
 
     pub async fn with_identity_collections(self, collections : &[(bool,u32)]) -> Result<Self> {
 
         match self.identity.as_ref() {
             Some(identity) => {
                 // TODO handle processing of concurrent requests!
-                // let identity = load_container::<Identity>(&identity.pubkey).await?;
+
+                // ASYNC PROBLEM
+
+                /*
                 let identity = load_reference(&identity.pubkey).await?;
                 match identity {
                     Some(identity) => {
@@ -555,23 +575,20 @@ impl InstructionBuilder {
                             let mut aggregators = Vec::new();
                             for (writable,data_type) in collections.iter() {
                                 let collection = identity.locate_collection(*data_type)?;
-                                aggregators.push((*writable,collection));
+                                aggregators.push((*writable,collection.aggregator()?));
                             }
                             aggregators
 
                         };
-                        
-                        let aggregators = aggregators
-                            .iter()
-                            .map(|c|(c.0,&c.1))
-                            .collect::<Vec<_>>();
 
-                        Ok(self.with_account_aggregators(aggregators.as_slice()).await?)
+                        Ok(self.with_async_account_aggregators(&aggregators).await?)
                     },
                     None => {
                         Err(error!("InstructionBuilder::with_identity_collection() missing on-chain identity account"))
                     }
                 }
+                */
+                Ok(self)
             },
             None => {
                 Err(error!("InstructionBuilder::with_identity_collection() missing identity record (please use with_identity())"))

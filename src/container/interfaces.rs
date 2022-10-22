@@ -6,14 +6,17 @@ use workflow_allocator::result::Result;
 
 
 
-// #[async_trait(?Send)]
 #[workflow_async_trait]
-pub trait AccountAggregator {
+pub trait AsyncAccountAggregator {
     type Key;
     async fn writable_account_metas(&self,key : Option<&Self::Key>) -> Result<Vec<AccountMeta>>;
     async fn readonly_account_metas(&self,key : Option<&Self::Key>) -> Result<Vec<AccountMeta>>;
 }
 
+pub trait AccountAggregator {
+    type Aggregator : AsyncAccountAggregator;
+    fn aggregator(&self) -> Result<Arc<Self::Aggregator>>;
+}
 
 // #[async_trait(?Send)]
 #[workflow_async_trait]
