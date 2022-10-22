@@ -82,6 +82,7 @@ cfg_if::cfg_if! {
             // AccountDataContainer 
         };
         pub use workflow_allocator_macros::declare_client;
+        pub use workflow_allocator::date::*;
         // pub use workflow_allocator::transport::
     }
 
