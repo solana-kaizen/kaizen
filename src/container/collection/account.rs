@@ -277,7 +277,6 @@ cfg_if! {
         use futures::{stream::FuturesOrdered, StreamExt};
         use crate::container::interfaces::PdaCollectionCreator;
         use crate::container::interfaces::PdaCollectionAccessor;
-        use async_trait::async_trait;
 
         impl<'info,M> PdaCollectionInterface<'info,M> 
         where M: CollectionMeta

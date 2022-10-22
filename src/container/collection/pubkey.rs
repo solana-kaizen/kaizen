@@ -257,7 +257,6 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
 
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
-        use async_trait::async_trait;
         use solana_program::instruction::AccountMeta;
         use workflow_allocator::container::{AccountAggregator,AsyncAccountAggregator};
 

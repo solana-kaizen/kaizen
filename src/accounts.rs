@@ -261,7 +261,10 @@ mod client {
                 })
             });
 
-            Ok(container)
+            Ok(ContainerReference::new(container))
+            // let v = ContainerReference { inner : container };
+            // Ok(v)
+            // Ok(container)
 
         }
         

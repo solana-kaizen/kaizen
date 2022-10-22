@@ -81,7 +81,7 @@ cfg_if! {
         use owning_ref::OwningHandle;
         use workflow_allocator::accounts::*;
         
-        pub type ContainerReference<'this,T> =
+        pub type ContainerReferenceInner<'this,T> =
         OwningHandle<
             OwningHandle<
                 OwningHandle<
@@ -95,6 +95,42 @@ cfg_if! {
             Box<<T as Container<'this,'this>>::T>
         >;
         
+        pub struct ContainerReference<'inner,T>
+        where T: Container<'inner,'inner>,
+        {
+            inner : ContainerReferenceInner<'inner,T>
+        }
+
+        // ~~~
+        
+        unsafe impl<'inner,T> Send for ContainerReference<'inner,T>
+        where T: Container<'inner,'inner> {}
+        
+        unsafe impl<'inner,T> Sync for ContainerReference<'inner,T>
+        where T: Container<'inner,'inner> {}
+
+        // ~~~
+        
+        impl<'inner,T> ContainerReference<'inner,T>
+        where T: Container<'inner,'inner>,
+        {
+            pub fn new(inner : ContainerReferenceInner<'inner,T>) -> Self {
+                ContainerReference { inner }
+            }
+        }
+
+
+
+        impl<'inner,T> std::ops::Deref for ContainerReference<'inner,T>
+        where T: Container<'inner,'inner>,
+        {
+            type Target = ContainerReferenceInner<'inner,T>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
+
         // pub type AccountDataContainer<'this,T> = 
         //     OwningHandle<
         //         OwningHandle<
