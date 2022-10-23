@@ -29,6 +29,7 @@ use workflow_allocator::cache::Cache;
 use std::convert::From;
 use crate::transport::{Transaction, TransportConfig};
 use crate::transport::lookup::{LookupHandler,RequestType};
+use crate::transport::{PendingReflector,ReflectPendingFn};
 use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
 use super::Mode;
@@ -161,6 +162,8 @@ pub struct Transport {
     // pub entrypoints : Arc<RwLock<HashMap<Pubkey,Arc<ProcessInstruction>>>>,
     // #[derivative(Debug="ignore")]
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
+
+    pub pending_reflector : PendingReflector,
 
 }
 
@@ -408,6 +411,7 @@ impl Transport {
         let cache = Cache::new_with_default_capacity();
         log_trace!("Creating lookup handler");
         let lookup_handler = LookupHandler::new();
+        let pending_reflector = PendingReflector::new();
 
         let config = Arc::new(RwLock::new(config));
 
@@ -421,6 +425,7 @@ impl Transport {
             queue,
             cache,
             lookup_handler,
+            pending_reflector,
             custom_authority:Arc::new(Mutex::new(None))
         });
 
@@ -623,7 +628,10 @@ impl Transport {
         }
     }
     
-    
+    pub fn init_reflect_pending_handlers(&self, lookups: Option<ReflectPendingFn>, transactions : Option<ReflectPendingFn>) -> Result<()>{
+        self.pending_reflector.init(lookups,transactions)?;
+        Ok(())
+    }    
 
 }
 
@@ -682,20 +690,25 @@ impl super::Interface for Transport {
     // async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
+        let lookup_handler = &self.clone().lookup_handler;
         // TODO send
         // Ok(None)
-        let request_type = self.clone().lookup_handler.queue(pubkey).await;
-        match request_type {
+        let request_type = lookup_handler.queue(pubkey).await;
+        let result = match request_type {
             RequestType::New(receiver) => {
+                self.pending_reflector.update_lookups(lookup_handler.pending());
+
                 let response = self.clone().lookup_remote_impl(pubkey).await;
-                self.clone().lookup_handler.complete(pubkey, response).await;
+                lookup_handler.complete(pubkey, response).await;
                 receiver.recv().await?
             },
             RequestType::Pending(receiver) => {
                 receiver.recv().await?
             }
-        }
+        };
 
+        self.pending_reflector.update_lookups(lookup_handler.pending());
+        result
     }
 
 

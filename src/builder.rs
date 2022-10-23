@@ -9,6 +9,7 @@ use crate::result::*;
 use crate::error;
 use crate::payload::Payload;
 use crate::sequencer::Sequencer;
+use crate::user::User;
 // use crate::transport::load_container;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
@@ -366,6 +367,16 @@ impl InstructionBuilder {
         self
     }
 
+    pub fn with_user(self: Arc<Self>, user: &User) -> Arc<Self> {
+        let (authority,identity,sequencer) = user
+            .builder_args().expect("User record is not ready");
+log_trace!("authority: {:?}, identity: {:?}", authority, identity);
+        self
+            .with_authority(&authority)
+            .with_identity(&identity)
+            .with_sequencer(&sequencer)
+    }
+
     pub fn with_authority(self: Arc<Self>, authority : &Pubkey) -> Arc<Self> {
         self.inner().authority = Some(AccountMeta::new(*authority,true));
         self
@@ -375,6 +386,25 @@ impl InstructionBuilder {
         self.inner().identity = Some(AccountMeta::new(*identity,false));
         self
     }
+
+    pub fn with_sequencer(self: Arc<Self>, sequencer : &Sequencer) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            inner.suffix_seed_seq = sequencer.get();
+            inner.sequencer = Some(sequencer.clone());
+        })
+    }
+
+    pub fn with_sequence(self: Arc<Self>, seq : u64) -> Arc<Self> {
+        self.with_inner(|mut inner| {
+            assert!(inner.track_suffix_seed_seq.is_none());
+            inner.suffix_seed_seq = seq;
+        })
+    }
+
+    pub fn sequence(&self) -> u64 {
+        self.inner().suffix_seed_seq
+    }
+
 
     // fn encode_template_instruction_data(&self) -> Vec<u8> {
     fn encode_template_instruction_data(data : &Vec<Vec<u8>>) -> Vec<u8> {
@@ -502,24 +532,6 @@ impl InstructionBuilder {
         // self.template_access_descriptors.extend(template_access_descriptors);
         self.inner().generic_template_account_descriptors.extend(templates.to_vec());
         self
-    }
-
-    pub fn with_sequence(self: Arc<Self>, seq : u64) -> Arc<Self> {
-        self.with_inner(|mut inner| {
-            assert!(inner.track_suffix_seed_seq.is_none());
-            inner.suffix_seed_seq = seq;
-        })
-    }
-
-    pub fn with_sequencer(self: Arc<Self>, sequencer : &Sequencer) -> Arc<Self> {
-        self.with_inner(|mut inner| {
-            inner.suffix_seed_seq = sequencer.get();
-            inner.sequencer = Some(sequencer.clone());
-        })
-    }
-
-    pub fn sequence(&self) -> u64 {
-        self.inner().suffix_seed_seq
     }
 
     pub async fn with_collection_template<A>(self: Arc<Self>, pda_collection_builder : &A) -> Result<Arc<Self>> 

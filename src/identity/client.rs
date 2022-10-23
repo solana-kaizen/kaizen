@@ -29,9 +29,9 @@ pub async fn locate_identity_pubkey(transport : &Arc<Transport>, program_id : &P
     
 }
 
-pub async fn load_identity(program_id: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+pub async fn load_identity(program_id: &Pubkey, authority: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     let transport = workflow_allocator::transport::Transport::global()?;
-    let authority = transport.get_authority_pubkey()?;
+    // let authority = transport.get_authority_pubkey()?;
     if let Some(identity_pubkey) = locate_identity_pubkey(&transport, &program_id, &authority).await? {
         Ok(transport.lookup(&identity_pubkey).await?)
     } else {
@@ -40,9 +40,9 @@ pub async fn load_identity(program_id: &Pubkey) -> Result<Option<Arc<AccountData
     }
 }
 
-pub async fn reload_identity(program_id: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+pub async fn reload_identity(program_id: &Pubkey, authority: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     let transport = workflow_allocator::transport::Transport::global()?;
-    let authority = transport.get_authority_pubkey()?;
+    // let authority = transport.get_authority_pubkey()?;
     if let Some(identity_pubkey) = locate_identity_pubkey(&transport, &program_id, &authority).await? {
         Ok(transport.lookup_remote(&identity_pubkey).await?)
     } else {

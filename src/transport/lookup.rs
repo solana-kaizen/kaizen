@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering, AtomicUsize};
 use async_std::sync::Mutex;
 // use manual_future::{ManualFuture, ManualFutureCompleter};
 use ahash::AHashMap;
@@ -21,20 +22,26 @@ pub enum RequestType<T> {
 // pub struct LookupHandler<K, T : Unpin> {
 pub struct LookupHandler<K, T> {
     // pub pending : Arc<Mutex<AHashMap<K,Vec<ManualFutureCompleter<LookupResult<T>>>>>>
-    pub pending : Arc<Mutex<AHashMap<K,Vec<Sender<LookupResult<T>>>>>>
+    pub map : Arc<Mutex<AHashMap<K,Vec<Sender<LookupResult<T>>>>>>,
+    pending : AtomicUsize,
 }
 
 // impl<K,T> LookupHandler<K,T> where T : Unpin + Clone, K : Clone + Eq + Hash + Display {
 impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
     pub fn new() -> Self {
         LookupHandler {
-            pending : Arc::new(Mutex::new(AHashMap::new()))
+            map : Arc::new(Mutex::new(AHashMap::new())),
+            pending : AtomicUsize::new(0),
         }
+    }
+
+    pub fn pending(&self) -> usize {
+        self.pending.load(Ordering::SeqCst)
     }
 
     pub async fn queue(&self, key: &K) -> RequestType<T> {
 
-        let mut pending = self.pending.lock().await;//unwrap();
+        let mut pending = self.map.lock().await;//unwrap();
         // let (future, completer) = ManualFuture::<LookupResult<T>>::new();
         let (sender, receiver) = oneshot::<LookupResult<T>>();
 
@@ -45,14 +52,16 @@ impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
             let mut list = Vec::new();
             list.push(sender);
             pending.insert(key.clone(),list);
+            self.pending.fetch_add(1, Ordering::Relaxed);
             RequestType::New(receiver)
         }
     }
 
     pub async fn complete(&self, key : &K, result : LookupResult<T>) {
-        let mut pending = self.pending.lock().await;//unwrap();
+        let mut pending = self.map.lock().await;//unwrap();
 
         if let Some(list) = pending.remove(&key) {
+            self.pending.fetch_sub(1, Ordering::Relaxed);
             for sender in list {
                 sender.send(result.clone()).await.expect("Unable to complete lookup result");
             }

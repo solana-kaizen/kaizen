@@ -23,7 +23,9 @@ use solana_program::instruction::Instruction;
 use crate::transport::TransportConfig;
 use crate::transport::Mode;
 use crate::transport::lookup::{LookupHandler,RequestType};
+use crate::transport::{PendingReflector,ReflectPendingFn};
 use crate::wallet::*;
+// use workflow_core::channel::{Sender,Receiver,unbounded};
 
 use solana_client::{
     rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig,
@@ -48,7 +50,9 @@ pub struct Transport
     pub cache : Arc<Cache>,
     pub queue : Arc<TransactionQueue>,
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
+    // pub pending_lookups_reflect : Option<Sender<usize>>,
     pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
+    pub pending_reflector : PendingReflector,
 }
 
 impl Transport {
@@ -154,6 +158,7 @@ impl Transport {
         let cache = Arc::new(Cache::new_with_default_capacity());
         let config = Arc::new(RwLock::new(config));
         let lookup_handler = LookupHandler::new();
+        let pending_reflector = PendingReflector::new();
 
         let transport = Transport {
             mode,
@@ -164,6 +169,7 @@ impl Transport {
             cache,
             queue,
             lookup_handler,
+            pending_reflector,
             custom_authority:Arc::new(Mutex::new(None))
         };
 
@@ -351,6 +357,11 @@ impl Transport {
     }
 
 
+    pub fn init_reflect_pending_handlers(&self, lookups: Option<ReflectPendingFn>, transactions : Option<ReflectPendingFn>) -> Result<()>{
+        self.pending_reflector.init(lookups,transactions)?;
+        Ok(())
+    }
+
 }
 
 // #[async_trait(?Send)]
@@ -442,18 +453,23 @@ impl super::Interface for Transport {
     }
 
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        let request_type = self.clone().lookup_handler.queue(pubkey).await;
-        match request_type {
+        let lookup_handler = &self.clone().lookup_handler;
+        let request_type = lookup_handler.queue(pubkey).await;
+        let result = match request_type {
             RequestType::New(receiver) => {
+                self.pending_reflector.update_lookups(lookup_handler.pending());
+ 
                 let response = self.lookup_remote_impl(pubkey).await;
-                self.clone().lookup_handler.complete(pubkey, response).await;
+                lookup_handler.complete(pubkey, response).await;
                 receiver.recv().await?
             },
             RequestType::Pending(receiver) => {
                 receiver.recv().await?
             }
-        }
+        };
 
+        self.pending_reflector.update_lookups(lookup_handler.pending());
+        result
     }
 
 }
