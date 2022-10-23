@@ -33,6 +33,7 @@ pub trait EmulatorInterface : AnySync
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn execute(
         &self,
+        authority : &Pubkey,
         instruction : &instruction::Instruction,
     ) -> Result<ExecutionResponse>;
 

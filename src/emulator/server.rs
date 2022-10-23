@@ -2,6 +2,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use borsh::{BorshSerialize,BorshDeserialize};
 use solana_program::instruction::Instruction;
+use solana_program::pubkey::Pubkey;
 use workflow_rpc::asynchronous::server::RpcHandler;
 use workflow_rpc::asynchronous::server::RpcResponseError;
 use workflow_rpc::asynchronous::result::RpcResult;
@@ -82,8 +83,9 @@ impl RpcHandler<EmulatorOps> for Server
 
 
                 let req = ExecuteReq::try_from_slice(data)?;
-                let instruction : Instruction = req.into();
-                let resp = self.emulator.execute(&instruction).await?;
+                // let authority = req.authority.clone();
+                let (authority,instruction) : (Pubkey,Instruction) = req.into();
+                let resp = self.emulator.execute(&authority,&instruction).await?;
                 // let resp = ExecutionResponse::new(None,None);
                 Ok(resp.try_to_vec()?)
             },

@@ -63,6 +63,7 @@ impl EmulatorInterface for EmulatorRpcClient {
 
     async fn execute(
         &self,
+        authority: &Pubkey,
         instruction : &Instruction,
     ) -> Result<ExecutionResponse> {
         // we try to re-use existing data types from Solana but 
@@ -71,6 +72,7 @@ impl EmulatorInterface for EmulatorRpcClient {
             program_id: instruction.program_id.clone(),
             accounts: instruction.accounts.iter().map(|account| account.into()).collect(),
             instruction_data: instruction.data.clone(),
+            authority : authority.clone(),
         };
         let resp : Result<ExecutionResponse> = self.rpc.call(EmulatorOps::Execute, message).await
             .map_err(|err|err.into());

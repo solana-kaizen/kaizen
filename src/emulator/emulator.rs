@@ -270,9 +270,12 @@ impl Emulator {
     
     async fn execute_impl(
         &self,
+        authority : &Pubkey,
         instruction : &solana_program::instruction::Instruction
     ) -> Result<()> {
         // std::thread::sleep(std::time::Duration::from_millis(5000));
+
+        // FIXME emulate transaction fee processing
 
         let entrypoint = {
             match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
@@ -320,12 +323,13 @@ impl EmulatorInterface for Emulator {
 
     async fn execute(
         &self,
+        authority : &Pubkey,
         instruction : &solana_program::instruction::Instruction
     ) -> Result<ExecutionResponse> {
 
         let log_sink = self.log_sink.clone().downcast_arc::<LogSink>().expect("downcast log sink");
         log_sink.init();
-        let result = self.execute_impl(instruction).await;
+        let result = self.execute_impl(authority,instruction).await;
         let logs = log_sink.take();
         // log_trace!("logs: {:?}", logs);
         match result {

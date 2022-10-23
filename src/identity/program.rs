@@ -129,6 +129,9 @@ pub struct IdentityMeta {
     // pub payload_len : u32,
     pub pda_sequence : u64,
     pub reserved_for_future_flags : u32,
+    pub referrer : Pubkey,
+    // TODO init date
+    pub creation_date : Date,
 }
 
 #[container(Containers::Identity)]
@@ -177,6 +180,12 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     //     *new_entry = *entry;
     //     Ok(())
     // }
+
+
+    pub fn referrer(&self) -> Result<Pubkey> {
+        let meta = self.meta.try_borrow()?;
+        Ok(meta.referrer)
+    }
 
     // Insert Authority Pubkey as IdentityEntry into the entry list
     pub fn try_insert_authority(&mut self, pubkey: &Pubkey)-> Result<()>{

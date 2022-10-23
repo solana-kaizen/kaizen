@@ -37,17 +37,19 @@ pub struct ExecuteReq {
     pub program_id: Pubkey,
     pub accounts: Vec<AccountMeta>,
     pub instruction_data: Vec<u8>,
+    pub authority: Pubkey,
 }
 
 
-impl From<instruction::Instruction> for ExecuteReq {
-    fn from(instruction : instruction::Instruction) -> Self {
+impl From<(&Pubkey,instruction::Instruction)> for ExecuteReq {
+    fn from((authority,instruction) : (&Pubkey,instruction::Instruction)) -> Self {
         // let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
         
         Self {
             program_id: instruction.program_id.clone(),
             accounts: instruction.accounts.iter().map(|account| account.into()).collect(),
             instruction_data: instruction.data.clone(),
+            authority: authority.clone(),
             // program_id,
             // accounts,
             // instruction_data,
@@ -55,13 +57,16 @@ impl From<instruction::Instruction> for ExecuteReq {
     }
 }
 
-impl Into<instruction::Instruction> for ExecuteReq {
-    fn into(self) -> instruction::Instruction {
-        instruction::Instruction {
-            program_id : self.program_id.clone(),
-            accounts : self.accounts.iter().map(|account| account.into()).collect(),
-            data : self.instruction_data.clone(),
-        }
+impl Into<(Pubkey,instruction::Instruction)> for ExecuteReq {
+    fn into(self) -> (Pubkey,instruction::Instruction) {
+        (
+            self.authority,
+            instruction::Instruction {
+                program_id : self.program_id.clone(),
+                accounts : self.accounts.iter().map(|account| account.into()).collect(),
+                data : self.instruction_data.clone(),
+            }
+        )
     }
 }
 

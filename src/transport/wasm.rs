@@ -34,7 +34,7 @@ use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
 use super::TransportMode;
 use crate::wallet::*;
-use crate::wallet::wasm;
+// use crate::wallet::wasm;
 
 // pub mod router {
 //     use super::*;
@@ -144,7 +144,7 @@ pub struct Transport {
 
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
 
-    pub wallet : Arc<dyn Wallet>,
+    pub wallet : Arc<dyn foreign::WalletInterface>,
 
     // #[wasm_bindgen(skip)]
     pub queue : Arc<TransactionQueue>,
@@ -233,7 +233,7 @@ impl Transport {
     // }
 
     #[inline(always)]
-    pub fn new_wallet(&self) -> Arc<dyn Wallet> {
+    pub fn new_wallet(&self) -> Arc<dyn foreign::WalletInterface> {
         self.wallet.clone()
     }
 
@@ -405,7 +405,7 @@ impl Transport {
             // }
         // };
 
-        let wallet = Arc::new(wasm::Wallet::try_new()?);
+        let wallet = Arc::new(foreign::Wallet::try_new()?);
 
         log_trace!("Transport interface creation ok...");
         
@@ -536,7 +536,10 @@ impl Transport {
                 //     }
                 // };
 
+                let authority = self.get_authority_pubkey_impl()?;
+
                 self.emulator().execute(
+                    &authority,
                     instruction
                     // &instruction.program_id,
                     // &instruction.accounts,

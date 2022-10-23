@@ -175,9 +175,10 @@ impl EmulatorInterface for Simulator {
     }
     async fn execute(
         &self,
+        authority: &Pubkey,
         instruction : &Instruction,
     ) -> Result<ExecutionResponse> {
-        self.emulator.execute(instruction).await
+        self.emulator.execute(authority,instruction).await
     }
     async fn fund(
         &self,

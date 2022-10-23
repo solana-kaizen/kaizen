@@ -45,7 +45,7 @@ pub struct Transport
     mode : TransportMode,
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
     pub rpc_client : Option<RpcClient>, //Option<(RpcClient,Keypair,Pubkey)>,
-    pub wallet : Arc<dyn Wallet>,
+    pub wallet : Arc<dyn foreign::WalletInterface>,
     pub config : Arc<RwLock<TransportConfig>>,
     pub cache : Arc<Cache>,
     pub queue : Arc<TransactionQueue>,
@@ -155,7 +155,7 @@ impl Transport {
         config : TransportConfig,
     ) -> Result<Arc<Transport>> {
 
-        let wallet = Arc::new(native::Wallet::try_new()?);
+        let wallet = Arc::new(foreign::native::Wallet::try_new()?);
 
         // TODO implement transaction queue support
         let queue = Arc::new(TransactionQueue::new());
@@ -206,7 +206,7 @@ impl Transport {
     }
 
     #[inline(always)]
-    pub fn wallet(&self) -> Arc<dyn Wallet> {
+    pub fn wallet(&self) -> Arc<dyn foreign::WalletInterface> {
         self.wallet.clone()
     }
 
@@ -388,7 +388,9 @@ impl super::Interface for Transport {
     async fn execute(&self, instruction : &Instruction) -> Result<()> { 
         match &self.emulator {
             Some(emulator) => {
+                let authority = self.get_authority_pubkey()?;
                 emulator.clone().execute(
+                    &authority,
                     instruction
                 ).await?;
             },
@@ -403,7 +405,7 @@ impl super::Interface for Transport {
                 //     panic!("No client");
                 // };
 
-                let wallet = self.wallet.clone().downcast_arc::<native::Wallet>()
+                let wallet = self.wallet.clone().downcast_arc::<foreign::native::Wallet>()
                     .expect("Unable to downcast native wallt");
 
                 let recent_hash = rpc_client
