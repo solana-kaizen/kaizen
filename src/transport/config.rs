@@ -1,12 +1,21 @@
 use std::time::Duration;
-
 use solana_program::pubkey::Pubkey;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
-pub enum Mode {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TransportMode {
     Inproc,
     Emulator,
     Validator,
+}
+
+impl TransportMode {
+    pub fn is_emulator(&self) -> bool {
+        match self {
+            TransportMode::Validator => false,
+            _ => true
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

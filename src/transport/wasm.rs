@@ -32,7 +32,7 @@ use crate::transport::lookup::{LookupHandler,RequestType};
 use crate::transport::{PendingReflector,ReflectPendingFn};
 use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
-use super::Mode;
+use super::TransportMode;
 use crate::wallet::*;
 use crate::wallet::wasm;
 
@@ -140,7 +140,7 @@ mod wasm_bridge {
 pub struct Transport {
     // pub simulator : Option<Arc<Simulator>>,
 
-    pub mode : Mode,
+    mode : TransportMode,
 
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
 
@@ -179,6 +179,10 @@ impl Transport {
 
     pub fn solana() -> std::result::Result<JsValue,JsValue> {
         Ok(js_sys::Reflect::get(&Self::workflow()?, &"solana".into())?)
+    }
+
+    pub fn mode(&self) -> TransportMode {
+        self.mode.clone()
     }
 
     pub fn connection(&self) -> std::result::Result<JsValue,JsValue> {
@@ -235,7 +239,7 @@ impl Transport {
 
     pub fn is_emulator(&self)->Result<bool>{
         match self.mode {
-            Mode::Inproc | Mode::Emulator => Ok(true),
+            TransportMode::Inproc | TransportMode::Emulator => Ok(true),
             _=>Ok(false)
         }
     }
@@ -244,7 +248,7 @@ impl Transport {
 
         // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
         match self.mode {
-            Mode::Inproc | Mode::Emulator => {
+            TransportMode::Inproc | TransportMode::Emulator => {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.emulator().lookup(&pubkey).await?;
                 match result {
@@ -264,7 +268,7 @@ impl Transport {
                 //     }
                 // }
             },
-            Mode::Validator => {
+            TransportMode::Validator => {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.lookup_remote_impl(&pubkey).await?;
                 match result{
@@ -297,7 +301,7 @@ impl Transport {
         // }
         // match &self.emulator {
             // Some(simulator) => {
-            Mode::Inproc => {
+            TransportMode::Inproc => {
 
                 let simulator = self.emulator
                     .clone()
@@ -309,7 +313,7 @@ impl Transport {
                 
             },
 
-            Mode::Emulator => {
+            TransportMode::Emulator => {
                 if let Some(key) = self.custom_authority.lock()?.as_ref(){
                     return Ok(key.clone());
                 }
@@ -323,7 +327,7 @@ impl Transport {
                 // Ok(simulator.authority())
             //     unimplemented!("TODO")
             // },
-            Mode::Validator => {
+            TransportMode::Validator => {
                 let wallet_adapter = &self.wallet_adapter()?;
                 let public_key = unsafe{js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))?};
                 let pubkey = Pubkey::new(&utils::try_get_vec_from_bn(&public_key)?);
@@ -356,7 +360,7 @@ impl Transport {
         let (mode, connection, emulator) = 
             if network == "inproc" {
                 let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
-                (Mode::Inproc, JsValue::NULL, Some(emulator))
+                (TransportMode::Inproc, JsValue::NULL, Some(emulator))
             } else if regex::Regex::new(r"^rpcs?://").unwrap().is_match(network) {
                 // let emulator = EmulatorRpcClient::new(network)?;
                 let emulator = Arc::new(EmulatorRpcClient::new(network)?);
@@ -365,7 +369,7 @@ impl Transport {
                 //     emulator.connect(false).await;
                 // });
                 let emulator: Arc<dyn EmulatorInterface> = emulator;
-                (Mode::Emulator, JsValue::NULL, Some(emulator))
+                (TransportMode::Emulator, JsValue::NULL, Some(emulator))
             } else if network == "mainnet-beta" || network == "testnet" || network == "devnet" {
                 let cluster_api_url_fn = js_sys::Reflect::get(&solana,&JsValue::from("clusterApiUrl"))?;
                 let args = Array::new_with_length(1);
@@ -376,13 +380,13 @@ impl Transport {
                 let args = Array::new_with_length(1);
                 args.set(0, url);
                 let ctor = js_sys::Reflect::get(&solana,&JsValue::from("Connection"))?;
-                (Mode::Validator, js_sys::Reflect::construct(&ctor.into(),&args)?, None)
+                (TransportMode::Validator, js_sys::Reflect::construct(&ctor.into(),&args)?, None)
             } else if regex::Regex::new(r"^https?://").unwrap().is_match(network) {
                 let args = Array::new_with_length(1);
                 args.set(0, JsValue::from(network));
                 let ctor = js_sys::Reflect::get(&solana,&JsValue::from("Connection"))?;
                 log_trace!("ctor: {:?}", ctor);
-                (Mode::Validator, js_sys::Reflect::construct(&ctor.into(),&args)?, None)
+                (TransportMode::Validator, js_sys::Reflect::construct(&ctor.into(),&args)?, None)
             } else {
                 return Err(error!("Transport cluster must be mainnet-beta, devnet, testnet, simulation").into());
             };
@@ -451,7 +455,7 @@ impl Transport {
         self.cache.purge(pubkey)?;
         
         match self.mode {
-            Mode::Inproc | Mode::Emulator => {
+            TransportMode::Inproc | TransportMode::Emulator => {
                 // let emulator = self.emulator.as_ref().unwrap();
                 // self.emulator().lookup(pubkey).await
             // Some(emulator) => {
@@ -468,7 +472,7 @@ impl Transport {
                 }
 
             },
-            Mode::Validator => {
+            TransportMode::Validator => {
 
                 let response = {
                     let pk_jsv = self.pubkey_to_jsvalue(&pubkey).unwrap();
@@ -518,7 +522,7 @@ impl Transport {
         log_trace!("transport execute");
         // match &self.emulator {
         match self.mode {
-            Mode::Inproc | Mode::Emulator => {
+            TransportMode::Inproc | TransportMode::Emulator => {
 
             // Some(emulator) => {
 
@@ -542,7 +546,7 @@ impl Transport {
 
                 Ok(())
             },
-            Mode::Validator => {
+            TransportMode::Validator => {
                 log_trace!("native A");
                 let wallet_adapter = &self.wallet_adapter()?;
                 let accounts = &instruction.accounts;

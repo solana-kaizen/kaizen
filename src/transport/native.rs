@@ -21,7 +21,7 @@ use workflow_log::log_trace;
 use workflow_allocator::cache::Cache;
 use solana_program::instruction::Instruction;
 use crate::transport::TransportConfig;
-use crate::transport::Mode;
+use crate::transport::TransportMode;
 use crate::transport::lookup::{LookupHandler,RequestType};
 use crate::transport::{PendingReflector,ReflectPendingFn};
 use crate::wallet::*;
@@ -42,7 +42,7 @@ static mut TRANSPORT : Option<Arc<Transport>> = None;
 
 pub struct Transport
 {
-    mode : Mode,
+    mode : TransportMode,
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
     pub rpc_client : Option<RpcClient>, //Option<(RpcClient,Keypair,Pubkey)>,
     pub wallet : Arc<dyn Wallet>,
@@ -62,13 +62,17 @@ impl Transport {
         Ok(())
     }
 
+    pub fn mode(&self) -> TransportMode {
+        self.mode.clone()
+    }
+
     pub async fn root(&self) -> Pubkey {
         self.config.read().await.root
     }
 
     pub async fn connect(&self, block : bool) -> Result<()> {
         match self.mode {
-            Mode::Emulator => {
+            TransportMode::Emulator => {
                 let emulator = self.emulator
                     .clone()
                     .unwrap()
@@ -101,11 +105,11 @@ impl Transport {
         if network == "inproc" {
             let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id, authority).await?;
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
-            Transport::try_new_with_args(Mode::Inproc, None, Some(emulator), config).await
+            Transport::try_new_with_args(TransportMode::Inproc, None, Some(emulator), config).await
         } else if regex::Regex::new(r"^rpc?://").unwrap().is_match(&network) {
             let emulator = EmulatorRpcClient::new(&network)?;
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(emulator);
-            Transport::try_new_with_args(Mode::Emulator, None, Some(emulator), config).await
+            Transport::try_new_with_args(TransportMode::Emulator, None, Some(emulator), config).await
         } else {
             panic!("Unabel to create transport for network '{}'", network);
         }
@@ -126,7 +130,7 @@ impl Transport {
         if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
             let emulator = EmulatorRpcClient::new(network)?;
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(emulator);
-            Transport::try_new_with_args(Mode::Emulator, None, Some(emulator), config).await
+            Transport::try_new_with_args(TransportMode::Emulator, None, Some(emulator), config).await
             // (Mode::Emulator, None, Some(emulator))
         } else {
 
@@ -139,13 +143,13 @@ impl Transport {
                 config.confirm_transaction_initial_timeout,
             );
         
-            Transport::try_new_with_args(Mode::Validator, Some(client), None, config).await
+            Transport::try_new_with_args(TransportMode::Validator, Some(client), None, config).await
             // (Mode::Validator, Some(client), None)
         }
     }
 
     pub async fn try_new_with_args(
-        mode : Mode,
+        mode : TransportMode,
         rpc_client : Option<RpcClient>,
         emulator : Option<Arc<dyn EmulatorInterface>>,
         config : TransportConfig,
@@ -209,7 +213,7 @@ impl Transport {
     pub async fn balance(&self) -> Result<u64> {
 
         match self.mode {
-            Mode::Inproc | Mode::Emulator => {
+            TransportMode::Inproc | TransportMode::Emulator => {
     
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
                 let result = self.emulator().lookup(&pubkey).await?;
@@ -220,7 +224,7 @@ impl Transport {
                     }
                 }
             },
-            Mode::Validator => {
+            TransportMode::Validator => {
                 // let (client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
                 //     client_ctx
 
@@ -242,7 +246,7 @@ impl Transport {
 
     pub fn get_authority_pubkey_impl(&self) -> Result<Pubkey> {
         match self.mode {
-            Mode::Inproc => {
+            TransportMode::Inproc => {
 
                 let simulator = self.emulator
                     .clone()
@@ -254,7 +258,7 @@ impl Transport {
                 
             },
             
-            Mode::Emulator => {
+            TransportMode::Emulator => {
                 if let Some(key) = self.custom_authority.lock()?.as_ref(){
                     return Ok(key.clone());
                 }
@@ -266,7 +270,7 @@ impl Transport {
                 let payer_pk = payer_kp.pubkey();
                 Ok(payer_pk)
             },
-            Mode::Validator => {
+            TransportMode::Validator => {
 
                 Ok(self.wallet.pubkey()?.clone())
                 // let (_client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
@@ -323,7 +327,7 @@ impl Transport {
         self.cache.purge(pubkey)?;
 
         match self.mode {
-            Mode::Inproc | Mode::Emulator => {
+            TransportMode::Inproc | TransportMode::Emulator => {
 
                 let reference = self.emulator().lookup(pubkey).await?;
                 match reference {
@@ -334,7 +338,7 @@ impl Transport {
                     None => Ok(None)
                 }
             },
-            Mode::Validator => {
+            TransportMode::Validator => {
 
                 let rpc_client = self.rpc_client.as_ref().expect("Missing RPC Client");
                 // let mut account = rpc_client.get_account(pubkey)?;

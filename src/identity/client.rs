@@ -3,7 +3,7 @@ use workflow_allocator::result::Result;
 use solana_program::pubkey::Pubkey;
 // use workflow_allocator::container::*;
 use borsh::*;
-use workflow_log::log_error;
+use workflow_log::{log_error, log_warning};
 
 use crate::emulator::Simulator;
 use crate::identity::program::*;
@@ -23,7 +23,7 @@ pub async fn locate_identity_pubkey(transport : &Arc<Transport>, program_id : &P
 
         Ok(Some(identity_pubkey))
     } else {
-        log_error!("Identity: missing identity proxy account {}", proxy_pubkey);
+        log_warning!("Identity: missing identity proxy account {}", proxy_pubkey);
         Ok(None)
     }
     

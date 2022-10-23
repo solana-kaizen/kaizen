@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 use workflow_allocator::prelude::*;
 use workflow_allocator::result::Result;
+use workflow_allocator::transport::TransportMode;
 
 use crate::error;
 
@@ -14,6 +15,7 @@ pub struct Inner {
     authority_pubkey : Option<Pubkey>,
     identity_pubkey : Option<Pubkey>,
     identity_state : IdentityState,
+    transport_mode : Option<TransportMode>,
 }
 
 impl Inner {
@@ -22,14 +24,16 @@ impl Inner {
             authority_pubkey: None,
             identity_pubkey: None,
             identity_state: IdentityState::Unknown,
+            transport_mode: None,
         }
     }
 
-    pub fn new_with_args(authority_pubkey: &Pubkey, identity_pubkey: &Pubkey) -> Self {
+    pub fn new_with_args(transport_mode: &TransportMode, authority_pubkey: &Pubkey, identity_pubkey: &Pubkey) -> Self {
         Self {
             authority_pubkey: Some(authority_pubkey.clone()),
             identity_pubkey: Some(identity_pubkey.clone()),
             identity_state: IdentityState::Present,
+            transport_mode: Some(transport_mode.clone()),
         }
     }
 }
@@ -48,11 +52,21 @@ impl User {
         }
     }
 
-    pub fn new_with_args(authority_pubkey: &Pubkey, identity_pubkey: &Pubkey, sequencer: &Sequencer) -> Self {
+    pub fn new_with_args(transport_mode: &TransportMode, authority_pubkey: &Pubkey, identity_pubkey: &Pubkey, sequencer: &Sequencer) -> Self {
         User {
-            inner : Arc::new(Mutex::new(Inner::new_with_args(authority_pubkey,identity_pubkey))),
+            inner : Arc::new(Mutex::new(Inner::new_with_args(transport_mode, authority_pubkey,identity_pubkey))),
             sequencer : sequencer.clone(),
         }
+    }
+
+    pub fn transport_mode(&self) -> Option<TransportMode> {
+        self
+            .inner
+            .lock()
+            .unwrap()
+            .transport_mode
+            .as_ref()
+            .cloned()
     }
 
     pub fn identity(&self) -> Pubkey {
@@ -97,11 +111,14 @@ impl User {
                 // let identity = identity.try_load_container::<Identity>()?;
                 // self.sequencer.load_from_identity(&identity_container)?;
 
+                let transport_mode = Transport::global()?.mode();
+
                 self.sequencer.load_from_identity(&identity)?;
                 let mut inner = self.inner.lock()?;
                 inner.identity_state = IdentityState::Present;
                 inner.identity_pubkey = Some(identity.pubkey().clone());
                 inner.authority_pubkey = Some(authority.clone());
+                inner.transport_mode = Some(transport_mode);
                 Ok(Some(identity))
             },
             None => {
