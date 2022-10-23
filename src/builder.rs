@@ -23,6 +23,7 @@ use workflow_allocator::container::{
     PdaCollectionAccessor,
 };
 use workflow_allocator::identity::program::Identity;
+use workflow_log::log_warning;
 // use workflow_allocator::instruction::{
 //     // readonly,
 //     // writable
@@ -370,7 +371,9 @@ impl InstructionBuilder {
     pub fn with_user(self: Arc<Self>, user: &User) -> Arc<Self> {
         let (authority,identity,sequencer) = user
             .builder_args().expect("User record is not ready");
-log_trace!("authority: {:?}, identity: {:?}", authority, identity);
+            
+            log_trace!("authority: {:?}, identity: {:?}", authority, identity);
+
         self
             .with_authority(&authority)
             .with_identity(&identity)
@@ -670,9 +673,15 @@ log_trace!("authority: {:?}, identity: {:?}", authority, identity);
 
             if !inner.generic_template_account_descriptors.is_empty() {
                 if let Some(sequencer) = &inner.sequencer {
+                    log_warning!("# # # # # # # # # # # ADVANCING SEQUENCER {}", sequencer.get());
                     sequencer.advance(inner.generic_template_account_descriptors.len());
+                    log_warning!("# # # # # # # # # # # ADVANCING SEQUENCER {}", sequencer.get());
+                } else {
+                    
+                    log_warning!("# # # # # # # # # # # SEQUENCER IS MISSING!");
                 }
             } else if inner.collection_template_account_descriptors.is_empty() {
+                log_warning!("# # # # # # # # # # # NOT # # # # ADVANCING SEQUENCER!");
                 // if both template sets are empty, there is nothing to do
                 return Ok(());
             }

@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering, AtomicUsize};
+use std::sync::atomic::{Ordering, AtomicUsize};
 use async_std::sync::Mutex;
 // use manual_future::{ManualFuture, ManualFutureCompleter};
 use ahash::AHashMap;

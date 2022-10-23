@@ -3,7 +3,7 @@ use workflow_allocator::result::Result;
 use solana_program::pubkey::Pubkey;
 // use workflow_allocator::container::*;
 use borsh::*;
-use workflow_log::{log_error, log_warning};
+use workflow_log::*;
 
 use crate::emulator::Simulator;
 use crate::identity::program::*;
