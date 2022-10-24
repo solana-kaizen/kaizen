@@ -270,7 +270,7 @@ impl Emulator {
     
     async fn execute_impl(
         &self,
-        authority : &Pubkey,
+        _authority : &Pubkey,
         instruction : &solana_program::instruction::Instruction
     ) -> Result<()> {
         // std::thread::sleep(std::time::Duration::from_millis(5000));

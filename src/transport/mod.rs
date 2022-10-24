@@ -21,6 +21,7 @@ cfg_if! {
             async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn post(&self, tx : Arc<Transaction>) -> Result<()>;
+            async fn post_multiple(&self, tx : Vec<Arc<Transaction>>) -> Result<()>;
 
             fn purge(&self, pubkey:&Pubkey) -> Result<()>;
 
@@ -35,6 +36,7 @@ cfg_if! {
             async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
             async fn post(&self, tx : Arc<Transaction>) -> Result<()>;
+            async fn post_multiple(&self, tx : Vec<Arc<Transaction>>) -> Result<()>;
     
             fn purge(&self, pubkey:&Pubkey) -> Result<()>;
         }

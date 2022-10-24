@@ -384,6 +384,10 @@ impl super::Interface for Transport {
         Ok(())
     }
 
+    async fn post_multiple(&self, txs : Vec<Arc<super::transaction::Transaction>>) -> Result<()> { 
+        self.queue.enqueue_multiple(txs).await
+    }
+
     // async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 
     async fn execute(&self, instruction : &Instruction) -> Result<()> { 
         match &self.emulator {

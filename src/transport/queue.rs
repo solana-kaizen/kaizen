@@ -1,5 +1,7 @@
 
+use std::collections::BTreeMap;
 // use std::collections::BTreeMap;
+use ahash::HashSet;
 use std::sync::Arc;
 use std::sync::Mutex;
 use ahash::HashMap;
@@ -42,7 +44,8 @@ use workflow_log::log_warning;
 #[derive(Clone)]
 pub struct TransactionQueue {
     pub tx_chains : Arc<Mutex<HashMap<Id,Arc<TransactionChain>>>>,
-    pub observers : Arc<Mutex<HashMap<Id,Arc<dyn Observer>>>>
+    pub observers : Arc<Mutex<HashMap<Id,Arc<dyn Observer>>>>,
+    pub tx_chain_processing: Arc<Mutex<HashSet<Id>>>
 }
 
 unsafe impl Send for TransactionQueue {}
@@ -51,7 +54,8 @@ impl TransactionQueue {
     pub fn new() -> TransactionQueue {
         TransactionQueue {
             tx_chains : Arc::new(Mutex::new(HashMap::default())),
-            observers : Arc::new(Mutex::new(HashMap::default()))
+            observers : Arc::new(Mutex::new(HashMap::default())),
+            tx_chain_processing:Arc::new(Mutex::new(HashSet::default())),
         }
     }
 
@@ -95,8 +99,10 @@ impl TransactionQueue {
         let tx_accounts = transaction.accounts()?;
 
         let pending = self.tx_chains.lock()?;
+        log_trace!("find_tx_chain_account_intersection: transaction:{:?}\n pending-chains len = {}", transaction, pending.len());
         for (_,tx_chain) in pending.iter() {
             let accounts = tx_chain.accounts()?;
+            log_trace!("find_tx_chain_account_intersection: chain accounts {:?}, tx_accounts:{:?}", accounts, tx_accounts);
             if accounts.intersection(&tx_accounts).count() > 0 {
                 return Ok(Some(tx_chain.clone()));
             }
@@ -105,7 +111,7 @@ impl TransactionQueue {
         Ok(None)
     }
 
-    pub async fn enqueue(&self, transaction : Arc<Transaction>) -> Result<()> {
+    async fn enqueue_only(&self, transaction : Arc<Transaction>) -> Result<Arc<TransactionChain>> {
     
         let queue = self.clone();
         let tx_chain = {
@@ -133,14 +139,14 @@ impl TransactionQueue {
                 
                     // check if tx chain exists and if it does, enqueue into it
                     if let Some(tx_chain) = queue.find_tx_chain_account_intersection(&transaction)? {
-                        tx_chain.enqueue(&transaction)?;
+                        tx_chain.extend_with(&[transaction.clone()])?;
                         for observer in queue.observers()?.iter() {
                             observer.tx_created(tx_chain.clone(), transaction.clone()).await;
                         }
-                        return Ok(())
+                        Some(tx_chain)
+                    }else{
+                        None
                     }
-
-                    None
                 }
             };
 
@@ -155,7 +161,7 @@ impl TransactionQueue {
                         observer.tx_chain_created(tx_chain.clone()).await;
                     }
 
-                    tx_chain.enqueue(&transaction)?;
+                    tx_chain.extend_with(&[transaction.clone()])?;
                     for observer in queue.observers()?.iter() {
                         observer.tx_created(tx_chain.clone(), transaction.clone()).await;
                     }
@@ -165,32 +171,71 @@ impl TransactionQueue {
             }
         };
 
-        workflow_core::task::spawn(async move {
-            match queue.process_transaction_chain_task(&tx_chain).await {
-                Ok(_) => {
 
-                    // on Success, transaction chain gets destroyed
+        log_trace!("find_tx_chain_account_intersection: id:{}, tx_chain.accounts(): {:?}", tx_chain.id, tx_chain.accounts());
+        Ok(tx_chain)
+    }
 
-                    if tx_chain.is_done().unwrap() {
-                        for observer in queue.observers().unwrap().iter() {
-                            observer.tx_chain_complete(tx_chain.clone()).await;
+    pub async fn enqueue_multiple(&self, transactions : Vec<Arc<Transaction>>) -> Result<()> {
+        let mut chains = BTreeMap::new();
+        for transaction in transactions{
+            let tx_chain = self.enqueue_only(transaction).await?;
+            chains.insert(tx_chain.id, tx_chain);
+        }
+        //log_trace!("chains len: {}", chains.len());
+        //let mut ids = Vec::new();
+        let list:Vec<Arc<TransactionChain>> = chains.into_iter().map(|(_id, chain)|{
+            //ids.push(id);
+            chain
+        }).collect();
+        //log_trace!("chains len2: {}, ids:{:?}", list.len(), ids);
+        self.process_chains(list).await?;
+        Ok(())
+    }
+
+    async fn process_chains(&self, tx_chains:Vec<Arc<TransactionChain>>)->Result<()>{
+        for tx_chain in tx_chains{
+            if self.tx_chain_processing.lock()?.contains(&tx_chain.id){
+                continue;
+            }
+            self.tx_chain_processing.lock()?.insert(tx_chain.id);
+            let queue = self.clone();
+            workflow_core::task::spawn(async move {
+                log_trace!("find_tx_chain_account_intersection chain processing , id: {}", tx_chain.id);
+                match queue.process_transaction_chain_task(&tx_chain).await {
+                    Ok(_) => {
+
+                        // on Success, transaction chain gets destroyed
+
+                        if tx_chain.is_done().unwrap() {
+                            for observer in queue.observers().unwrap().iter() {
+                                observer.tx_chain_complete(tx_chain.clone()).await;
+                            }
+                            
+                            queue.tx_chains.lock().unwrap().remove(&tx_chain.id);
                         }
-                        
-                        queue.tx_chains.lock().unwrap().remove(&tx_chain.id);
+                    }
+                    Err(err) => {
+
+                        // on failure, transaction is re-inserted into the chain as first item
+                        // and the chain is left dangling.  Failed transaction can be resubmitted
+                        // resulting in restarting of the chain processing
+
+                        log_error!("TransactionQueue::process_transaction_task failure: {}", err);
                     }
                 }
-                Err(err) => {
 
-                    // on failure, transaction is re-inserted into the chain as first item
-                    // and the chain is left dangling.  Failed transaction can be resubmitted
-                    // resulting in restarting of the chain processing
+            });
+        }
 
-                    log_error!("TransactionQueue::process_transaction_task failure: {}", err);
-                }
-            }
 
-        });
+        Ok(())
+    }
 
+
+    pub async fn enqueue(&self, transaction : Arc<Transaction>) -> Result<()> {
+        let tx_chain = self.enqueue_only(transaction).await?;
+        self.process_chains(Vec::from([tx_chain])).await?;
         Ok(())
     }
 
@@ -211,7 +256,6 @@ impl TransactionQueue {
                 for observer in observers.iter() {
                     observer.tx_processing(tx_chain.clone(), tx.clone()).await;
                 }
-                       
 
                 let transport = Transport::global()?;
                 let result = match &tx.instruction{

@@ -666,6 +666,9 @@ impl super::Interface for Transport {
     async fn post(&self, tx : Arc<Transaction>) -> Result<()> { 
         self.queue.enqueue(tx).await
     }
+    async fn post_multiple(&self, txs : Vec<Arc<Transaction>>) -> Result<()> { 
+        self.queue.enqueue_multiple(txs).await
+    }
 
     async fn execute(&self, instruction : &Instruction) -> Result<()> { 
         self.execute_impl(instruction).await

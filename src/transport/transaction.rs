@@ -215,7 +215,7 @@ impl TransactionChain {
             inner : Arc::new(Mutex::new(TransactionChainInner::new())),
         }
     }
-    pub fn extend_with(&mut self, transactions : &[Arc<Transaction>]) -> Result<()> {
+    pub fn extend_with(&self, transactions : &[Arc<Transaction>]) -> Result<()> {
         let mut inner = self.inner.lock()?;
         for transaction in transactions.iter() {
             inner.accounts.extend(&transaction.accounts()?);
