@@ -29,11 +29,12 @@ use workflow_allocator::cache::Cache;
 use std::convert::From;
 use crate::transport::{Transaction, TransportConfig};
 use crate::transport::lookup::{LookupHandler,RequestType};
-use crate::transport::{PendingReflector,ReflectPendingFn};
+use crate::transport::{reflector, Reflector};
 use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
 use super::TransportMode;
 use crate::wallet::*;
+
 // use crate::wallet::wasm;
 
 // pub mod router {
@@ -163,7 +164,7 @@ pub struct Transport {
     // #[derivative(Debug="ignore")]
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
 
-    pub pending_reflector : PendingReflector,
+    pub reflector : Reflector,
 
 }
 
@@ -183,6 +184,10 @@ impl Transport {
 
     pub fn mode(&self) -> TransportMode {
         self.mode.clone()
+    }
+
+    pub fn reflector(&self) -> Reflector {
+        self.reflector.clone()
     }
 
     pub fn connection(&self) -> std::result::Result<JsValue,JsValue> {
@@ -415,7 +420,7 @@ impl Transport {
         let cache = Cache::new_with_default_capacity();
         log_trace!("Creating lookup handler");
         let lookup_handler = LookupHandler::new();
-        let pending_reflector = PendingReflector::new();
+        let reflector = Reflector::new();
 
         let config = Arc::new(RwLock::new(config));
 
@@ -429,7 +434,7 @@ impl Transport {
             queue,
             cache,
             lookup_handler,
-            pending_reflector,
+            reflector,
             custom_authority:Arc::new(Mutex::new(None))
         });
 
@@ -524,28 +529,22 @@ impl Transport {
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
 
-            // Some(emulator) => {
-
-                // let fn_entrypoint = {
-                //     match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
-                //         Some(entry_point) => { entry_point.entrypoint_fn },
-                //         None => {
-                //             log_trace!("program entrypoint not found: {:?}",instruction.program_id);
-                //             return Err(error!("program entrypoint not found: {:?}",instruction.program_id).into());
-                //         }
-                //     }
-                // };
-
                 let authority = self.get_authority_pubkey_impl()?;
 
                 self.emulator().execute(
                     &authority,
                     instruction
-                    // &instruction.program_id,
-                    // &instruction.accounts,
-                    // &instruction.data,
-                    // fn_entrypoint
                 ).await?;
+
+                self.reflector.reflect(reflector::Event::WalletRefresh("SOL".into(), authority.clone()));
+                match self.balance().await {
+                    Ok(balance) => {
+                        self.reflector.reflect(reflector::Event::WalletBalance("SOL".into(),authority.clone(),balance));
+                    },
+                    Err(err) => {
+                        log_error!("Unable to update wallet balance: {}", err);
+                    }
+                }
 
                 Ok(())
             },
@@ -634,11 +633,6 @@ impl Transport {
             }
         }
     }
-    
-    pub fn init_reflect_pending_handlers(&self, lookups: Option<ReflectPendingFn>, transactions : Option<ReflectPendingFn>) -> Result<()>{
-        self.pending_reflector.init(lookups,transactions)?;
-        Ok(())
-    }    
 
 }
 
@@ -697,17 +691,13 @@ impl super::Interface for Transport {
     }
 
 
-    // async fn lookup_remote(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_remote(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         let lookup_handler = &self.clone().lookup_handler;
-        // TODO send
-        // Ok(None)
         let request_type = lookup_handler.queue(pubkey).await;
         let result = match request_type {
             RequestType::New(receiver) => {
-                self.pending_reflector.update_lookups(lookup_handler.pending());
-
+                self.reflector.reflect(reflector::Event::PendingLookups(lookup_handler.pending()));
                 let response = self.clone().lookup_remote_impl(pubkey).await;
                 lookup_handler.complete(pubkey, response).await;
                 receiver.recv().await?
@@ -717,7 +707,7 @@ impl super::Interface for Transport {
             }
         };
 
-        self.pending_reflector.update_lookups(lookup_handler.pending());
+        self.reflector.reflect(reflector::Event::PendingLookups(lookup_handler.pending()));
         result
     }
 

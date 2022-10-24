@@ -23,6 +23,9 @@ use workflow_allocator::store;
 use workflow_allocator::utils;
 
 
+// use crate::utils::sol_to_lamports;
+const DEFAULT_TRANSACTION_FEES: u64 = 50_000;
+
 use super::interface::{EmulatorInterface, ExecutionResponse};
 
 #[derive(Clone)]
@@ -270,10 +273,28 @@ impl Emulator {
     
     async fn execute_impl(
         &self,
-        _authority : &Pubkey,
+        authority : &Pubkey,
         instruction : &solana_program::instruction::Instruction
     ) -> Result<()> {
         // std::thread::sleep(std::time::Duration::from_millis(5000));
+
+        let payer = self.store.lookup(authority).await?;
+        match payer {
+            Some(payer) => {
+                // payer.lock().unwrap().lamports.borro
+                let mut lamports = payer.lamports()?;
+                if lamports < DEFAULT_TRANSACTION_FEES {
+                    return Err(ErrorCode::EmulatorInsufficientTransactionFees.into());
+                }
+                // let mut account_data = payer.account_data.lock()?;
+                lamports -= DEFAULT_TRANSACTION_FEES;
+                payer.set_lamports(lamports)?;
+                self.store.store(&payer).await?;
+            },
+            None => {
+                return Err(ErrorCode::EmulatorAuthorityIsMissing.into())
+            }
+        }
 
         // FIXME emulate transaction fee processing
 

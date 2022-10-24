@@ -43,6 +43,8 @@ pub enum ErrorCode {
     NotImplemented,
     ErrorMessage,
     RootAccess,
+    EmulatorAuthorityIsMissing,
+    EmulatorInsufficientTransactionFees,
     IdentityMissing,
     IdentityMissingForAlloc,
     IdentityAccess,

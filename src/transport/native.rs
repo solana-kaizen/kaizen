@@ -2,6 +2,7 @@
 use std::*;
 // use std::sync::Mutex;
 use async_std::sync::RwLock;
+use workflow_log::log_error;
 use std::time::Duration;
 use std::time::SystemTime;
 use std::sync::{Mutex, Arc};
@@ -23,7 +24,8 @@ use solana_program::instruction::Instruction;
 use crate::transport::TransportConfig;
 use crate::transport::TransportMode;
 use crate::transport::lookup::{LookupHandler,RequestType};
-use crate::transport::{PendingReflector,ReflectPendingFn};
+use crate::transport::{reflector,Reflector};
+// use workflow_core::channels::{Sender,Receiver,}
 use crate::wallet::*;
 // use workflow_core::channel::{Sender,Receiver,unbounded};
 
@@ -52,7 +54,7 @@ pub struct Transport
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
     // pub pending_lookups_reflect : Option<Sender<usize>>,
     pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
-    pub pending_reflector : PendingReflector,
+    pub reflector : Reflector,
 }
 
 impl Transport {
@@ -64,6 +66,10 @@ impl Transport {
 
     pub fn mode(&self) -> TransportMode {
         self.mode.clone()
+    }
+
+    pub fn reflector(&self) -> Reflector {
+        self.reflector.clone()
     }
 
     pub async fn root(&self) -> Pubkey {
@@ -162,7 +168,7 @@ impl Transport {
         let cache = Arc::new(Cache::new_with_default_capacity());
         let config = Arc::new(RwLock::new(config));
         let lookup_handler = LookupHandler::new();
-        let pending_reflector = PendingReflector::new();
+        let reflector = Reflector::new();
 
         let transport = Transport {
             mode,
@@ -173,7 +179,7 @@ impl Transport {
             cache,
             queue,
             lookup_handler,
-            pending_reflector,
+            reflector,
             custom_authority:Arc::new(Mutex::new(None))
         };
 
@@ -216,8 +222,7 @@ impl Transport {
             TransportMode::Inproc | TransportMode::Emulator => {
     
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
-                let result = self.emulator().lookup(&pubkey).await?;
-                match result {
+                match self.emulator().lookup(&pubkey).await? {
                     Some(reference) => Ok(reference.lamports()?),
                     None => {
                         return Err(error!("[Emulator] - Transport::balance() unable to lookup account: {}", pubkey)); 
@@ -360,12 +365,6 @@ impl Transport {
         }
     }
 
-
-    pub fn init_reflect_pending_handlers(&self, lookups: Option<ReflectPendingFn>, transactions : Option<ReflectPendingFn>) -> Result<()>{
-        self.pending_reflector.init(lookups,transactions)?;
-        Ok(())
-    }
-
 }
 
 // #[async_trait(?Send)]
@@ -392,11 +391,24 @@ impl super::Interface for Transport {
     async fn execute(&self, instruction : &Instruction) -> Result<()> { 
         match &self.emulator {
             Some(emulator) => {
+
+                
+
                 let authority = self.get_authority_pubkey()?;
                 emulator.clone().execute(
                     &authority,
                     instruction
                 ).await?;
+
+                self.reflector.reflect(reflector::Event::WalletRefresh("SOL".into(),authority.clone()));
+                match self.balance().await {
+                    Ok(balance) => {
+                        self.reflector.reflect(reflector::Event::WalletBalance("SOL".into(),authority.clone(),balance));
+                    },
+                    Err(err) => {
+                        log_error!("Unable to update wallet balance: {}", err);
+                    }
+                }
             },
             None => {
                 
@@ -467,7 +479,7 @@ impl super::Interface for Transport {
         let request_type = lookup_handler.queue(pubkey).await;
         let result = match request_type {
             RequestType::New(receiver) => {
-                self.pending_reflector.update_lookups(lookup_handler.pending());
+                self.reflector.reflect(reflector::Event::PendingLookups(lookup_handler.pending()));
  
                 let response = self.lookup_remote_impl(pubkey).await;
                 lookup_handler.complete(pubkey, response).await;
@@ -477,8 +489,7 @@ impl super::Interface for Transport {
                 receiver.recv().await?
             }
         };
-
-        self.pending_reflector.update_lookups(lookup_handler.pending());
+        self.reflector.reflect(reflector::Event::PendingLookups(lookup_handler.pending()));
         result
     }
 

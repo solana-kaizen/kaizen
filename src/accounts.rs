@@ -138,9 +138,14 @@ mod client {
         pub fn container_type(&self) -> u32 {
             self.container_type
         }
-
+        
         pub fn lamports(&self) -> Result<u64> {
             Ok(self.account_data.lock()?.lamports)
+        }
+        
+        pub fn set_lamports(&self, lamports: u64) -> Result<()> {
+            self.account_data.lock().unwrap().lamports = lamports;
+            Ok(())
         }
 
         pub fn clone_for_program(&self) -> Result<AccountData> {

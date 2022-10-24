@@ -1,45 +1,55 @@
 use std::sync::{Arc, Mutex};
-use workflow_allocator::result::Result;
+use ahash::HashMap;
+use solana_program::pubkey::Pubkey;
+// use workflow_allocator::result::Result;
+use workflow_log::log_error;
+// use super::Event;
+use workflow_core::channel::{Sender,Receiver,unbounded};
+use workflow_core::id::Id;
 
-pub type ReflectPendingFn = Arc<Box<(dyn Fn(usize) + Sync + Send)>>;
-
-pub struct PendingReflector {
-    pub transactions: Arc<Mutex<Option<ReflectPendingFn>>>,
-    pub lookups: Arc<Mutex<Option<ReflectPendingFn>>>,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Event {
+    PendingLookups(usize),
+    PendingTransactions(usize),
+    WalletRefresh(String, Pubkey),
+    WalletBalance(String, Pubkey, u64),
+    Halt,
 }
 
-impl PendingReflector {
+#[derive(Clone)]
+pub struct Reflector {
+    pub channels : Arc<Mutex<HashMap<Id,Sender<Event>>>>,
+}
 
-    pub fn new() -> PendingReflector {
-        PendingReflector {
-            transactions: Arc::new(Mutex::new(None)),
-            lookups: Arc::new(Mutex::new(None)),
+impl Reflector {
+
+    pub fn new() -> Reflector {
+        Reflector {
+            channels : Arc::new(Mutex::new(HashMap::default())),
         }
     }
 
-    pub fn init(&self, lookups: Option<ReflectPendingFn>, transactions : Option<ReflectPendingFn>) -> Result<()>{
-        *self.lookups.lock()? = lookups;
-        *self.transactions.lock()? = transactions;
-        Ok(())
+    pub fn register_event_channel(&self) -> (Id, Sender<Event>, Receiver<Event>) {
+        let (sender, receiver) = unbounded();
+        let id = Id::new();
+        self.channels.lock().unwrap().insert(id, sender.clone());
+        (id, sender, receiver)
     }
 
-    pub fn update_lookups(&self, pending: usize) {
-        let handler = {
-            let handler = self.lookups.lock().unwrap();
-            handler.as_ref().cloned()
-        };
-        if let Some(handler) = handler {
-            handler(pending);
-        }
+    pub fn unregister_event_channel(&self, id: Id) {
+        self.channels.lock().unwrap().remove(&id);
     }
 
-    pub fn update_transactions(&self, pending: usize) {
-        let handler = {
-            let handler = self.transactions.lock().unwrap();
-            handler.as_ref().cloned()
-        };
-        if let Some(handler) = handler {
-            handler(pending);
+
+    pub fn reflect(&self, event : Event) {
+        let channels = self.channels.lock().unwrap();
+        for (_, sender) in channels.iter() {
+            match sender.try_send(event.clone()) {
+                Ok(_) => { },
+                Err(err) => {
+                    log_error!("Transport Reflector: error reflecting event {:?}: {:?}", event, err);
+                }
+            }
         }
     }
 
