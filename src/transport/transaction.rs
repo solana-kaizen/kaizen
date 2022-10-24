@@ -85,8 +85,8 @@ impl std::fmt::Debug for Transaction{
 
 impl Transaction {
 
-    pub fn new_with_callback(name: &str, callback: TxCallback) -> Transaction {
-        let meta = TransactionMeta::new_without_accounts();
+    pub fn new_with_callback(name: &str, meta:Option<TransactionMeta>, callback: TxCallback) -> Transaction {
+        let meta = meta.unwrap_or(TransactionMeta::new_without_accounts());
         let (sender,receiver) = unbounded::<TransactionResult>();
         Transaction {
             name : name.to_string(),
