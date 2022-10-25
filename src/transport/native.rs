@@ -395,11 +395,12 @@ impl super::Interface for Transport {
                 
 
                 let authority = self.get_authority_pubkey()?;
-                emulator.clone().execute(
+                let resp = emulator.clone().execute(
                     &authority,
                     instruction
                 ).await?;
 
+                self.reflector.reflect(reflector::Event::EmulatorLogs(resp.logs));
                 self.reflector.reflect(reflector::Event::WalletRefresh("SOL".into(),authority.clone()));
                 match self.balance().await {
                     Ok(balance) => {

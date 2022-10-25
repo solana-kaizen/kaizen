@@ -13,6 +13,7 @@ pub enum Event {
     PendingTransactions(usize),
     WalletRefresh(String, Pubkey),
     WalletBalance(String, Pubkey, u64),
+    EmulatorLogs(Vec<String>),
     Halt,
 }
 

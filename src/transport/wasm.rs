@@ -531,11 +531,12 @@ impl Transport {
 
                 let authority = self.get_authority_pubkey_impl()?;
 
-                self.emulator().execute(
+                let resp = self.emulator().execute(
                     &authority,
                     instruction
                 ).await?;
 
+                self.reflector.reflect(reflector::Event::EmulatorLogs(resp.logs));
                 self.reflector.reflect(reflector::Event::WalletRefresh("SOL".into(), authority.clone()));
                 match self.balance().await {
                     Ok(balance) => {
