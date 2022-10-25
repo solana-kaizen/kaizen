@@ -7,29 +7,33 @@ use workflow_allocator::result::Result;
 
 
 #[workflow_async_trait]
-pub trait AsyncAccountAggregator {
+pub trait AsyncAccountAggregatorInterface {
     type Key;
     async fn writable_account_metas(&self,key : Option<&Self::Key>) -> Result<Vec<AccountMeta>>;
     async fn readonly_account_metas(&self,key : Option<&Self::Key>) -> Result<Vec<AccountMeta>>;
 }
 
-pub trait AccountAggregator {
-    type Aggregator : AsyncAccountAggregator;
+pub trait AccountAggregatorInterface {
+    type Aggregator : AsyncAccountAggregatorInterface;
     fn aggregator(&self) -> Result<Arc<Self::Aggregator>>;
 }
 
-// #[async_trait(?Send)]
-#[workflow_async_trait]
-pub trait PdaCollectionCreator {
-    async fn writable_account_meta(&self, program_id : &Pubkey) -> Result<(AccountMeta,u8)>;
-    async fn writable_account_meta_range(&self, program_id : &Pubkey, items : usize) -> Result<Vec<(AccountMeta,u8)>>;
+pub trait PdaCollectionCreatorInterface {
+    type Creator : AsyncPdaCollectionCreatorInterface;
+    fn creator(&self, _program_id : &Pubkey, _number_of_accounts : usize) -> Result<Arc<Self::Creator>>;
 }
 
-// #[async_trait(?Send)]
 #[workflow_async_trait]
+pub trait AsyncPdaCollectionCreatorInterface {
+    async fn writable_accounts_meta(&self) -> Result<Vec<(AccountMeta,u8)>>;
+}
 
-pub trait PdaCollectionAccessor {
-    async fn writable_account_meta(&self, program_id : &Pubkey, index : usize) -> Result<AccountMeta>;
-    async fn writable_account_meta_range(&self, program_id : &Pubkey, range : std::ops::Range<usize>) -> Result<Vec<AccountMeta>>;
-    // async fn readonly_account_metas(&self, index: usize) -> Result<Vec<AccountMeta>>;
+pub trait PdaCollectionAccessorInterface {
+    type Accessor : AsyncPdaCollectionAccessorInterface;
+    fn accessor(&self, _program_id : &Pubkey, index_range : std::ops::Range<usize>) -> Result<Arc<Self::Accessor>>;
+}
+
+#[workflow_async_trait]
+pub trait AsyncPdaCollectionAccessorInterface {
+    async fn writable_accounts_meta(&self) -> Result<Vec<AccountMeta>>;
 }

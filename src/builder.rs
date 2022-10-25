@@ -17,10 +17,12 @@ use workflow_allocator::prelude::*;
 use workflow_allocator::address::AddressDomain;
 use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
 use workflow_allocator::container::{
-    AccountAggregator,
-    AsyncAccountAggregator,
-    PdaCollectionCreator,
-    PdaCollectionAccessor,
+    AccountAggregatorInterface,
+    AsyncAccountAggregatorInterface,
+    PdaCollectionCreatorInterface,
+    AsyncPdaCollectionCreatorInterface,
+    PdaCollectionAccessorInterface,
+    AsyncPdaCollectionAccessorInterface,
 };
 use workflow_allocator::identity::program::Identity;
 use workflow_log::log_warning;
@@ -537,33 +539,40 @@ impl InstructionBuilder {
         self
     }
 
-    pub async fn with_collection_template<A>(self: Arc<Self>, pda_collection_builder : &A) -> Result<Arc<Self>> 
-    where A: PdaCollectionCreator
+    pub async fn with_collection_template<A>(self: Arc<Self>, pda_collection : &A) -> Result<Arc<Self>> 
+    where A: PdaCollectionCreatorInterface
     {
-        // let inner = self.inner();
-        // let program_id = { self.inner().program_id };
-        let (meta, bump) = pda_collection_builder.writable_account_meta(&self.program_id()).await?;
-        self.inner().collection_template_account_descriptors.push((meta,bump));
+        self.with_collection_templates(pda_collection,1).await
+    }
+
+    pub async fn with_collection_templates<A>(self: Arc<Self>, pda_collection : &A, number_of_accounts : usize) -> Result<Arc<Self>> 
+    where A: PdaCollectionCreatorInterface
+    {
+        for _ in 0..number_of_accounts {
+            let collection_account_descriptors = pda_collection.creator(&self.program_id(),1)?.writable_accounts_meta().await?;
+            self.inner().collection_template_account_descriptors.extend_from_slice(&collection_account_descriptors);
+        }
         Ok(self)
     }
 
     pub async fn with_collection_index<A>(self : Arc<Self>, pda_collection_accessor : &A, idx : usize) -> Result<Arc<Self>> 
-    where A: PdaCollectionAccessor
+    where A: PdaCollectionAccessorInterface
     {
-        let meta = pda_collection_accessor.writable_account_meta(&self.program_id(), idx).await?;
-        Ok(self.with_collection_accounts(&[meta]))
+        self.with_collection_index_range(pda_collection_accessor, idx..idx+1).await
+        // let meta = pda_collection_accessor.accessor(&self.program_id(), idx..idx+1).writable_account_meta().await?;
+        // Ok(self.with_collection_accounts(&[meta]))
     }
 
     pub async fn with_collection_index_range<A>(self : Arc<Self>, pda_collection_accessor : &A, range : std::ops::Range<usize>) -> Result<Arc<Self>> 
-    where A: PdaCollectionAccessor
+    where A: PdaCollectionAccessorInterface
     {
-        let list = pda_collection_accessor.writable_account_meta_range(&self.program_id(), range).await?;
+        let list = pda_collection_accessor.accessor(&self.program_id(), range)?.writable_accounts_meta().await?;
         Ok(self.with_collection_accounts(&list))
     }
 
     #[inline(always)]
     pub async fn with_writable_account_aggregator<A>(self : Arc<Self>, aggregator : &A) -> Result<Arc<Self>> 
-    where A: AccountAggregator
+    where A: AccountAggregatorInterface
     {
         let list = aggregator.aggregator()?.writable_account_metas(None).await?;
         Ok(self.with_index_accounts(&list))
@@ -571,7 +580,7 @@ impl InstructionBuilder {
 
     #[inline(always)]
     pub async fn with_readonly_account_aggregator<A>(self : Arc<Self>, aggregator : &A) -> Result<Arc<Self>> 
-    where A: AccountAggregator
+    where A: AccountAggregatorInterface
     {
         let list = aggregator.aggregator()?.readonly_account_metas(None).await?;
         Ok(self.with_index_accounts(&list))
@@ -579,7 +588,7 @@ impl InstructionBuilder {
 
     #[inline(always)]
     pub async fn with_account_aggregators<A>(self : Arc<Self>, accessors : &[(bool,A)]) -> Result<Arc<Self>> 
-    where A: AccountAggregator
+    where A: AccountAggregatorInterface
     {
         let mut list = Vec::new();
         for (writable,accessor) in accessors.iter() {
@@ -595,7 +604,7 @@ impl InstructionBuilder {
 
     #[inline(always)]
     pub async fn with_async_account_aggregators<A>(self : Arc<Self>, aggregators : &[(bool,Arc<A>)]) -> Result<Arc<Self>> 
-    where A: AsyncAccountAggregator
+    where A: AsyncAccountAggregatorInterface
     {
         let mut list = Vec::new();
         for (writable,aggregator) in aggregators.iter() {

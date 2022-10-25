@@ -258,7 +258,7 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
         use solana_program::instruction::AccountMeta;
-        use workflow_allocator::container::{AccountAggregator,AsyncAccountAggregator};
+        use workflow_allocator::container::{AccountAggregatorInterface,AsyncAccountAggregatorInterface};
 
         impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
         where M : PubkeyCollectionMetaTrait
@@ -352,7 +352,7 @@ cfg_if! {
         //     }
         // }
 
-        impl<'info,'refs,M> AccountAggregator for PubkeyCollectionInterface<'info,'refs,M> 
+        impl<'info,'refs,M> AccountAggregatorInterface for PubkeyCollectionInterface<'info,'refs,M> 
         where M : PubkeyCollectionMetaTrait {
             type Aggregator = PubkeyCollectionAsyncAccountAggregator;
 
@@ -375,7 +375,7 @@ cfg_if! {
         }
 
         #[workflow_async_trait]
-        impl AsyncAccountAggregator for PubkeyCollectionAsyncAccountAggregator//PubkeyCollectionInterface<'info,'refs,M> 
+        impl AsyncAccountAggregatorInterface for PubkeyCollectionAsyncAccountAggregator//PubkeyCollectionInterface<'info,'refs,M> 
         // impl<'info,'refs,M> AccountAggregator for GenericAccountAggregator//PubkeyCollectionInterface<'info,'refs,M> 
         // where T : Copy + Eq + PartialEq + Ord + 'info
         // where M : PubkeyCollectionMetaTrait
