@@ -176,44 +176,24 @@ where M: CollectionMeta
         }
 
         let next_index = self.meta.get_len() + 1;
-        log_info!("######################### stard {}",next_index);
-        // let seed_bump = &[seed_bump];
+        // log_info!("pda collection creating index {} starting...",next_index);
         let tpl_seeds = self.get_seed_at(&next_index, Some(tpl_seed_suffix));
-        // program_address_data_bytes.push(&[seed_bump]);
-        // let tpl_program_address_data = ProgramAddressData::from_bytes(program_address_data_bytes.as_slice());
-
-        // let pda = Pubkey::create_program_address(
-        //     &tpl_seeds,
-        //     // &[tpl_program_address_data.seed],
-        //     ctx.program_id
-        // )?;
-
-        // let tpl_account_info = match ctx.locate_index_account(&pda) {
-        //     Some(account_info) => account_info,
-        //     None => {
-        //         return Err(error_code!(ErrorCode::AccountCollectionNotFound))
-        //     }
-        // };
-
+        
         let data_len = match data_len {
             Some(data_len) => data_len,
             None => T::initial_data_len()
         };
-
         let allocation_args = AccountAllocationArgs::new(AddressDomain::None);
-
-        // let account_info = 
         ctx.try_create_pda_with_args(
             data_len,
             &allocation_args,
             &tpl_seeds,
-            // tpl_program_address_data,
             tpl_account_info,
             false
         )?;
 
         self.meta.set_len(next_index);
-log_info!("######################### end {}",next_index);
+        // log_info!("pda collection creating index {} ...done",next_index);
         let container = T::try_create(tpl_account_info)?;
         Ok(container)
     }

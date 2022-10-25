@@ -682,15 +682,12 @@ impl InstructionBuilder {
 
             if !inner.generic_template_account_descriptors.is_empty() {
                 if let Some(sequencer) = &inner.sequencer {
-                    log_warning!("# # # # # # # # # # # ADVANCING SEQUENCER {}", sequencer.get());
                     sequencer.advance(inner.generic_template_account_descriptors.len());
-                    log_warning!("# # # # # # # # # # # ADVANCING SEQUENCER {}", sequencer.get());
+                    // log_trace!("Advancing instruction builder sequencer {}", sequencer.get());
                 } else {
-                    
-                    log_warning!("# # # # # # # # # # # SEQUENCER IS MISSING!");
+                    log_warning!("InstructionBuilder::seal()? WARNING: missing sequencer!");
                 }
             } else if inner.collection_template_account_descriptors.is_empty() {
-                log_warning!("# # # # # # # # # # # NOT # # # # ADVANCING SEQUENCER!");
                 // if both template sets are empty, there is nothing to do
                 return Ok(());
             }
