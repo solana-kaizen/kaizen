@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction;
 use workflow_allocator::result::Result;
-use workflow_allocator::accounts::{AccountDataReference,AccountDescriptor};
+use workflow_allocator::accounts::{AccountDataReference,AccountDescriptorList};
 use downcast::{downcast_sync, AnySync};
 
 

@@ -412,7 +412,13 @@ mod client {
 
     // impl Into<AccountDescriptor> for AccountData {
     //     fn into(self) -> AccountDescriptor {
-    impl Into<AccountDescriptor> for &AccountData {
+        impl Into<AccountDescriptor> for AccountData {
+            fn into(self) -> AccountDescriptor {
+                (&self).into()
+            }
+        }
+
+        impl Into<AccountDescriptor> for &AccountData {
         fn into(self) -> AccountDescriptor {
             AccountDescriptor {
                 key : self.key,
@@ -500,6 +506,7 @@ mod client {
         }
     }
 
+    #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub struct AccountDescriptorList {
         list : Vec<AccountDescriptor>
     }
@@ -511,9 +518,11 @@ mod client {
             }
         }
 
-        pub fn to_stdout(&self) {
+        pub fn to_log(&self) {
+            let mut seq = 0;
             for descriptor in &self.list {
-                log_info!("{}", descriptor.info());
+                log_info!("[store] [{:>8}] {}", seq, descriptor.info());
+                seq += 1;
             }
         }
     }

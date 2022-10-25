@@ -2,7 +2,7 @@ use cfg_if::cfg_if;
 use std::sync::Arc;
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
-use workflow_allocator::accounts::AccountDataReference;
+use workflow_allocator::accounts::{AccountDataReference,AccountDescriptorList};
 use workflow_allocator::result::Result;
 
 mod memorystore;
@@ -20,7 +20,8 @@ pub trait Store : Sync + Send // : Sized
 //     Self : Sized,
 //     Arc<Self>: Sized
 {
-    async fn list(&self) -> Result<()>;
+    // async fn list(&self) -> Result<()>;
+    async fn list(&self) -> Result<AccountDescriptorList>;
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn store(&self, reference: &Arc<AccountDataReference>) -> Result<()>;
     async fn purge(&self, pubkey: &Pubkey) -> Result<()>;

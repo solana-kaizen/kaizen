@@ -1,3 +1,5 @@
+use crate::accounts::AccountDescriptor;
+
 use super::*;
 // use async_std::fs;
 // use std::env ;
@@ -114,14 +116,20 @@ impl MemoryStore {
 #[async_trait]
 impl Store for MemoryStore {
 
-    async fn list(&self) -> Result<()> {
+    async fn list(&self) -> Result<AccountDescriptorList> {
         let map = self.map.read().await;
-        let mut seq: usize = 1;
+        let mut account_descriptors = Vec::new();
+        // let mut seq: usize = 1;
         for (_pubkey, reference) in map.iter() {
-            log_trace!("[store] [{:>8}] ... {}", seq, reference.account_data.lock()?.info());
-            seq += 1;
+
+            let account_data = reference.account_data.lock()?;
+            let descriptor: AccountDescriptor = (&*account_data).into();
+            account_descriptors.push(descriptor);
+
+            // log_trace!("[store] [{:>8}] ... {}", seq, reference.account_data.lock()?.info());
+            // seq += 1;
         }
-        Ok(())
+        Ok(AccountDescriptorList::new(account_descriptors)) 
     }
 
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {

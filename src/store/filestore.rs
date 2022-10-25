@@ -1,4 +1,5 @@
 use crate::accounts::AccountDataStore;
+use crate::accounts::AccountDescriptor;
 
 use super::*;
 use async_std::path::Path;
@@ -52,7 +53,7 @@ impl FileStore {
 #[async_trait]
 impl Store for FileStore {
 
-    async fn list(&self) -> Result<()> { 
+    async fn list(&self) -> Result<AccountDescriptorList> { 
     
         let mut entries = std::fs::read_dir(&self.data_folder)?
             .map(|res| res.map(|e| e.path()))
@@ -63,17 +64,20 @@ impl Store for FileStore {
 
         entries.sort();
 
+        let mut account_descriptors = Vec::new();
         for entry in entries {
             let data = fs::read(entry).await?;
             let account_data_store = AccountDataStore::try_from_slice(&data)?;
             let account_data = AccountData::from(&account_data_store);
-            let info = account_data.info();
-            log_info!("{}", info);
+            let descriptor: AccountDescriptor = account_data.into();
+            account_descriptors.push(descriptor);
+            // let info = account_data.info();
+            // log_info!("{}", info);
 
             // println!("{}", entry.into_os_string().into_string()?);
         }
         
-        Ok(()) 
+        Ok(AccountDescriptorList::new(account_descriptors)) 
     }
 
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
