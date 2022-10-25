@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use borsh::{BorshSerialize,BorshDeserialize};
 use std::sync::Arc;
 use async_trait::async_trait;
-use solana_program::{pubkey::Pubkey, stake_history::Epoch};
+use solana_program::pubkey::Pubkey;
 use solana_program::instruction;
 use workflow_allocator::result::Result;
 use workflow_allocator::accounts::{AccountDataReference,AccountDescriptor};

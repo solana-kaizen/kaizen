@@ -118,7 +118,7 @@ impl Store for MemoryStore {
         let map = self.map.read().await;
         let mut seq: usize = 1;
         for (_pubkey, reference) in map.iter() {
-            log_trace!("[store] [{:>8}] ... {}", seq, reference.account_data.lock()?.info()?);
+            log_trace!("[store] [{:>8}] ... {}", seq, reference.account_data.lock()?.info());
             seq += 1;
         }
         Ok(())

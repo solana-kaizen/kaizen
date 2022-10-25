@@ -430,7 +430,7 @@ mod client {
 
     impl AccountDescriptor {
         
-        pub fn info(&self) -> Result<String> {
+        pub fn info(&self) -> String {
             let rent = Rent::default();
             let sol = format!("{:>20.10}",crate::utils::lamports_to_sol(self.lamports));
             let minimum_balance = rent.minimum_balance(self.data_len as usize);
@@ -448,12 +448,12 @@ mod client {
             // let container_type = self.container_type();
             let (container_type, container_type_name) = match self.container_type {
                 Some(container_type) => {
-                    match workflow_allocator::container::registry::lookup(container_type)? {
-                        Some(declaration) => {
+                    match workflow_allocator::container::registry::lookup(container_type) {
+                        Ok(Some(declaration)) => {
                             let container_type = format!("0x{:08x}", container_type);
                             (container_type, declaration.name)
                         }
-                        None => ("n/a".to_string(), "n/a"),
+                        _ => ("n/a".to_string(), "n/a"),
                     }
                 }
                 None => {
@@ -496,10 +496,27 @@ mod client {
                 sol,
                 status
             );
-            Ok(v.into())
+            v.into()
         }
     }
 
+    pub struct AccountDescriptorList {
+        list : Vec<AccountDescriptor>
+    }
+
+    impl AccountDescriptorList {
+        pub fn new(list : Vec<AccountDescriptor>) -> AccountDescriptorList {
+            AccountDescriptorList {
+                list
+            }
+        }
+
+        pub fn to_stdout(&self) {
+            for descriptor in &self.list {
+                log_info!("{}", descriptor.info());
+            }
+        }
+    }
 
     #[cfg(not(target_arch = "bpf"))]
     #[derive(Debug, Clone)]
@@ -555,7 +572,7 @@ mod client {
             }
         }
 
-        pub fn info(&self) -> Result<String> {
+        pub fn info(&self) -> String {
             let descriptor: AccountDescriptor = self.into();
             descriptor.info()
         }

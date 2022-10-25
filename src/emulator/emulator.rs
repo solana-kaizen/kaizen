@@ -190,7 +190,7 @@ impl Emulator {
             let mut account_data = match self.lookup(&pubkey).await? {
                 Some(reference) => {
                     let account_data = reference.clone_for_program()?;//account_data.clone_for_prog//read().await.ok_or(error!("account read lock failed"))?.clone_for_program();
-                    log_trace!("[store] ...  loading: {}", account_data.info()?);
+                    log_trace!("[store] ...  loading: {}", account_data.info());
                     account_data
                 },
                 None => {
@@ -201,9 +201,9 @@ impl Emulator {
                     );
 
                     if pubkey == Pubkey::default() {
-                        log_trace!("[store] ...   system: {}", account_data.info()?);
+                        log_trace!("[store] ...   system: {}", account_data.info());
                     } else {
-                        log_trace!("[store] ... template: {}", account_data.info()?);
+                        log_trace!("[store] ... template: {}", account_data.info());
                     }
 
                     account_data
@@ -245,7 +245,7 @@ impl Emulator {
                 let rent = Rent::default();
                 let minimum_balance = rent.minimum_balance(account_data.data_len());
                 if account_data.lamports < minimum_balance && *pubkey != Pubkey::default(){
-                    log_trace!("[store] ...  purging: {}", account_data.info()?);
+                    log_trace!("[store] ...  purging: {}", account_data.info());
                     log_trace!("{} {}",style("purging account (below minimum balance):").white().on_red(),pubkey.to_string());
                     log_trace!("data len: {} balance needed: {}  balance in the account: {}", account_data.data_len(), minimum_balance, account_data.lamports);
                     log_trace!("account type: 0x{:08x}",account_data.container_type().unwrap_or(0));
@@ -261,7 +261,7 @@ impl Emulator {
             }
 
             let account_data_for_storage = account_data.clone_for_storage();
-            log_trace!("[store] ...   saving: {}", account_data.info()?);
+            log_trace!("[store] ...   saving: {}", account_data.info());
             self.store.store(
                 &Arc::new(AccountDataReference::new(account_data_for_storage))
             ).await?;

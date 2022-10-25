@@ -67,7 +67,7 @@ impl Store for FileStore {
             let data = fs::read(entry).await?;
             let account_data_store = AccountDataStore::try_from_slice(&data)?;
             let account_data = AccountData::from(&account_data_store);
-            let info = account_data.info()?;
+            let info = account_data.info();
             log_info!("{}", info);
 
             // println!("{}", entry.into_os_string().into_string()?);
