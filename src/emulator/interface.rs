@@ -2,10 +2,10 @@ use serde::{Deserialize, Serialize};
 use borsh::{BorshSerialize,BorshDeserialize};
 use std::sync::Arc;
 use async_trait::async_trait;
-use solana_program::pubkey::Pubkey;
+use solana_program::{pubkey::Pubkey, stake_history::Epoch};
 use solana_program::instruction;
 use workflow_allocator::result::Result;
-use workflow_allocator::accounts::AccountDataReference;
+use workflow_allocator::accounts::{AccountDataReference,AccountDescriptor};
 use downcast::{downcast_sync, AnySync};
 
 
@@ -43,6 +43,8 @@ pub trait EmulatorInterface : AnySync
     /// Please not that in Unit Tests, authority account is automatically funded, i.e. unit tests do not
     /// require presense of SystemProgram account.
     async fn fund(&self, key: &Pubkey, owner: &Pubkey, lamports: u64) -> Result<()>;
+
+    // async fn list(&self) -> Result<Vec<AccountDescriptor>>;
 }
 
 downcast_sync!(dyn EmulatorInterface);

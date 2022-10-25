@@ -119,7 +119,6 @@ mod client {
                 account_data.container_type().unwrap_or(0)
             } else { 0 };
 
-
             AccountDataReference {
                 key,
                 timestamp,
@@ -397,6 +396,111 @@ mod client {
         }
     }
 
+    
+    #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+    pub struct AccountDescriptor {
+        pub key: Pubkey,
+        pub owner: Pubkey,
+        pub lamports: u64,
+        pub data_len: u64,
+        pub rent_epoch: Epoch,
+        pub executable: bool,
+        pub is_signer: bool,
+        pub is_writable: bool,
+        pub container_type: Option<u32>,
+    }
+
+    // impl Into<AccountDescriptor> for AccountData {
+    //     fn into(self) -> AccountDescriptor {
+    impl Into<AccountDescriptor> for &AccountData {
+        fn into(self) -> AccountDescriptor {
+            AccountDescriptor {
+                key : self.key,
+                owner: self.owner,
+                lamports: self.lamports,
+                data_len: self.data_len() as u64,
+                rent_epoch: self.rent_epoch,
+                executable: self.executable,
+                is_signer: self.is_signer,
+                is_writable: self.is_writable,
+                container_type : self.container_type(),
+            }
+        }
+    }
+
+    impl AccountDescriptor {
+        
+        pub fn info(&self) -> Result<String> {
+            let rent = Rent::default();
+            let sol = format!("{:>20.10}",crate::utils::lamports_to_sol(self.lamports));
+            let minimum_balance = rent.minimum_balance(self.data_len as usize);
+            let (sol, status) = if self.lamports == minimum_balance {
+                (style(sol).green(), style("").green())
+            } else if self.lamports < minimum_balance {
+                (
+                    style(sol).red(),
+                    style("~").red(),
+                )
+            } else {
+                (style(sol).yellow(), style("").yellow())
+            };
+
+            // let container_type = self.container_type();
+            let (container_type, container_type_name) = match self.container_type {
+                Some(container_type) => {
+                    match workflow_allocator::container::registry::lookup(container_type)? {
+                        Some(declaration) => {
+                            let container_type = format!("0x{:08x}", container_type);
+                            (container_type, declaration.name)
+                        }
+                        None => ("n/a".to_string(), "n/a"),
+                    }
+                }
+                None => {
+                    match self.key.to_string().as_str() {
+                        "11111111111111111111111111111111" => ("-".to_string(), "□ System Program"),
+                        "Config1111111111111111111111111111111111111" => ("-".to_string(), "□ Config"),
+                        "Stake11111111111111111111111111111111111111" => ("-".to_string(), "□ Stake"),
+                        "Vote111111111111111111111111111111111111111" => ("-".to_string(), "□ Vote"),
+                        "BPFLoaderUpgradeab1e11111111111111111111111" => ("-".to_string(), "□ BPFLoaderUpgradeable"),
+                        "Ed25519SigVerify111111111111111111111111111" => ("-".to_string(), "□ Ed25519SigVerify"),
+                        "KeccakSecp256k11111111111111111111111111111" => ("-".to_string(), "□ KeccakSecp256k"),
+                        "SysvarC1ock11111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Clock"),
+                        "SysvarEpochSchedu1e111111111111111111111111" => ("-".to_string(), "□ Sysvar Epoch Schedule"),
+                        "SysvarFees111111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Fees"),
+                        "Sysvar1nstructions1111111111111111111111111" => ("-".to_string(), "□ Sysvar Instructions"),
+                        "SysvarRecentB1ockHashes11111111111111111111" => ("-".to_string(), "□ Sysvar Recent Block Hashes"),
+                        "SysvarRent111111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Rent"),
+                        "SysvarS1otHashes111111111111111111111111111" => ("-".to_string(), "□ Sysvar Slot Hashes"),
+                        "SysvarS1otHistory11111111111111111111111111" => ("-".to_string(), "□ Sysvar Slot History"),
+                        "SysvarStakeHistory1111111111111111111111111" => ("-".to_string(), "□ Sysvar Stake History"),
+                        _ => ("-".to_string(), "-")
+                    }
+                },
+            };
+
+            let key_str = self.key.to_string();
+            let key_str = key_str.as_str();
+            let key_str = format!(
+                "{}....{}",
+                &key_str[0..8],
+                &key_str[key_str.len() - 8..key_str.len()]
+            );
+
+            let v = format!(
+                "{:>20} {:>10} {:<32} space: {:>6} {:>8} SOL {}",
+                style(&key_str).yellow(),
+                container_type,
+                container_type_name,
+                style(self.data_len).cyan(),
+                sol,
+                status
+            );
+            Ok(v.into())
+        }
+    }
+
+
     #[cfg(not(target_arch = "bpf"))]
     #[derive(Debug, Clone)]
     pub struct AccountData {
@@ -452,72 +556,8 @@ mod client {
         }
 
         pub fn info(&self) -> Result<String> {
-            let rent = Rent::default();
-            let sol = format!("{:>20.10}",crate::utils::lamports_to_sol(self.lamports));
-            let minimum_balance = rent.minimum_balance(self.data_len());
-            let (sol, status) = if self.lamports == minimum_balance {
-                (style(sol).green(), style("").green())
-            } else if self.lamports < minimum_balance {
-                (
-                    style(sol).red(),
-                    style("~").red(),
-                )
-            } else {
-                (style(sol).yellow(), style("").yellow())
-            };
-
-            let container_type = self.container_type();
-            let (container_type, container_type_name) = match container_type {
-                Some(container_type) => {
-                    match workflow_allocator::container::registry::lookup(container_type)? {
-                        Some(declaration) => {
-                            let container_type = format!("0x{:08x}", container_type);
-                            (container_type, declaration.name)
-                        }
-                        None => ("n/a".to_string(), "n/a"),
-                    }
-                }
-                None => {
-                    match self.key.to_string().as_str() {
-                        "11111111111111111111111111111111" => ("-".to_string(), "□ System Program"),
-                        "Config1111111111111111111111111111111111111" => ("-".to_string(), "□ Config"),
-                        "Stake11111111111111111111111111111111111111" => ("-".to_string(), "□ Stake"),
-                        "Vote111111111111111111111111111111111111111" => ("-".to_string(), "□ Vote"),
-                        "BPFLoaderUpgradeab1e11111111111111111111111" => ("-".to_string(), "□ BPFLoaderUpgradeable"),
-                        "Ed25519SigVerify111111111111111111111111111" => ("-".to_string(), "□ Ed25519SigVerify"),
-                        "KeccakSecp256k11111111111111111111111111111" => ("-".to_string(), "□ KeccakSecp256k"),
-                        "SysvarC1ock11111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Clock"),
-                        "SysvarEpochSchedu1e111111111111111111111111" => ("-".to_string(), "□ Sysvar Epoch Schedule"),
-                        "SysvarFees111111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Fees"),
-                        "Sysvar1nstructions1111111111111111111111111" => ("-".to_string(), "□ Sysvar Instructions"),
-                        "SysvarRecentB1ockHashes11111111111111111111" => ("-".to_string(), "□ Sysvar Recent Block Hashes"),
-                        "SysvarRent111111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Rent"),
-                        "SysvarS1otHashes111111111111111111111111111" => ("-".to_string(), "□ Sysvar Slot Hashes"),
-                        "SysvarS1otHistory11111111111111111111111111" => ("-".to_string(), "□ Sysvar Slot History"),
-                        "SysvarStakeHistory1111111111111111111111111" => ("-".to_string(), "□ Sysvar Stake History"),
-                        _ => ("-".to_string(), "-")
-                    }
-                },
-            };
-
-            let key_str = self.key.to_string();
-            let key_str = key_str.as_str();
-            let key_str = format!(
-                "{}....{}",
-                &key_str[0..8],
-                &key_str[key_str.len() - 8..key_str.len()]
-            );
-
-            let v = format!(
-                "{:>20} {:>10} {:<32} space: {:>6} {:>8} SOL {}",
-                style(&key_str).yellow(),
-                container_type,
-                container_type_name,
-                style(self.data_len()).cyan(),
-                sol,
-                status
-            );
-            Ok(v.into())
+            let descriptor: AccountDescriptor = self.into();
+            descriptor.info()
         }
 
         pub fn with_lamports(mut self, lamports: u64) -> Self {
