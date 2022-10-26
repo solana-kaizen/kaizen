@@ -318,7 +318,13 @@ where T: Copy + 'info
         let new_byte_len = self.get_byte_offset_at_idx(records_after);
 
         if new_byte_len > capacity {
-            log_trace!("[linear store] resizing...  current: {} bytes,  new: {} bytes, delta: {}", capacity, new_byte_len, new_byte_len-capacity);
+            log_trace!("[linear store] resizing...  current: {} bytes,  new: {} bytes, delta: {} size_of<T>: {}", 
+                capacity,
+                new_byte_len,
+                new_byte_len-capacity,
+                mem::size_of::<T>()
+            );
+            
             // log_trace!("account before: {:#?}",self.account);
             
             // println!("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-");
@@ -342,10 +348,10 @@ where T: Copy + 'info
                 let from = segment_offset + self.get_byte_offset_at_idx(idx);
                 let to = segment_offset + self.get_byte_offset_at_idx(records_before);
                 let dest = from + mem::size_of::<T>();
-                log_trace!("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% T SIZE IS: {}", mem::size_of::<T>());
+                // log_trace!("Array<T> resizing where size_of<T> is: {}", mem::size_of::<T>());
                 data[..].copy_within(from..to, dest);
             } else {
-                log_trace!("+ + + + + + + + + + + + %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% T SIZE IS: {}", mem::size_of::<T>());
+                // log_trace!("+ + + + + + + + + + + + %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% T SIZE IS: {}", mem::size_of::<T>());
 
             }
         } else {

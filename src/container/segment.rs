@@ -622,7 +622,7 @@ log_trace!("ALLOC A");
             if new_account_data_len > account_data_len {
                 account_info_realloc(self.account, new_account_data_len, false,false)?;
             } else {
-                log_trace!("[segment store] capacity ok, skipping allocation...");
+                log_trace!("[segment store] capacity ok, skipping allocation");
                 // log_trace!("{}",style("~ ~ ~ ~ ~ ~ ~ ~ SKIPPING ALLOCATION ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~").white().on_red());
             }
             // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS

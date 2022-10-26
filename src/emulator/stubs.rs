@@ -71,7 +71,7 @@ pub fn allocate_pda<'info,'pid>(
     //     *ptr
     // };
 
-    log_error!("payer: {:?}", payer);
+    // log_error!("payer: {:?}", payer);
     
     // log_trace!("| pda: account realloc - buffer: {} slice: {} target: {}",buffer_size,tpl_account_info.data_len(),space);
     account_info_realloc(tpl_account_info, space, true, true)?;

@@ -728,9 +728,10 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     // ) -> Result<&'ctx AccountInfo<'info>> {
     // ) -> Result<()> {
 
-        log_trace!("[pda] ... create_pda() starting ...");
+        log_trace!("[pda] ... create_pda() starting for {} bytes", data_len);
         let (tpl_program_address_data,tpl_account_info) = self.try_consume_generic_template_address_data()?;
         log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
+        // log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
         
         // let user_seed = match &self.identity {
         //     Some(identity) => identity.pubkey().to_bytes(),
