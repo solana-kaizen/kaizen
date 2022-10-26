@@ -369,7 +369,6 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 pub fn find_identity_proxy_pubkey(program_id: &Pubkey, authority: &Pubkey) -> Result<Pubkey> {
     let bytes = "proxy".as_bytes();
     let seed_suffix = bytes.to_vec();
-    // let seeds = vec![program_id.as_ref(), authority.as_ref(), seed_suffix.as_ref()];
     let seeds = vec![authority.as_ref(), seed_suffix.as_ref()];
     let (address, _bump_seed) = Pubkey::find_program_address(
         &seeds[..],

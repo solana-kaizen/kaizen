@@ -390,7 +390,7 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         let magic = meta.magic;
         if magic != SEGMENT_STORE_MAGIC {
 
-            log_trace!("segment store magic {:#x} should be: {:#x}",magic,SEGMENT_STORE_MAGIC);
+            log_trace!("[{}] segment store magic {:#x} should be: {:#x}",account.key,magic,SEGMENT_STORE_MAGIC);
             log_trace!("meta: {:#?}", meta);
             log_trace!("loading segment store from offset {}", offset);
             #[cfg(not(target_arch = "bpf"))]

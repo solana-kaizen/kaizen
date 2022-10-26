@@ -49,8 +49,23 @@ pub async fn reload_container<'this,T> (pubkey : &Pubkey)
 where T: workflow_allocator::container::Container<'this,'this>
 {
     let transport = Transport::global()?;
+    // transport.purge(pubkey)?;
+    reload_container_with_transport::<T>(&transport,pubkey).await
+}
+
+pub async fn reload_container_with_transport<'this,T> (transport : &Arc<Transport>, pubkey : &Pubkey) 
+-> Result<Option<ContainerReference<'this,T>>> 
+where T: workflow_allocator::container::Container<'this,'this>
+{
+    log_trace!("... reloading container {}",pubkey);
     transport.purge(pubkey)?;
-    load_container_with_transport::<T>(&transport,pubkey).await
+    let account_data_reference = match transport.lookup(pubkey).await? {
+        Some(account_data_reference) => account_data_reference,
+        None => return Ok(None)
+    };
+
+    let container = account_data_reference.try_into_container::<T>()?;
+    Ok(Some(container))
 }
 
 // ~

@@ -152,9 +152,9 @@ impl Transaction {
     }
     */
 
-    pub async fn post(self) -> Result<()> {
+    pub async fn post(&self) -> Result<()> {
         let transport = Transport::global()?;
-        transport.post(Arc::new(self)).await?;
+        transport.post(Arc::new(self.clone())).await?;
         Ok(())
     }
 
@@ -179,13 +179,46 @@ impl Transaction {
         if let Some(instruction) = &self.instruction{
             transport.execute(instruction).await?;
             // load_container_clone_with_transport::<T>(&transport,&pubkey).await
-            load_container_with_transport::<T>(&transport,&pubkey).await
+            // log_trace!("... reloading container {}",pubkey);
+            reload_container_with_transport::<T>(&transport,&pubkey).await
         }else{
             Ok(None)
         }
     }
 
 }
+
+pub struct TransactionList {
+    pub transactions: Vec<Transaction>
+}
+
+impl TransactionList {
+    pub fn new(transactions: Vec<Transaction>) -> TransactionList {
+        TransactionList {
+            transactions
+        }
+    }
+
+    pub async fn post(&self) -> Result<()> {
+        for tx in self.transactions.iter() {
+            log_trace!("tx: {:?}", tx);
+            tx.post().await?
+        }
+
+        Ok(())
+    }
+
+    pub async fn execute_create_and_load<'this, C>(&self) -> Result<Option<ContainerReference<'this,C>>>
+    where C: workflow_allocator::container::Container<'this,'this> 
+    {
+        let first_transaction = &self.transactions[0];
+        let container = first_transaction.execute_and_load::<C>().await?;
+
+        Ok(container)
+    }
+
+}
+
 
 pub struct TransactionChainInner {
     pub pending: Vec<Arc<Transaction>>,

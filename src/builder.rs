@@ -25,7 +25,7 @@ use workflow_allocator::container::{
     AsyncPdaCollectionAccessorInterface,
 };
 use workflow_allocator::identity::program::Identity;
-use workflow_log::log_warning;
+use workflow_log::{log_warning, style};
 // use workflow_allocator::instruction::{
 //     // readonly,
 //     // writable
@@ -685,7 +685,7 @@ impl InstructionBuilder {
                     sequencer.advance(inner.generic_template_account_descriptors.len());
                     // log_trace!("Advancing instruction builder sequencer {}", sequencer.get());
                 } else {
-                    log_warning!("InstructionBuilder::seal()? WARNING: missing sequencer!");
+                    log_warning!("{}",style("\nWARNING: InstructionBuilder::seal()? - missing sequencer!\n").red());
                 }
             } else if inner.collection_template_account_descriptors.is_empty() {
                 // if both template sets are empty, there is nothing to do
