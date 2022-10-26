@@ -10,6 +10,8 @@ use workflow_core::trigger::Listener;
 use workflow_log::*;
 use workflow_rpc::asynchronous::client::RpcClient;
 use workflow_rpc::asynchronous::client::result::Result as RpcResult;
+use crate::accounts::AccountDescriptorList;
+
 use super::interface::{EmulatorInterface, ExecutionResponse};
 use super::rpc::*;
 
@@ -101,4 +103,11 @@ impl EmulatorInterface for EmulatorRpcClient {
             .map_err(|err|err.into());
             resp
     }
+
+    async fn list(&self) -> Result<AccountDescriptorList> {
+
+        // TODO
+        unimplemented!()
+    }
+
 }

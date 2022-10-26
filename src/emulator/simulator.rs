@@ -12,6 +12,8 @@ use workflow_allocator::context::SimulationHandlerFn;
 
 // use crate::generate_random_pubkey;
 
+use crate::accounts::AccountDescriptorList;
+
 use super::interface::{EmulatorInterface, ExecutionResponse};
 use super::mockdata::InProcMockData;
 use super::emulator::Emulator;
@@ -173,6 +175,7 @@ impl EmulatorInterface for Simulator {
             }
         }
     }
+
     async fn execute(
         &self,
         authority: &Pubkey,
@@ -180,6 +183,7 @@ impl EmulatorInterface for Simulator {
     ) -> Result<ExecutionResponse> {
         self.emulator.execute(authority,instruction).await
     }
+
     async fn fund(
         &self,
         key: &Pubkey,
@@ -188,4 +192,9 @@ impl EmulatorInterface for Simulator {
     ) -> Result<()> {
         self.emulator.fund(key,owner,lamports).await
     }
+
+    async fn list(&self) -> Result<AccountDescriptorList> {
+        self.emulator.list().await
+    }
+
 }

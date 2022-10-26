@@ -11,7 +11,7 @@ use solana_program::pubkey::Pubkey;
 // use borsh::*;
 // use workflow_log::*;
 // use crate::result::Result;
-use workflow_log::log_trace;
+// use workflow_log::log_trace;
 use workflow_allocator::error::*;
 // use workflow_allocator::accounts::AccountData;
 // use crate::accounts::AccountDataReference;

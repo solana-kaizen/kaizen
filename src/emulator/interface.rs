@@ -44,7 +44,7 @@ pub trait EmulatorInterface : AnySync
     /// require presense of SystemProgram account.
     async fn fund(&self, key: &Pubkey, owner: &Pubkey, lamports: u64) -> Result<()>;
 
-    // async fn list(&self) -> Result<Vec<AccountDescriptor>>;
+    async fn list(&self) -> Result<AccountDescriptorList>;
 }
 
 downcast_sync!(dyn EmulatorInterface);

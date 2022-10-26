@@ -428,4 +428,9 @@ impl EmulatorInterface for Emulator {
 
         Ok(())
     }
+
+    async fn list(&self) -> Result<AccountDescriptorList> {
+        self.store.list().await
+    }
+
 }
