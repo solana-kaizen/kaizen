@@ -1,9 +1,11 @@
 use cfg_if::cfg_if;
-use workflow_allocator::*;
+use wasm_bindgen::prelude::*;
+// use workflow_allocator::*;
+use workflow_allocator::prelude::*;
 use workflow_allocator::result::Result;
 use workflow_allocator::error::ErrorCode;
-use solana_program::account_info::AccountInfo;
-
+// use solana_program::account_info::AccountInfo;
+// use workflow_allocator_macros::Meta;
 
 pub trait Container<'info,'refs> {
     type T;
@@ -23,7 +25,7 @@ pub trait Container<'info,'refs> {
     fn pubkey(&self) -> &solana_program::pubkey::Pubkey;
 }
 
-
+#[derive(Meta)]
 #[repr(packed)]
 pub struct ContainerHeader {
     pub container_type : u32,
@@ -102,7 +104,7 @@ cfg_if! {
         }
 
         // ~~~
-        
+
         unsafe impl<'inner,T> Send for ContainerReference<'inner,T>
         where T: Container<'inner,'inner> {}
         

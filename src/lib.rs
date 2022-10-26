@@ -40,6 +40,7 @@ cfg_if! {
         pub mod cache;
         pub mod user;
 
+        #[allow(unused_imports)]
         use wasm_bindgen::prelude::*;
     }
 }

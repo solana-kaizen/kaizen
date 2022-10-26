@@ -41,6 +41,8 @@ where M : PubkeyCollectionMetaTrait
         // let collection_store = PubkeyCollectionStore::try_allocate(ctx, allocation_args, 0)?;
         let collection_store = PubkeyCollectionStore::try_allocate(ctx, allocation_args, 0)?;
         self.meta.try_create(collection_store.pubkey(), data_type, container_type)?;
+        collection_store.try_init(container_type)?;
+        collection_store.account().clone();
         Ok(())
     }
 

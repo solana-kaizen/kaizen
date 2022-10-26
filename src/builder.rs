@@ -289,6 +289,25 @@ impl InstructionBuilder {
         self.inner().generic_template_accounts[idx].clone()
     }
 
+    pub fn generic_template_pubkey_at<'this>(&'this self, idx : usize) -> Pubkey {
+        self.inner().generic_template_accounts[idx].pubkey
+    }
+
+    pub fn collection_template_accounts<'this>(&'this self) -> Vec<AccountMeta> {
+        // &self.generic_template_accounts
+        self.inner().generic_template_accounts.clone()
+
+    }
+
+
+    pub fn collection_template_account_at<'this>(&'this self, idx : usize) -> AccountMeta {
+        self.inner().collection_template_accounts[idx].clone()
+    }
+
+    pub fn collection_template_pubkey_at<'this>(&'this self, idx : usize) -> Pubkey {
+        self.inner().collection_template_accounts[idx].pubkey
+    }
+
     // pub fn template_accounts(&self) -> Vec<AccountMeta> {
     //     self.template_accounts.clone()
     // }

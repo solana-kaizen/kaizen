@@ -1086,7 +1086,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                     let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
                         data.as_ptr()
                     ) };
-                    header.container_type = container_type;
+                    header.set_container_type(container_type);
                 }
 
                 Ok(#inits_create)
@@ -1110,7 +1110,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                     let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
                         data.as_ptr()
                     ) };
-                    header.container_type = container_type;
+                    header.set_container_type(container_type);
                 }
 
                 Ok(#inits_create)
@@ -1128,11 +1128,11 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
                 #init_offset
                 let container_type : u32 = #container_type as u32;
-                let layout = Self::layout();
-                let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_load(
-                    &account, segment_store_offset,
-                // ).unwrap();
-                )?;
+                // let layout = Self::layout();
+                // let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_load(
+                //     &account, segment_store_offset,
+                // // ).unwrap();
+                // )?;
 
                 {
                     let data = account.data.borrow_mut();
@@ -1140,15 +1140,24 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                         data.as_ptr()
                     )};
 
-                    if header.container_type != container_type {
+                    if header.get_container_type() != container_type {
+                        #[cfg(not(target_arch = "bpf"))]
+                        workflow_log::log_error!("Container type mismatch - expecting 0x{:08x} but receiving 0x{:08x}", container_type, header.get_container_type());
                         return Err(
                             workflow_allocator::error::Error::new()
-                                .with_program_code(workflow_allocator::error::ErrorCode::ContainerTypeMismatch as u32)
+                                .with_code(workflow_allocator::error::ErrorCode::ContainerTypeMismatch)
+                                // .with_program_code(workflow_allocator::error::ErrorCode::ContainerTypeMismatch as u32)
                                 .with_source(file!(),line!())
                         );
                         // return Err(workflow_allocator::error::ErrorCode::ContainerTypeMismatch.into());
                     }
                 }
+
+                let layout = Self::layout();
+                let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_load(
+                    &account, segment_store_offset,
+                // ).unwrap();
+                )?;
 
                 #loads_ts2
 
