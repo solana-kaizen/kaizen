@@ -695,8 +695,10 @@ mod client {
             }
         }
 
-        pub fn new_template_for_program(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {
-            Self::new_allocated_for_program(key,owner,data_len)
+        // pub fn new_template_for_program(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {
+        pub fn new_template_for_program(key: Pubkey, owner: Pubkey) -> AccountData {
+            // Self::new_allocated_for_program(key,owner,data_len)
+            Self::new_allocated_for_program(key,owner,ACCOUNT_DATA_TEMPLATE_SIZE)
         }
 
         pub fn new_allocated_for_program(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {

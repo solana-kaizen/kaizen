@@ -80,8 +80,9 @@ pub fn allocate_pda<'info,'pid>(
     let mut ref_payer_lamports = payer.lamports.borrow_mut();
     let mut payer_lamports = **ref_payer_lamports;
 
+    log_trace!("allocate_pda() lamports - need: {} payer has: {}", lamports, payer_lamports);
     if payer_lamports < lamports {
-        // log_trace!()
+        log_trace!("allocate_pda() insufficient lamports - need: {} payer has: {}", lamports, payer_lamports);
         return Err(error_code!(ErrorCode::InsufficientAllocBalance));
     }
 

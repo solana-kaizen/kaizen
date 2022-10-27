@@ -197,7 +197,7 @@ impl Emulator {
                     let account_data = AccountData::new_template_for_program(
                         pubkey.clone(),
                         program_id.clone(),
-                        0
+                        // 0
                     );
 
                     if pubkey == Pubkey::default() {
