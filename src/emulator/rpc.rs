@@ -94,6 +94,8 @@ u32_try_from! {
         Lookup = 0,
         Execute,
         Fund,
+        List,
+        Configure,
     }
 }
 

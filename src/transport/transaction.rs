@@ -144,13 +144,13 @@ impl Transaction {
         Ok(accounts)
     }
 
-    /*
     pub async fn execute(&self) -> Result<()> {
-        let transport = Transport::global()?;
-        transport.execute(&self.instruction).await?;
+        if let Some(instruction) = &self.instruction {
+            let transport = Transport::global()?;
+            transport.execute(instruction).await?;
+        }
         Ok(())
     }
-    */
 
     pub async fn post(&self) -> Result<()> {
         let transport = Transport::global()?;
@@ -203,6 +203,15 @@ impl TransactionList {
         for tx in self.transactions.iter() {
             log_trace!("tx: {:?}", tx);
             tx.post().await?
+        }
+
+        Ok(())
+    }
+
+    pub async fn execute(&self) -> Result<()> {
+        for tx in self.transactions.iter() {
+            log_trace!("tx: {:?}", tx);
+            tx.execute().await?
         }
 
         Ok(())

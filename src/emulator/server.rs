@@ -14,6 +14,7 @@ use workflow_allocator::result::Result;
 use crate::accounts::AccountDataStore;
 
 use super::Emulator;
+use super::interface::EmulatorConfig;
 use workflow_log::*;
 
 use thiserror::Error;
@@ -79,8 +80,7 @@ impl RpcHandler<EmulatorOps> for Server
             },
             EmulatorOps::Execute => {
 
-                std::thread::sleep(std::time::Duration::from_millis(5000));
-
+                // std::thread::sleep(std::time::Duration::from_millis(5000));
 
                 let req = ExecuteReq::try_from_slice(data)?;
                 // let authority = req.authority.clone();
@@ -94,7 +94,16 @@ impl RpcHandler<EmulatorOps> for Server
                 self.emulator.fund(&req.key,&req.owner,req.lamports).await?;
                 log_trace!("fundinng done...");
                 Ok(().try_to_vec()?)
-            }
+            },
+            EmulatorOps::List => {
+                let resp = self.emulator.list().await?;
+                Ok(resp.try_to_vec()?)
+            },
+            EmulatorOps::Configure => {
+                let _config = EmulatorConfig::try_from_slice(data)?;
+                // let resp = self.emulator.list().await?;
+                Ok(().try_to_vec()?)
+            },
         }
     }
 }

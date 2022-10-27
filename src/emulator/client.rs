@@ -12,7 +12,7 @@ use workflow_rpc::asynchronous::client::RpcClient;
 use workflow_rpc::asynchronous::client::result::Result as RpcResult;
 use crate::accounts::AccountDescriptorList;
 
-use super::interface::{EmulatorInterface, ExecutionResponse};
+use super::interface::{EmulatorInterface, ExecutionResponse, EmulatorConfig};
 use super::rpc::*;
 
 #[derive(Clone)]
@@ -106,8 +106,16 @@ impl EmulatorInterface for EmulatorRpcClient {
 
     async fn list(&self) -> Result<AccountDescriptorList> {
 
+        let resp : Result<AccountDescriptorList> = self.rpc.call(EmulatorOps::List, ()).await
+            .map_err(|err|err.into());
+        resp
         // TODO
-        unimplemented!()
+        // unimplemented!()
     }
 
+    async fn configure(&self, config : EmulatorConfig) -> Result<()> {
+        let resp : Result<()> = self.rpc.call(EmulatorOps::Configure, config).await
+            .map_err(|err|err.into());
+        resp
+    }
 }

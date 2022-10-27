@@ -536,6 +536,9 @@ impl Transport {
                     instruction
                 ).await?;
 
+                // TODO - migrate into server
+                workflow_core::task::sleep(std::time::Duration::from_millis(5000)).await;
+
                 self.reflector.reflect(reflector::Event::EmulatorLogs(resp.logs));
                 self.reflector.reflect(reflector::Event::WalletRefresh("SOL".into(), authority.clone()));
                 match self.balance().await {

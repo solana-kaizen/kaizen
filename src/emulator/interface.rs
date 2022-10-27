@@ -27,6 +27,12 @@ impl ExecutionResponse {
     }
 }
 
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct EmulatorConfig {
+    execution_latency : u64,
+    lookup_latency : u64,
+}
+
 #[async_trait]
 pub trait EmulatorInterface : AnySync
 {
@@ -45,6 +51,8 @@ pub trait EmulatorInterface : AnySync
     async fn fund(&self, key: &Pubkey, owner: &Pubkey, lamports: u64) -> Result<()>;
 
     async fn list(&self) -> Result<AccountDescriptorList>;
+    
+    async fn configure(&self, config: EmulatorConfig) -> Result<()>;
 }
 
 downcast_sync!(dyn EmulatorInterface);

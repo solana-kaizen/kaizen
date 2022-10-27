@@ -53,6 +53,7 @@ impl AddressDomain {
 
 }
 
+#[derive(Debug)]
 pub struct ProgramAddressData<'data> {
     pub seed: &'data [u8],
 }

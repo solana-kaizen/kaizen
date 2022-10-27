@@ -14,7 +14,7 @@ use workflow_allocator::context::SimulationHandlerFn;
 
 use crate::accounts::AccountDescriptorList;
 
-use super::interface::{EmulatorInterface, ExecutionResponse};
+use super::interface::{EmulatorInterface, ExecutionResponse, EmulatorConfig};
 use super::mockdata::InProcMockData;
 use super::emulator::Emulator;
 use async_trait::async_trait;
@@ -195,6 +195,10 @@ impl EmulatorInterface for Simulator {
 
     async fn list(&self) -> Result<AccountDescriptorList> {
         self.emulator.list().await
+    }
+
+    async fn configure(&self, config : EmulatorConfig) -> Result<()> {
+        self.emulator.configure(config).await
     }
 
 }

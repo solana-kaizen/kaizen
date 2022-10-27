@@ -26,7 +26,7 @@ use workflow_allocator::utils;
 // use crate::utils::sol_to_lamports;
 const DEFAULT_TRANSACTION_FEES: u64 = 50_000;
 
-use super::interface::{EmulatorInterface, ExecutionResponse};
+use super::interface::{EmulatorInterface, ExecutionResponse, EmulatorConfig};
 
 #[derive(Clone)]
 pub struct LogSink {
@@ -431,6 +431,10 @@ impl EmulatorInterface for Emulator {
 
     async fn list(&self) -> Result<AccountDescriptorList> {
         self.store.list().await
+    }
+
+    async fn configure(&self, _config: EmulatorConfig) -> Result<()> {
+        Ok(())
     }
 
 }
