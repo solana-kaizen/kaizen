@@ -28,8 +28,22 @@ cfg_if! {
 
         impl From<Date> for DateTime::<Utc>{
             fn from(date: Date) -> Self {
-                let ndt = NaiveDateTime::from_timestamp(date.0 as i64, 0);
-                DateTime::<Utc>::from_utc(ndt, Utc)
+                let n_date = NaiveDate::from_num_days_from_ce(date.0 as i32);
+                let n_time = NaiveTime::from_hms(0, 0, 0);
+                let n_date_time = NaiveDateTime::new(n_date, n_time);
+                DateTime::<Utc>::from_utc(n_date_time, Utc)
+            }
+        }
+
+        impl ToString for Date{
+            fn to_string(&self) -> String {
+                String::from(self.clone())
+            }
+        }
+
+        impl From<Date> for String{
+            fn from(date: Date) -> Self {
+                DateTime::<Utc>::from(date).format("%d/%m/%Y").to_string()
             }
         }
 
