@@ -19,6 +19,16 @@ use cfg_if::cfg_if;
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
         use chrono::prelude::*;
+
+        impl Date{
+            pub fn to_ymd(self)->String{
+                self.format("%Y-%m-%d")
+            }
+            pub fn format(self, str:&str)->String{
+                let n_date = NaiveDate::from_num_days_from_ce(self.0 as i32);
+                n_date.format(str).to_string()
+            }
+        }
         //use crate::error::Error;
         impl From<DateTime::<Utc>> for Date{
             fn from(dt: DateTime::<Utc>) -> Self {
