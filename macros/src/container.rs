@@ -1140,9 +1140,23 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                         data.as_ptr()
                     )};
 
-                    if header.get_container_type() != container_type {
-                        #[cfg(not(target_arch = "bpf"))]
-                        workflow_log::log_error!("Container type mismatch - expecting 0x{:08x} but receiving 0x{:08x}", container_type, header.get_container_type());
+                    let header_container_type = header.get_container_type();
+                    if header_container_type != container_type {
+                        #[cfg(not(target_arch = "bpf"))] {
+                            let header_container_type_str = if let Ok(Some(declaration)) = workflow_allocator::container::registry::lookup(header_container_type) {
+                                declaration.name
+                            } else { "n/a" };
+                            let container_type_str = if let Ok(Some(declaration)) = workflow_allocator::container::registry::lookup(container_type) {
+                                declaration.name
+                            } else { "n/a" };
+
+                            workflow_log::log_error!("Container type mismatch - expecting: {} 0x{:08x} receiving: {} 0x{:08x}", 
+                                workflow_log::style(container_type_str).red(), 
+                                container_type, 
+                                workflow_log::style(header_container_type_str).red(),
+                                header_container_type,
+                            );
+                        }
                         return Err(
                             workflow_allocator::error::Error::new()
                                 .with_code(workflow_allocator::error::ErrorCode::ContainerTypeMismatch)
