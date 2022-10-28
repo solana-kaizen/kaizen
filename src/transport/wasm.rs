@@ -209,8 +209,8 @@ impl Transport {
         Ok(wallet.clone())
     }
 
-    pub fn set_custom_authority(&self, key:Pubkey)-> Result<()> {
-        (*self.custom_authority.lock()?) = Some(key);
+    pub fn set_custom_authority(&self, key:Option<Pubkey>)-> Result<()> {
+        (*self.custom_authority.lock()?) = key;
         Ok(())
     }
 

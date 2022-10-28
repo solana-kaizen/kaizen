@@ -55,7 +55,7 @@ pub fn allocate_pda<'info,'pid>(
             Err(_e)=>{
                 // log_trace!("| pda: PDA ADDRESS MATCH failure");
                 //TODO handle this pubkey error
-                return Err(error_code!(ErrorCode::PDAAddressMatch));
+                return Err(error_code!(ErrorCode::PDAAddressCreate));
             }
         };
     }

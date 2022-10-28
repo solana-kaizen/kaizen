@@ -451,7 +451,6 @@ mod client {
                 (style(sol).yellow(), style("").yellow())
             };
 
-            // let container_type = self.container_type();
             let (container_type, container_type_name) = match self.container_type {
                 Some(container_type) => {
                     match workflow_allocator::container::registry::lookup(container_type) {

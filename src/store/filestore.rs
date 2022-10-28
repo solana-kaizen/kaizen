@@ -102,10 +102,10 @@ impl Store for FileStore {
         if filename.exists().await {
             let data = fs::read(&self.data_folder.join(pubkey.to_string())).await?;
 
-            log_trace!("################## LOAD STORE DATA {}",pubkey);
-            // let account_data = &reference.account_data.read().await;
-            trace_hex(&data);
-            log_trace!("################################### LOAD STORE DATA ");
+            // log_trace!("load {}",pubkey);
+            // // let account_data = &reference.account_data.read().await;
+            // trace_hex(&data);
+            // log_trace!("-");
 
 
             let account_data_store = AccountDataStore::try_from_slice(&data)?;
@@ -120,10 +120,10 @@ impl Store for FileStore {
 
 
 
-            log_trace!("################## LOADED DATA {}",account_data.key);
+            // log_trace!("################## LOADED DATA {}",account_data.key);
             // let account_data = &reference.account_data.read().await;
-            trace_hex(&account_data.data);
-            log_trace!("################################### LOADED DATA ");
+            // trace_hex(&account_data.data);
+            // log_trace!("################################### LOADED DATA ");
 
 
             let reference = Arc::new(AccountDataReference::new(account_data));

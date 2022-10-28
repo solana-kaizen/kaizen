@@ -73,6 +73,7 @@ pub enum ErrorCode {
     MaxPermittedAccountDataIncrease,
 
     PDAAddressMatch,
+    PDAAddressCreate,
     PADDataBufferSizeAvailable,
     PADDataBufferSizeDescriptor,
     PDAAccountArgumentData,

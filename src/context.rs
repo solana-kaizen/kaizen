@@ -131,11 +131,20 @@ pub type HandlerFnCPtr = *const fn(ctx: &ContextReference) -> ProgramResult;
 
 
 #[derive(Debug)]
-pub struct ContextMeta {
+pub struct SyncRent<'info,'refs> {
+    pub account : &'refs AccountInfo<'info>,
+    pub collector: RentCollector<'info,'refs>,
+}
+
+#[derive(Debug)]
+pub struct ContextMeta<'info,'refs> {
     pub generic_template_accounts_consumed : usize,
     pub generic_template_data_bytes_consumed : usize,
     pub collection_template_accounts_consumed : usize,
     pub collection_template_data_bytes_consumed : usize,
+
+    // TODO - implement automatic rent syncing
+    pub sync_rent : Vec<SyncRent<'info,'refs>>,
 }
 
 
@@ -171,7 +180,7 @@ pub struct Context<'info, 'refs, 'pid, 'instr> {
     // pub collection_accounts : &'refs [AccountInfo<'info>],
     // pub collection_data : &'instr [u8],
 
-    pub meta : RefCell<ContextMeta>,
+    pub meta : RefCell<ContextMeta<'info,'refs>>,
     // pub runtime : 
 
     rent : Rent,
@@ -375,6 +384,7 @@ impl<'info, 'refs, 'pid, 'instr>
             generic_template_data_bytes_consumed : 0,
             collection_template_accounts_consumed : 0,
             collection_template_data_bytes_consumed : 0,
+            sync_rent: Vec::new(),
         };
 
         // let instruction_data_view = hexplay::HexViewBuilder::new(&instruction_data)

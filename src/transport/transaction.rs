@@ -229,7 +229,7 @@ impl TransactionList {
         Ok(())
     }
 
-    pub async fn execute_create_and_load<'this, C>(&self) -> Result<Option<ContainerReference<'this,C>>>
+    pub async fn execute_and_load<'this, C>(&self) -> Result<Option<ContainerReference<'this,C>>>
     where C: workflow_allocator::container::Container<'this,'this> 
     {
         let first_transaction = &self.transactions[0];

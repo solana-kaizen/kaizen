@@ -57,7 +57,7 @@ pub async fn create_identity(
     interface_id: usize,
     handler_id : usize,
     instructions : Instr,
-) -> Result<Vec<Transaction>> {
+) -> Result<TransactionList> {
 
     let instruction_data = instructions.try_to_vec()?;
 
@@ -84,7 +84,7 @@ pub async fn create_identity(
         builder.try_into()?
     );
 
-    Ok(vec![transaction])
+    Ok(TransactionList::new(vec![transaction]))
 
 }
 

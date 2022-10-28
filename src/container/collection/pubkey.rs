@@ -61,7 +61,7 @@ where M : PubkeyCollectionMetaTrait
 
     pub fn try_create_with_meta<'ctx,'r>(
         ctx: &ContextReference<'ctx,'r,'_,'_>,
-        allocation_args: &AccountAllocationArgs<'ctx,'_,'_>,
+        allocation_args: &AccountAllocationArgs<'ctx,'r,'_>,
         data : &'info mut PubkeyCollectionMeta,
         data_type : Option<u32>,
         container_type : Option<u32>,
@@ -180,7 +180,7 @@ where M : PubkeyCollectionMetaTrait
 
     pub fn sync_rent(
         &self,
-        ctx: &ContextReference<'info,'_,'_,'_>,
+        ctx: &ContextReference<'info,'refs,'_,'_>,
         rent_collector : &workflow_allocator::rent::RentCollector<'info,'refs>,
     ) -> workflow_allocator::result::Result<()> {
         // TODO: @alpha - transfer out excess rent
