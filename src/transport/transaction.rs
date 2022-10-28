@@ -199,6 +199,18 @@ impl TransactionList {
         }
     }
 
+    pub fn target_account(&self)->Result<Pubkey>{
+        if self.transactions.len() == 0{
+            return Err("No transactions".into());
+        }
+        let pubkey = self.transactions[0].target_account()?;
+        Ok(pubkey)
+    }
+
+    pub fn push(&mut self, tx:Transaction){
+        self.transactions.push(tx);
+    }
+
     pub async fn post(&self) -> Result<()> {
         for tx in self.transactions.iter() {
             log_trace!("tx: {:?}", tx);
