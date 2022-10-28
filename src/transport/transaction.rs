@@ -46,10 +46,10 @@ impl TransactionMeta {
         }
     }
 
-    pub fn new_with_accounts(accounts: &[&Pubkey]) -> TransactionMeta {
+    pub fn new_with_accounts(accounts: Vec<Pubkey>) -> TransactionMeta {
         TransactionMeta {
             signature: None,
-            accounts : accounts.iter().map(|pk|*pk.clone()).collect::<Vec<Pubkey>>(),
+            accounts : accounts.to_vec() //.iter().map(|pk|*pk.clone()).collect::<Vec<Pubkey>>(),
         }
     }
 }
@@ -115,7 +115,7 @@ impl Transaction {
         }
     }
     
-    pub fn new_with_accounts(name: &str, accounts: &[&Pubkey], instruction: Instruction) -> Transaction {
+    pub fn new_with_accounts(name: &str, accounts: Vec<Pubkey>, instruction: Instruction) -> Transaction {
 
         let meta = TransactionMeta::new_with_accounts(accounts);
 

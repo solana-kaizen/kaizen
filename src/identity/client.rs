@@ -74,11 +74,13 @@ pub async fn create_identity(
 
     // let instruction : Instruction = builder.try_into()?;
 
-    let container_pubkey = builder.generic_template_account_at(0).pubkey;
+    //let container_pubkey = builder.generic_template_account_at(0).pubkey;
+    let accounts = builder.gather_target_accounts(None)?;
 
     let transaction = Transaction::new_with_accounts(
-        format!("Creating generic container {}", container_pubkey).as_str(),
-        &[&container_pubkey],
+        format!("Creating generic container {}", accounts[0]).as_str(),
+        // &[container_pubkey],
+        accounts,
         builder.try_into()?
     );
 

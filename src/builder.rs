@@ -840,6 +840,24 @@ impl InstructionBuilder {
         Ok(instruction)
     }
 
+    pub fn gather_target_accounts(&self, first : Option<&Pubkey>) -> Result<Vec<Pubkey>> {
+
+        let mut list = self.try_accounts()?
+            .iter().map(|account|account.pubkey).collect::<Vec<_>>();
+
+        if let Some(first) = first {
+            let index = list.iter().position(|pubkey| pubkey == first).unwrap();
+            list.remove(index);
+            list.insert(0, first.clone());
+        } else if self.inner().generic_template_accounts.len() > 0 {
+            let first_tpl = self.inner().generic_template_accounts[0].pubkey;
+            let index = list.iter().position(|pubkey| *pubkey == first_tpl).unwrap();
+            list.remove(index);
+            list.insert(0, first_tpl);
+        }
+
+        Ok(list)
+    }
 
 }
 
