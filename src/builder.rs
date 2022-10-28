@@ -26,10 +26,12 @@ use workflow_allocator::container::{
 };
 use workflow_allocator::identity::program::Identity;
 use workflow_log::{log_warning, style};
-// use workflow_allocator::instruction::{
-//     // readonly,
-//     // writable
-// };
+
+pub enum Gather {
+    Authority,
+    Identity,
+    All,
+}
 
 pub fn find_interface_id(program_fn : HandlerFn, handlers: &[HandlerFn]) -> usize {
     handlers.iter()
@@ -840,24 +842,57 @@ impl InstructionBuilder {
         Ok(instruction)
     }
 
-    pub fn gather_target_accounts(&self, first : Option<&Pubkey>) -> Result<Vec<Pubkey>> {
+    pub fn gather_accounts(
+        &self,
+        gather : Option<Gather>,
+        first : Option<&Pubkey>,
+    ) -> Result<Vec<Pubkey>> {
+        let inner = self.inner();
 
-        let mut list = self.try_accounts()?
-            .iter().map(|account|account.pubkey).collect::<Vec<_>>();
+        let mut vec = Vec::new();
+        // by default, first template account is always at the 
+        // first position in the list unless `first` is supplied
+        vec.extend_from_slice(&inner.generic_template_accounts);
+        vec.extend_from_slice(&inner.token_accounts);
+        vec.extend_from_slice(&inner.index_accounts);
+        vec.extend_from_slice(&inner.collection_accounts);
+        vec.extend_from_slice(&inner.collection_template_accounts);
+        vec.extend_from_slice(&inner.handler_accounts);
 
-        if let Some(first) = first {
-            let index = list.iter().position(|pubkey| pubkey == first).unwrap();
-            list.remove(index);
-            list.insert(0, first.clone());
-        } else if self.inner().generic_template_accounts.len() > 0 {
-            let first_tpl = self.inner().generic_template_accounts[0].pubkey;
-            let index = list.iter().position(|pubkey| *pubkey == first_tpl).unwrap();
-            list.remove(index);
-            list.insert(0, first_tpl);
+        let (authority, identity) = match gather {
+            None => (false, false),
+            Some(Gather::Authority) => (true, false),
+            Some(Gather::Identity) => (false, true),
+            Some(Gather::All) => (true, true),
+        };
+
+        if authority {
+            if let Some(authority) = &inner.authority {
+                vec.push(authority.clone());
+            }
         }
 
-        Ok(list)
+        if identity {
+            if let Some(identity) = &inner.identity {
+                vec.push(identity.clone());
+            }
+        }
+
+        let mut vec = vec
+            .iter()
+            .map(|account|account.pubkey)
+            .collect::<Vec<_>>();
+
+        if let Some(first) = first {
+            let index = vec.iter().position(|pubkey| pubkey == first).unwrap();
+            vec.remove(index);
+            vec.insert(0, first.clone());
+        }    
+
+        Ok(vec)
+
     }
+
 
 }
 
