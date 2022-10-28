@@ -466,6 +466,7 @@ impl Transport {
             // Some(emulator) => {
             //     Ok(emulator.lookup(&pubkey).await?)
 
+                workflow_core::task::sleep(std::time::Duration::from_millis(5000)).await;
 
                 let reference = self.emulator().lookup(pubkey).await?;
                 match reference {
