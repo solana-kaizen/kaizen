@@ -259,6 +259,7 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
 
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
+        use futures::future::join_all;
         use solana_program::instruction::AccountMeta;
         use workflow_allocator::container::{AccountAggregatorInterface,AsyncAccountAggregatorInterface};
 
@@ -270,11 +271,10 @@ cfg_if! {
                 let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
 
                 if idx >= self.len() {
-                    log_trace!("idx: {}",idx);
-                    log_trace!("self.len(): {}",self.len());
-                    log_trace!("self.records.len(): {}",container.as_ref().unwrap().records.len());
+                    log_trace!("idx: {} self.len(): {} self.records.len(): {}",idx,self.len(),container.as_ref().unwrap().records.len());
                 }
                 assert!(idx < self.len());
+
                 if let Some(container) = container {
                     let pubkey = container.records.get_at(idx).key;
                     Ok(pubkey)
@@ -282,6 +282,26 @@ cfg_if! {
                     // Err(error_code!(ErrorCode::PubkeyCollectionMissing))
                     Err(error!("Error: missing collection container {}", self.meta.pubkey()))
                 }
+            }
+
+            pub async fn get_pubkey_range(&self, range: std::ops::Range<usize>) -> Result<Vec<Pubkey>> {
+                let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
+                let mut pubkeys = Vec::new();
+                
+                for idx in range {
+                    if idx >= self.len() {
+                        log_trace!("idx: {} self.len(): {} self.records.len(): {}",idx,self.len(),container.as_ref().unwrap().records.len());
+                    }
+                    assert!(idx < self.len());
+                    if let Some(container) = &container {
+                        let pubkey = container.records.get_at(idx).key;
+                        pubkeys.push(pubkey);
+                    } else {
+                        return Err(error!("Error: missing collection container {}", self.meta.pubkey()));
+                    }
+                }
+
+                Ok(pubkeys)
             }
 
             pub async fn load_reference_at(&self, idx: usize) -> Result<Arc<AccountDataReference>> {
@@ -298,12 +318,20 @@ cfg_if! {
                 let transport = Transport::global()?;
                 let mut list = Vec::new();
 
-                for idx in range {
-                    let pubkey = self.get_pubkey_at(idx).await?;
-                    match transport.lookup(&pubkey).await? {
-                        Some(reference) => list.push(reference),
-                        None => return Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+                let pubkeys = self.get_pubkey_range(range.clone()).await?;
+                let mut lookups = Vec::new();
+                for pubkey in pubkeys.iter() {
+                    lookups.push(transport.lookup(pubkey));
+                }
+
+                let mut idx = range.start;
+                let results = join_all(lookups).await;
+                for result in results {
+                    match result? {
+                        Some(reference) => list.push(reference.clone()),
+                        None => return Err(error!("Error: missing account {} in collection {}",pubkeys[idx],self.meta.pubkey()))
                     }
+                    idx += 1;
                 }
 
                 Ok(list)
@@ -325,9 +353,17 @@ cfg_if! {
                 let transport = Transport::global()?;
                 let mut list = Vec::new();
 
-                for idx in range {
-                    let pubkey = self.get_pubkey_at(idx).await?;
-                    match transport.lookup(&pubkey).await? {
+                let pubkeys = self.get_pubkey_range(range.clone()).await?;
+                let mut lookups = Vec::new();
+                for pubkey in pubkeys.iter() {
+                    lookups.push(transport.lookup(pubkey));
+                }
+
+                let results = join_all(lookups).await;
+
+                let mut idx = range.start;
+                for result in results {
+                    match result? {
                         Some(reference) => {
                             let container = match reference.try_into_container::<C>() {
                                 Ok(container) => Some(container),
@@ -337,32 +373,63 @@ cfg_if! {
                             };
                             list.push(container)
                         },
-                        None => return Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+                        None => return Err(error!("Error: missing account {} in collection {}",pubkeys[idx],self.meta.pubkey()))
                     }
+                    idx += 1;
                 }
 
                 Ok(list)
             }
 
             pub async fn load_container_range_strict<'this,C>(&self, range: std::ops::Range<usize>)
-            -> Result<Vec<ContainerReference<'this,C>>> 
+            -> Result<Vec<ContainerReference<'this,C>>>
             where C: workflow_allocator::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
                 let mut list = Vec::new();
 
-                for idx in range {
-                    let pubkey = self.get_pubkey_at(idx).await?;
-                    match transport.lookup(&pubkey).await? {
+                let pubkeys = self.get_pubkey_range(range.clone()).await?;
+                let mut lookups = Vec::new();
+                for pubkey in pubkeys.iter() {
+                    lookups.push(transport.lookup(pubkey));
+                }
+
+                let results = join_all(lookups).await;
+
+                let mut idx = range.start;
+                for result in results {
+                    match result? {
                         Some(reference) => {
-                            list.push(reference.try_into_container::<C>()?)
+                            let container = reference.try_into_container::<C>()?;
+                            list.push(container)
                         },
-                        None => return Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+                        None => return Err(error!("Error: missing account {} in collection {}",pubkeys[idx],self.meta.pubkey()))
                     }
+                    idx += 1;
                 }
 
                 Ok(list)
             }
+
+            // pub async fn load_container_range_strict<'this,C>(&self, range: std::ops::Range<usize>)
+            // -> Result<Vec<ContainerReference<'this,C>>> 
+            // where C: workflow_allocator::container::Container<'this,'this>
+            // {
+            //     let transport = Transport::global()?;
+            //     let mut list = Vec::new();
+
+            //     for idx in range {
+            //         let pubkey = self.get_pubkey_at(idx).await?;
+            //         match transport.lookup(&pubkey).await? {
+            //             Some(reference) => {
+            //                 list.push(reference.try_into_container::<C>()?)
+            //             },
+            //             None => return Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+            //         }
+            //     }
+
+            //     Ok(list)
+            // }
 
             pub async fn reload(&self) -> Result<()> {
                 reload_reference(self.meta.pubkey()).await?;
@@ -393,20 +460,20 @@ cfg_if! {
                 Ok(None)
             }
 
-            pub async fn collect_pubkeys(&self) -> Result<Vec<Pubkey>> {
-                let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
-                if let Some(container) = container {
-                    let pubkeys = container
-                        .as_slice()
-                        .iter()
-                        .map(|r|r.get_key())
-                        .collect::<Vec<Pubkey>>();
-                    Ok(pubkeys)
-                } else {
-                    // Err(error_code!(ErrorCode::PubkeyCollectionMissing))
-                    Err(error!("Error: missing collection container {}", self.meta.pubkey()))
-                }
-            }
+            // pub async fn collect_pubkeys(&self) -> Result<Vec<Pubkey>> {
+            //     let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
+            //     if let Some(container) = container {
+            //         let pubkeys = container
+            //             .as_slice()
+            //             .iter()
+            //             .map(|r|r.get_key())
+            //             .collect::<Vec<Pubkey>>();
+            //         Ok(pubkeys)
+            //     } else {
+            //         // Err(error_code!(ErrorCode::PubkeyCollectionMissing))
+            //         Err(error!("Error: missing collection container {}", self.meta.pubkey()))
+            //     }
+            // }
 
             // pub async fn load_references(&self) -> Result<Vec<Arc<AccountDataReference>>> {
             //     let pubkeys = self.collect_pubkeys().await?;
