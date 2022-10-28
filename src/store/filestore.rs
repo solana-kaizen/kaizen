@@ -161,8 +161,8 @@ impl Store for FileStore {
 
         // if false {
             // let account_data = &reference.account_data.read().await;
-            // log_trace!("storing: {}",reference.key);
-            // trace_hex(&data);
+            log_trace!("storing: {}",reference.key);
+            trace_hex(&data);
             // log_trace!("################################### STORE ");
         // }
 
