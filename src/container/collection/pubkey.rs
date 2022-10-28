@@ -309,6 +309,15 @@ cfg_if! {
                 Ok(list)
             }
 
+            pub async fn load_container_at<'this,C>(&self, idx: usize)
+            -> Result<ContainerReference<'this,C>>
+            where C: workflow_allocator::container::Container<'this,'this>
+            {
+                let reference = self.load_reference_at(idx).await?;
+                let container = reference.try_into_container::<C>()?;
+                Ok(container)
+            }
+
             pub async fn load_container_range<'this,C>(&self, range: std::ops::Range<usize>)
             -> Result<Vec<Option<ContainerReference<'this,C>>>> 
             where C: workflow_allocator::container::Container<'this,'this>
@@ -353,6 +362,35 @@ cfg_if! {
                 }
 
                 Ok(list)
+            }
+
+            pub async fn reload(&self) -> Result<()> {
+                reload_reference(self.meta.pubkey()).await?;
+                Ok(())
+            }
+
+            pub async fn find_container<'this,C>(&self)
+            -> Result<Option<ContainerReference<'this,C>>> 
+            where C: workflow_allocator::container::Container<'this,'this>
+            {
+                let transport = Transport::global()?;
+
+                if let Some(container) = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await? {
+                    let pubkeys = container.records.as_slice();
+                    for entry in pubkeys.iter() {
+                        match transport.lookup(&entry.key).await? {
+                            Some(reference) => {
+                                match reference.try_into_container::<C>() {
+                                    Ok(container) => return Ok(Some(container)),
+                                    Err(_) => { }
+                                }
+                            },
+                            None => { }
+                        }
+                    }
+                }
+
+                Ok(None)
             }
 
             pub async fn collect_pubkeys(&self) -> Result<Vec<Pubkey>> {
