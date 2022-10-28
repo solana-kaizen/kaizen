@@ -294,6 +294,67 @@ cfg_if! {
                 }
             }
 
+            pub async fn load_reference_range(&self, range: std::ops::Range<usize>) -> Result<Vec<Arc<AccountDataReference>>> {
+                let transport = Transport::global()?;
+                let mut list = Vec::new();
+
+                for idx in range {
+                    let pubkey = self.get_pubkey_at(idx).await?;
+                    match transport.lookup(&pubkey).await? {
+                        Some(reference) => list.push(reference),
+                        None => return Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+                    }
+                }
+
+                Ok(list)
+            }
+
+            pub async fn load_container_range<'this,C>(&self, range: std::ops::Range<usize>)
+            -> Result<Vec<Option<ContainerReference<'this,C>>>> 
+            where C: workflow_allocator::container::Container<'this,'this>
+            {
+                let transport = Transport::global()?;
+                let mut list = Vec::new();
+
+                for idx in range {
+                    let pubkey = self.get_pubkey_at(idx).await?;
+                    match transport.lookup(&pubkey).await? {
+                        Some(reference) => {
+                            let container = match reference.try_into_container::<C>() {
+                                Ok(container) => Some(container),
+                                Err(_) => {
+                                    None
+                                }
+                            };
+                            list.push(container)
+                        },
+                        None => return Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+                    }
+                }
+
+                Ok(list)
+            }
+
+            pub async fn load_container_range_strict<'this,C>(&self, range: std::ops::Range<usize>)
+            -> Result<Vec<ContainerReference<'this,C>>> 
+            where C: workflow_allocator::container::Container<'this,'this>
+            {
+                let transport = Transport::global()?;
+                let mut list = Vec::new();
+
+                for idx in range {
+                    let pubkey = self.get_pubkey_at(idx).await?;
+                    match transport.lookup(&pubkey).await? {
+                        Some(reference) => {
+                            list.push(reference.try_into_container::<C>()?)
+                        },
+                        None => return Err(error!("Error: missing account {} in collection {}",pubkey,self.meta.pubkey()))
+                    }
+                }
+
+                Ok(list)
+            }
+
             pub async fn collect_pubkeys(&self) -> Result<Vec<Pubkey>> {
                 let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
                 if let Some(container) = container {
@@ -309,34 +370,34 @@ cfg_if! {
                 }
             }
 
-            pub async fn load_references(&self) -> Result<Vec<Arc<AccountDataReference>>> {
-                let pubkeys = self.collect_pubkeys().await?;
-                let mut references = Vec::new();
-                let transport = Transport::global()?;
-                for pubkey in pubkeys.iter() {
-                    if let Some(reference) = transport.lookup(pubkey).await? {
-                        references.push(reference);
-                    }
-                }
+            // pub async fn load_references(&self) -> Result<Vec<Arc<AccountDataReference>>> {
+            //     let pubkeys = self.collect_pubkeys().await?;
+            //     let mut references = Vec::new();
+            //     let transport = Transport::global()?;
+            //     for pubkey in pubkeys.iter() {
+            //         if let Some(reference) = transport.lookup(pubkey).await? {
+            //             references.push(reference);
+            //         }
+            //     }
 
-                Ok(references)
-            }
+            //     Ok(references)
+            // }
 
-            pub async fn load_containers<'this, T>(&self)
-            -> Result<Vec<ContainerReference<'this, T>>>
-            where T: workflow_allocator::container::Container<'this,'this>
-            {
-                let references = self.load_references().await?;
-                let mut containers = Vec::new();
-                for reference in references.iter() {
-                    if reference.container_type() == T::container_type() {
-                        let container = reference.try_into_container::<T>()?;
-                        containers.push(container);
-                    }
-                }
+            // pub async fn load_containers<'this, T>(&self)
+            // -> Result<Vec<ContainerReference<'this, T>>>
+            // where T: workflow_allocator::container::Container<'this,'this>
+            // {
+            //     let references = self.load_references().await?;
+            //     let mut containers = Vec::new();
+            //     for reference in references.iter() {
+            //         if reference.container_type() == T::container_type() {
+            //             let container = reference.try_into_container::<T>()?;
+            //             containers.push(container);
+            //         }
+            //     }
 
-                Ok(containers)
-            }
+            //     Ok(containers)
+            // }
 
         }        
 
