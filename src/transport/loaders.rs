@@ -1,6 +1,6 @@
 use workflow_allocator::prelude::*;
 use workflow_allocator::result::Result;
-// use workflow_allocator::container::*;
+use workflow_allocator::container::Container;
 
 // pub async fn load_container_clone<'this,T> (pubkey : &Pubkey) 
 // -> Result<Option<AccountDataContainer<'this,T>>> 
@@ -22,6 +22,35 @@ use workflow_allocator::result::Result;
 //         None => return Ok(None)
 //     }
 // }
+
+pub async fn with_loaded_container<'this, C>(
+    pubkey:Pubkey,
+    callback:impl Fn(Option<ContainerReference<'this, C>>)->Result<()>
+)->Result<()> where C: Container<'this,'this>
+{
+    if let Some(res) = load_container::<C>(&pubkey).await?{
+        callback(Some(res))?;
+    }else{
+        callback(None)?;
+    }
+
+    Ok(())
+}
+
+pub async fn with_reloaded_container<'this, C>(
+    pubkey:Pubkey,
+    callback:impl Fn(Option<ContainerReference<'this, C>>)->Result<()>
+)->Result<()> where C: Container<'this,'this>
+{
+    if let Some(res) = reload_container::<C>(&pubkey).await?{
+        callback(Some(res))?;
+    }else{
+        callback(None)?;
+    }
+
+    Ok(())
+}
+
 
 pub async fn load_container<'this,T> (pubkey : &Pubkey) 
 -> Result<Option<ContainerReference<'this,T>>> 
