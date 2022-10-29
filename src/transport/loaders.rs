@@ -114,7 +114,7 @@ pub async fn reload_container_with_transport<'this,T> (transport : &Arc<Transpor
 where T: workflow_allocator::container::Container<'this,'this>
 {
     log_trace!("... reloading container {}",pubkey);
-    transport.purge(pubkey)?;
+    transport.purge(Some(pubkey))?;
     let account_data_reference = match transport.lookup(pubkey).await? {
         Some(account_data_reference) => account_data_reference,
         None => return Ok(None)
@@ -156,7 +156,7 @@ pub async fn reload_reference(pubkey : &Pubkey)
 -> Result<Option<Arc<AccountDataReference>>> 
 {
     let transport = Transport::global()?;
-    transport.purge(pubkey)?;
+    transport.purge(Some(pubkey))?;
     load_reference_with_transport(&transport,pubkey).await
 }
 
@@ -167,7 +167,7 @@ pub async fn reload_references(pubkeys : &[Pubkey])
 
     let mut lookups = Vec::new();
     for pubkey in pubkeys.iter() {
-        transport.purge(pubkey)?;
+        transport.purge(Some(pubkey))?;
         lookups.push(load_reference_with_transport(&transport,pubkey));
     }
 

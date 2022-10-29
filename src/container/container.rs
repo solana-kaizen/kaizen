@@ -1,5 +1,5 @@
 use cfg_if::cfg_if;
-use wasm_bindgen::prelude::*;
+// use wasm_bindgen::prelude::*;
 // use workflow_allocator::*;
 use workflow_allocator::prelude::*;
 use workflow_allocator::result::Result;
@@ -249,7 +249,7 @@ cfg_if! {
                 Ok(())
             }
         
-            #[wasm_bindgen]
+            // #[wasm_bindgen]
             pub fn list_containers() -> Result<()> {
                 let registry = global();
                 let map = registry.read()?;
@@ -265,7 +265,7 @@ cfg_if! {
         
                 use super::*;
                 use js_sys::Array;
-                // use wasm_bindgen::prelude::*;
+                use wasm_bindgen::prelude::*;
                 // use workflow_allocator::trace;
         
                 #[wasm_bindgen]

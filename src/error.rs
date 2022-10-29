@@ -183,7 +183,8 @@ pub enum Variant {
     BorrowMutError(BorrowMutError),
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
     ClientError(Arc<ClientError>),
-    IoError(Arc<IoError>),
+    // IoError(Arc<IoError>),
+    IoError(IoError),
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
     OsString(OsString),
     #[cfg(not(target_arch = "bpf"))]
@@ -203,7 +204,8 @@ impl Clone for Variant {
             Variant::BorrowMutError(_e) => Variant::ErrorCode(ErrorCode::BorrowMutError),
             #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
             Variant::ClientError(e) => Variant::ClientError(e.clone()),
-            Variant::IoError(e) => Variant::IoError(e.clone()),
+            Variant::IoError(e) => Variant::ErrorCode(ErrorCode::IoError),
+            // Variant::IoError(e) => Variant::IoError(e.clone()),
             #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
             Variant::OsString(e) => Variant::OsString(e.clone()),
             #[cfg(not(target_arch = "bpf"))]
@@ -679,7 +681,8 @@ impl From<SystemTimeError> for Error {
 impl From<IoError> for Error {
     fn from(error: IoError) -> Error {
         Error::new()
-            .with_variant(Variant::IoError(Arc::new(error)))
+            .with_variant(Variant::IoError(error))
+            // .with_variant(Variant::IoError(Arc::new(error)))
     }
 }
 

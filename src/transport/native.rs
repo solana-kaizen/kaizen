@@ -191,9 +191,13 @@ impl Transport {
     }
 
     #[inline(always)]
-    pub fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
-        self.emulator.as_ref().expect("missing emulator interface")
+    pub fn emulator<'transport>(&'transport self) -> Option<&'transport Arc<dyn EmulatorInterface>> {
+        self.emulator.as_ref()//.expect("missing emulator interface")
     }
+
+    // pub fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
+    //     self.emulator.as_ref().expect("missing emulator interface")
+    // }
 
     pub fn simulator<'transport>(&'transport self) -> Arc<Simulator> { ////&'transport Arc<dyn EmulatorInterface> {
         // self.emulator.as_ref().expect("missing emulator interface")
@@ -222,7 +226,9 @@ impl Transport {
             TransportMode::Inproc | TransportMode::Emulator => {
     
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
-                match self.emulator().lookup(&pubkey).await? {
+                match self.emulator()
+                    .ok_or("Missing emulator interface")?
+                    .lookup(&pubkey).await? {
                     Some(reference) => Ok(reference.lamports()?),
                     None => {
                         return Err(error!("[Emulator] - Transport::balance() unable to lookup account: {}", pubkey)); 
@@ -329,12 +335,14 @@ impl Transport {
     // async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        self.cache.purge(pubkey)?;
+        self.cache.purge(Some(pubkey))?;
 
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
 
-                let reference = self.emulator().lookup(pubkey).await?;
+                let reference = self.emulator()
+                    .ok_or("Missing emulator interface")?
+                    .lookup(pubkey).await?;
                 match reference {
                     Some(reference) => {
                         self.cache.store(&reference)?;
@@ -374,7 +382,7 @@ impl super::Interface for Transport {
         self.get_authority_pubkey_impl()
     }
 
-    fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+    fn purge(&self, pubkey: Option<&Pubkey>) -> Result<()> {
         Ok(self.cache.purge(pubkey)?)
     }
 

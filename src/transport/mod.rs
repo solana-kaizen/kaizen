@@ -45,7 +45,7 @@ use workflow_core::workflow_async_trait;
             // fn register_event_channel(&self) -> (Id, Receiver<Event>);
             // fn unregister_event_channel(&self) -> (Id, Receiver<Event>);
             
-            fn purge(&self, pubkey:&Pubkey) -> Result<()>;
+            fn purge(&self, pubkey:Option<&Pubkey>) -> Result<()>;
         }
 //     }
 // }

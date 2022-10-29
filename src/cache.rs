@@ -69,8 +69,11 @@ impl Cache {
             }
 
             #[inline(always)]
-            pub fn purge(&self, pubkey : &Pubkey) -> Result<()> {
-                Ok(self.cache_impl.lock()?.invalidate(pubkey))
+            pub fn purge(&self, pubkey : Option<&Pubkey>) -> Result<()> {
+                match pubkey {
+                    Some(pubkey) => Ok(self.cache_impl.lock()?.invalidate(pubkey)),
+                    None => Ok(self.cache_impl.lock()?.invalidate_all()),
+                }
             }
 
         } else {
@@ -86,8 +89,11 @@ impl Cache {
             }
 
             #[inline(always)]
-            pub fn purge(&self, pubkey: &Pubkey) -> Result<()> {
-                Ok(self.cache_impl.invalidate(&pubkey))
+            pub fn purge(&self, pubkey: Option<&Pubkey>) -> Result<()> {
+                match pubkey {
+                    Some(pubkey) => Ok(self.cache_impl.invalidate(pubkey)),
+                    None => Ok(self.cache_impl.invalidate_all()),
+                }
             }
 
         }

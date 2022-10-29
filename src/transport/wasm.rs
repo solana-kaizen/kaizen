@@ -457,7 +457,7 @@ impl Transport {
 
     pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
-        self.cache.purge(pubkey)?;
+        self.cache.purge(Some(pubkey))?;
         
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
@@ -673,7 +673,7 @@ impl super::Interface for Transport {
         self.execute_impl(instruction).await
     }
 
-    fn purge(&self, pubkey: &Pubkey) -> Result<()> {
+    fn purge(&self, pubkey: Option<&Pubkey>) -> Result<()> {
         Ok(self.cache.purge(pubkey)?)
     }
 

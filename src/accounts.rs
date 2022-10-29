@@ -507,7 +507,7 @@ mod client {
 
     #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub struct AccountDescriptorList {
-        list : Vec<AccountDescriptor>
+        pub list : Vec<AccountDescriptor>
     }
 
     impl AccountDescriptorList {

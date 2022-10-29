@@ -173,7 +173,7 @@ impl Store for FileStore {
     }
     async fn purge(&self, pubkey : &Pubkey) -> Result<()> {
         if let Some(cache) = &self.cache {
-            cache.purge(pubkey)?;
+            cache.purge(Some(pubkey))?;
         }
 
         let filename = self.data_folder.join(pubkey.to_string());
