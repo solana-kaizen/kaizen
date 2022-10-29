@@ -255,7 +255,11 @@ impl Transport {
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
-                let result = self.emulator().lookup(&pubkey).await?;
+                let result = self
+                    .emulator()
+                    .expect("Transport::balance(): Missing emulator interface")
+                    .lookup(&pubkey)
+                    .await?;
                 match result {
                     Some(reference) => Ok(reference.lamports()?),
                     None => {
@@ -451,8 +455,8 @@ impl Transport {
     }
 
     #[inline(always)]
-    pub fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
-        self.emulator.as_ref().expect("missing emulator interface")
+    pub fn emulator<'transport>(&'transport self) -> Option<&'transport Arc<dyn EmulatorInterface>> {
+        self.emulator.as_ref()//.expect("missing emulator interface")
     }
 
     pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
@@ -468,7 +472,11 @@ impl Transport {
 
                 workflow_core::task::sleep(std::time::Duration::from_millis(5000)).await;
 
-                let reference = self.emulator().lookup(pubkey).await?;
+                let reference = self
+                    .emulator()
+                    .expect("Transport::lookup_remote_impl(): Missing emulator interface")
+                    .lookup(pubkey)
+                    .await?;
                 match reference {
                     Some(reference) => {
                         self.cache.store(&reference)?;
@@ -532,7 +540,10 @@ impl Transport {
 
                 let authority = self.get_authority_pubkey_impl()?;
 
-                let resp = self.emulator().execute(
+                let resp = self
+                    .emulator()
+                    .expect("Transport::execute_impl(): Missing emulator interface")
+                    .execute(
                     &authority,
                     instruction
                 ).await?;
