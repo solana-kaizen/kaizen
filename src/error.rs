@@ -252,7 +252,6 @@ impl Variant {
             Variant::OsString(os_str) => {
                 format!("OsString error: {:?}", os_str)
             },
-            #[cfg(not(target_arch = "bpf"))]
             Variant::IoError(error) => {
                 format!("I/O error: {:?}", error)
             },
