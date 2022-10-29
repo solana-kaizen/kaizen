@@ -1,7 +1,8 @@
-use solana_program::instruction::AccountMeta;
 use workflow_log::*;
 use crate::error::*;
 use crate::result::Result;
+#[allow(unused_imports)]
+use solana_program::instruction::AccountMeta;
 
 
 #[derive(Debug, Clone, Eq, PartialEq)]

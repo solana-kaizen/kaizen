@@ -1,7 +1,6 @@
 use cfg_if::cfg_if;
 use solana_program::pubkey::Pubkey;
 use workflow_allocator_macros::{Meta, container};
-use workflow_allocator::error;
 use workflow_allocator::error::ErrorCode;
 use workflow_allocator::container::Containers;
 use workflow_allocator::container::Container;
@@ -259,6 +258,7 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
 
 cfg_if! {
     if #[cfg(not(target_arch = "bpf"))] {
+        use workflow_allocator::error;
         use futures::future::join_all;
         use solana_program::instruction::AccountMeta;
         use workflow_allocator::container::{AccountAggregatorInterface,AsyncAccountAggregatorInterface};
