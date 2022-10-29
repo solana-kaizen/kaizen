@@ -183,6 +183,7 @@ pub enum Variant {
     BorrowMutError(BorrowMutError),
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
     ClientError(Arc<ClientError>),
+    #[cfg(not(target_arch = "bpf"))]
     IoError(Arc<IoError>),
     #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
     OsString(OsString),
@@ -203,6 +204,7 @@ impl Clone for Variant {
             Variant::BorrowMutError(_e) => Variant::ErrorCode(ErrorCode::BorrowMutError),
             #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
             Variant::ClientError(e) => Variant::ClientError(e.clone()),
+            #[cfg(not(target_arch = "bpf"))]
             Variant::IoError(e) => Variant::IoError(e.clone()),
             #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
             Variant::OsString(e) => Variant::OsString(e.clone()),
@@ -250,6 +252,7 @@ impl Variant {
             Variant::OsString(os_str) => {
                 format!("OsString error: {:?}", os_str)
             },
+            #[cfg(not(target_arch = "bpf"))]
             Variant::IoError(error) => {
                 format!("I/O error: {:?}", error)
             },
