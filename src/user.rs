@@ -5,6 +5,7 @@ use workflow_allocator::transport::TransportMode;
 
 use crate::error;
 
+#[derive(Clone)]
 pub enum IdentityState {
     Unknown,
     Missing,
@@ -138,6 +139,20 @@ impl User {
             IdentityState::Present => Ok(true),
             _ => Ok(false)
         }
+    }
+
+    pub fn is_checked(&self) -> Result<bool> {
+        let inner = self.inner.lock()?;
+        match inner.identity_state {
+            IdentityState::Present => Ok(true),
+            IdentityState::Missing => Ok(true),
+            _ => Ok(false)
+        }
+    }
+
+    pub fn state(&self) -> Result<IdentityState> {
+        let inner = self.inner.lock()?;
+        Ok(inner.identity_state.clone())
     }
 
 }
