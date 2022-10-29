@@ -213,7 +213,7 @@ impl TransactionList {
 
     pub async fn post(&self) -> Result<()> {
         for tx in self.transactions.iter() {
-            log_trace!("tx: {:?}", tx);
+            // log_trace!("tx: {:?}", tx);
             tx.post().await?
         }
 
@@ -222,7 +222,7 @@ impl TransactionList {
 
     pub async fn execute(&self) -> Result<()> {
         for tx in self.transactions.iter() {
-            log_trace!("tx: {:?}", tx);
+            // log_trace!("tx: {:?}", tx);
             tx.execute().await?
         }
 
