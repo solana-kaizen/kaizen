@@ -106,7 +106,8 @@ impl User {
     pub async fn load_identity(&self, program_id : &Pubkey, authority: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     // pub async fn load_identity<'cr>(&self, program_id : &Pubkey) -> Result<Option<ContainerReference<'cr,Identity<'cr,'cr>>>> {
     
-        match workflow_allocator::identity::client::reload_identity(program_id, authority).await? {
+        match workflow_allocator::identity::client::load_identity(program_id, authority).await? {
+        // match workflow_allocator::identity::client::reload_identity(program_id, authority).await? {
             Some(identity) => {
                 // let identity = identity.try_load_container::<Identity>()?;
                 // self.sequencer.load_from_identity(&identity_container)?;
