@@ -86,6 +86,13 @@ cfg_if::cfg_if! {
         };
         pub use workflow_allocator_macros::declare_client;
         // pub use workflow_allocator::transport::
+        pub use async_std;
     }
 
+}
+
+cfg_if! {
+    if #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))] {
+        pub use workflow_allocator::inventory;
+    }
 }

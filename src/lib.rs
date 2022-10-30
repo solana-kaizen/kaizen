@@ -90,3 +90,9 @@ cfg_if! {
 
     }
 }
+
+cfg_if! {
+    if #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))] {
+        pub use inventory;
+    }
+}

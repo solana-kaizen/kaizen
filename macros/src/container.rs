@@ -1326,7 +1326,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
         // }
 
         #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))]
-        inventory::submit! {
+        workflow_allocator::inventory::submit! {
             workflow_allocator::container::registry::ContainerDeclaration::new(#container_type as u32, #struct_name_str, 
                 // &#struct_path_with_generics::print
             )
