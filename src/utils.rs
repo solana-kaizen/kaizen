@@ -6,8 +6,8 @@ pub fn shorten_pubkey(pubkey: &Pubkey) -> String {
     let key_str = key_str.as_str();
     let key_str = format!(
         "{}....{}",
-        &key_str[0..8],
-        &key_str[key_str.len() - 8..key_str.len()]
+        &key_str[0..4],
+        &key_str[key_str.len() - 4..key_str.len()]
     );
     key_str
 }
