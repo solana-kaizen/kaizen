@@ -470,7 +470,7 @@ impl Transport {
                 // self.emulator().lookup(pubkey).await
             // Some(emulator) => {
             //     Ok(emulator.lookup(&pubkey).await?)
-                let delay: u64 = rand::thread_rng().gen_range(1000,3000);
+                let delay: u64 = rand::thread_rng().gen_range(500,1500);
                 workflow_core::task::sleep(std::time::Duration::from_millis(delay)).await;
                 // workflow_core::task::sleep(std::time::Duration::from_millis(5000)).await;
 
