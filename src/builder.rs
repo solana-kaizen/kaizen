@@ -524,7 +524,6 @@ impl InstructionBuilder {
 
     pub fn with_account_templates_with_custom_suffixes_prefixed(self: Arc<Self>, prefix : &str, suffixes : &[&str]) -> Arc<Self> {
         self.with_inner(|mut inner| {
-            // let mut inner = self.inner();
             for n in 0..suffixes.len() {
                 let mut suffix = prefix.to_string();
                 suffix.push_str(suffixes[n]);
@@ -533,29 +532,7 @@ impl InstructionBuilder {
         })
     }
 
-
-    // fn aaa(self : Arc<Self>) {
-    //     self.with_inner(|inner| {
-
-    //     })
-    // }
-    // pub fn with_custom_account_templates(self: Arc<Self>, templates : &[(IsSigner,Access)]) -> Arc<Self> {
-    //     let template_access_descriptors: Vec<TemplateAccessDescriptor> = 
-    //         templates
-    //             .iter()
-    //             .map(|t|(t.0,t.1,SeedSuffix::Sequence))
-    //             .collect();
-    //     self.template_access_descriptors.extend(template_access_descriptors);
-    //     self
-    // }
-
     pub fn with_custom_account_templates_and_seeds(self: Arc<Self>, templates : &[(IsSigner,Access,AddressDomain,SeedSuffix)]) -> Arc<Self> {
-        // let template_access_descriptors: Vec<TemplateAccessDescriptor> = 
-        //     templates
-        //         .iter()
-        //         .map(|t|(t.0,t.1,SeedSuffix::Custom(t.2)))
-        //         .collect();
-        // self.template_access_descriptors.extend(template_access_descriptors);
         self.inner().generic_template_account_descriptors.extend(templates.to_vec());
         self
     }
@@ -580,8 +557,6 @@ impl InstructionBuilder {
     where A: PdaCollectionAccessorInterface
     {
         self.with_collection_index_range(pda_collection_accessor, idx..idx+1).await
-        // let meta = pda_collection_accessor.accessor(&self.program_id(), idx..idx+1).writable_account_meta().await?;
-        // Ok(self.with_collection_accounts(&[meta]))
     }
 
     pub async fn with_collection_index_range<A>(self : Arc<Self>, pda_collection_accessor : &A, range : std::ops::Range<usize>) -> Result<Arc<Self>> 
@@ -718,18 +693,6 @@ impl InstructionBuilder {
                 inner.system_accounts.insert(0, AccountMeta::new(solana_sdk::system_program::id(), false));
             }
 
-            // @seeds
-            // let user_seed = match &self.identity {
-            //     Some(identity) => identity.pubkey.clone(),
-            //     None => {
-            //         match &self.authority {
-            //             Some(authority) => authority.pubkey.clone(),
-            //             None => {
-            //                 return Err(error!("InstructionBuilder::seal(): missing identity and/or authority"))
-            //             }
-            //         }
-            //     }
-            // };
             let generic_template_account_descriptors = inner.generic_template_account_descriptors.clone();
             for (is_signer,is_writable, domain, seed_suffix) in generic_template_account_descriptors.iter() {
             
@@ -820,13 +783,11 @@ impl InstructionBuilder {
 
     pub fn try_into(self: Arc<Self>) -> Result<solana_program::instruction::Instruction> {
 
-        // let inner = self.inner();
-
         if !self.is_sealed() {
             return Err(error!("InstructionBuilder is not sealed!"));
         }
 
-        let program_id = self.program_id(); //inner.program_id;
+        let program_id = self.program_id();
 
         let mut instruction_data: Vec<u8> = Vec::new();
         instruction_data.extend(self.payload().to_vec());

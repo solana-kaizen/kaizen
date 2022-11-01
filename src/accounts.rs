@@ -266,9 +266,6 @@ mod client {
             });
 
             Ok(ContainerReference::new(container))
-            // let v = ContainerReference { inner : container };
-            // Ok(v)
-            // Ok(container)
 
         }
         
@@ -342,20 +339,6 @@ mod client {
         pub rent_epoch: Epoch,
         pub executable: bool,
     }
-
-    // impl AccountDataStore {
-    //     pub fn from(account_data : &AccountData) -> Self {
-    //         Self {
-    //             data_type: account_data.data_type,
-    //             key: account_data.key,
-    //             owner: account_data.owner,
-    //             lamports: account_data.lamports,
-    //             data: account_data.data().to_vec(),
-    //             rent_epoch: account_data.rent_epoch,
-    //             executable: account_data.executable,
-    //         }
-    //     }
-    // }
 
     impl From<&AccountData> for AccountDataStore {
         fn from(account_data: &AccountData) -> Self {
@@ -791,16 +774,6 @@ mod client {
             }
         }
     }
-
-    // pub fn get_account_info_serialized_data_len(
-    //     account_info: &AccountInfo,
-    // ) -> std::result::Result<u64, solana_program::program_error::ProgramError> {
-    //     let marker_value = unsafe {
-    //         let ptr = account_info.try_borrow_mut_data()?.as_mut_ptr().offset(-8) as *mut u64;
-    //         *ptr as u64
-    //     };
-    //     Ok(marker_value)
-    // }
 
     impl<'info> account_info::Account for AccountData {
         fn get(&mut self) -> (&mut u64, &mut [u8], &Pubkey, bool, u64) {

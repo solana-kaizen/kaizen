@@ -23,16 +23,11 @@ use workflow_allocator::identity::program::Identity;
 use workflow_allocator::payload::Payload;
 use workflow_allocator::container;
 use workflow_log::*;
-
-// use crate::container::AccountAggregator;
-
 pub enum AccountType {
     Token,
     Index,
     Handler,
 }
-
-
 pub struct AccountAllocationArgs<'info,'refs,'seed> {
     /// Seed prefix: None, Authority key, Identity key, or Identity key w/sequence
     pub domain : AddressDomain,
@@ -66,37 +61,14 @@ impl<'info,'refs,'seed> AccountAllocationArgs<'info,'refs,'seed> {
         }
     }
 
-    // pub fn new_with_domain(domain : AddressDomain) -> AccountAllocationArgs<'info,'refs,'seed> {
-    //     AccountAllocationArgs {
-    //         domain,
-    //         seed : None,
-    //         lamports : LamportAllocation::Auto,
-    //         payer : AllocationPayer::Authority,
-    //         // reserve_data_len : 0,
-    //     }    
-    // }    
-
-    // pub fn new_with_payer(domain : AddressDomain, payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
     pub fn new_with_payer(domain : AddressDomain, payer : AllocationPayer<'info,'refs>) -> AccountAllocationArgs<'info,'refs,'seed> {
         AccountAllocationArgs {
-            domain,// : PdaDomain::Default,
+            domain,
             seed : None,
             lamports : LamportAllocation::Auto,
             payer
-            // payer : AllocationPayer::Account(payer),
-            // reserve_data_len : 0,
         }
     }
-
-    // pub fn new_with_domain_and_payer(domain : PdaDomain, payer : &'refs AccountInfo<'info>) -> AccountAllocationArgs<'info,'refs,'seed> {
-    //     AccountAllocationArgs {
-    //         lamports : LamportAllocation::Auto,
-    //         payer : AllocationPayer::Account(payer),
-    //         domain,
-    //         seed : None,
-    //         // reserve_data_len : 0,
-    //     }
-    // }
 
     pub fn new_with_args(
         domain : AddressDomain,
@@ -120,10 +92,6 @@ impl<'info,'refs,'seed> AccountAllocationArgs<'info,'refs,'seed> {
 }
 
 
-// pub type HandlerFn = fn(ctx: &ContextReference) -> Result<()>;
-// pub type HandlerFnCPtr = *const fn(ctx: &ContextReference) -> Result<()>;
-// pub type ProgramHandlerFn = fn(ctx: &ContextReference) -> ProgramResult;
-// pub type ProgramHandlerFnCPtr = *const fn(ctx: &ContextReference) -> ProgramResult;
 pub type ContextReference<'info,'refs,'pid,'instr> = Rc<Box<Context<'info,'refs,'pid,'instr>>>;
 pub type SimulationHandlerFn = fn(ctx: &ContextReference) -> Result<()>;
 pub type HandlerFn = fn(ctx: &ContextReference) -> ProgramResult;
@@ -177,11 +145,7 @@ pub struct Context<'info, 'refs, 'pid, 'instr> {
     pub collection_template_accounts : &'refs [AccountInfo<'info>],
     pub collection_template_data : &'instr [u8],
 
-    // pub collection_accounts : &'refs [AccountInfo<'info>],
-    // pub collection_data : &'instr [u8],
-
     pub meta : RefCell<ContextMeta<'info,'refs>>,
-    // pub runtime : 
 
     rent : Rent,
 }
@@ -194,7 +158,6 @@ impl<'info, 'refs, 'pid, 'instr>
     type Error = crate::error::Error;
 
     fn try_from(value:(&'pid Pubkey, &'refs [AccountInfo<'info>], &'instr [u8])) -> Result<Context<'info, 'refs, 'pid, 'instr>> {
-        // fn try_into(self :(program_id, accounts, instruction_data) : (&'pid Pubkey, &'refs [AccountInfo<'info>], &'instr [u8])) -> Result<Context<'info, 'refs, 'pid, 'instr>> {
 
         let (program_id, accounts, incoming_data) = value;
 
@@ -203,24 +166,14 @@ impl<'info, 'refs, 'pid, 'instr>
             return Err(ErrorCode::NotEnoughAccounts.into());
         }
 
-        // log_trace!("instruction data len: {}", instruction_data.len());
-
         let payload : &Payload = Payload::try_from(incoming_data)?;
-        //instruction_data.try_into().expect("let payload : &Payload = instruction_data.try_into() - context.rs@121");
 
         let interface_id = payload.interface_id as usize;
         let handler_id = payload.handler_id as usize;
 
         let flags = payload.flags;
         let has_identity = if flags & crate::payload::PAYLOAD_HAS_IDENTITY_ACCOUNT != 0 { true } else { false };
-        // let has_system_account = if flags & crate::payload::PAYLOAD_HAS_SYSTEM_ACCOUNT != 0 { true } else { false };
-        // let non_handler_accounts = payload.non_handler_accounts()+1;
-        // if accounts.len() < non_handler_accounts {
-        //     log_trace!("not enough accounts - len: {} need non-handler accounts: {}", accounts.len(), non_handler_accounts);
-        //     return Err(ErrorCode::NotEnoughAccounts.into());
-        // }
 
-        // let handler_accounts = &accounts[non_handler_accounts..];
         let incoming_accounts_len = accounts.len();
         let payload_accounts_len = payload.total_accounts();
 
@@ -240,18 +193,8 @@ impl<'info, 'refs, 'pid, 'instr>
                 );
                 return Err(ErrorCode::ContextAccounts.into())
             }
-
         }
 
-        // if incoming_accounts_len != 1 && incoming_accounts_len != (payload_accounts_len+2) {
-        //     log_trace!("FATAL: Invalid number of context accounts - expecting: 1 or {} received: {}",
-        //         payload_accounts_len+2,
-        //         incoming_accounts_len
-        //     );
-        //     return Err(ErrorCode::ContextAccounts.into())
-        // }
-
-        // let mut offset : usize = if has_system_account { 1 } else { 0 };
         let mut offset = 0;
         let authority = &accounts[offset];
         if !authority.is_signer {
@@ -283,13 +226,11 @@ impl<'info, 'refs, 'pid, 'instr>
             }
 
             Some(identity)
-            //Some(&accounts[offset])
         } else {
             log_trace!("{} |  identity: N/A", style("CTX").magenta());
             None
         };
         offset += 1;
-        // let identity = Identity::load(&accounts[offset])?;
 
         let len = payload.system_accounts_len as usize;
         let system_accounts = &accounts[offset..offset+len];
@@ -315,29 +256,9 @@ impl<'info, 'refs, 'pid, 'instr>
         let collection_template_accounts = &accounts[offset..offset+len];
         offset += len;
 
-        // log_trace!("| incoming accounts: {}", accounts.len());
-        // log_trace!("| token accounts: {}", token_accounts.len());
-        // log_trace!("| index accounts: {}", index_accounts.len());
-        // log_trace!("| template accounts: {}", template_accounts.len());
-        // log_trace!("+---");
-
         let marker = if has_identity { 2 } else { 1 };
-        // if has_system_account { marker += 1 };
         assert_eq!(payload_accounts_len+marker, offset); 
 
-        // if has_system_account {
-        //     if has_identity {
-        //         assert_eq!(payload_accounts_len+3, offset); 
-        //     } else {
-        //         assert_eq!(payload_accounts_len+2, offset); 
-        //     }
-        // } else {
-        //     if has_identity {
-        //         assert_eq!(payload_accounts_len+2, offset); 
-        //     } else {
-        //         assert_eq!(payload_accounts_len+1, offset); 
-        //     }
-        // }
         let handler_accounts = &accounts[offset..];
 
         // ~~~
@@ -386,21 +307,6 @@ impl<'info, 'refs, 'pid, 'instr>
             collection_template_data_bytes_consumed : 0,
             sync_rent: Vec::new(),
         };
-
-        // let instruction_data_view = hexplay::HexViewBuilder::new(&instruction_data)
-        //     .force_color()
-        //     .add_colors(vec![
-        //         // (hexplay::color::red(), 42..72),
-        //         (hexplay::color::yellow(), 0..2),
-        //         // (hexplay::color::green(), 32..38),
-        //         // (hexplay::color::blue(), 200..226),
-        //     ])
-        //     .address_offset(0)
-        //     .row_width(16)
-        //     .finish();
-        //     // instruction_data_view.print();
-        // log_trace!("{}", instruction_data_view);
-        // log_trace!("");
 
         let ctx = Context {
             program_id,
@@ -486,8 +392,6 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             style(self.collection_template_accounts.len()).cyan(),
         );
 
-        // let collection_template_data_len = //self.incoming_data.len() - self.instruction_
-        // let template_address_data_len = self.incoming_data.len() - self.instruction_data.len();
         let instruction_data_len = self.incoming_data.len()
             - std::mem::size_of::<Payload>()
             - self.generic_template_data.len()
@@ -511,15 +415,12 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         let instruction_data_view = hexplay::HexViewBuilder::new(&self.incoming_data)
             .force_color()
             .add_colors(vec![
-                // (hexplay::color::red(), 42..72),
                 (hexplay::color::yellow(), 0..2),
-                // (hexplay::color::green(), 32..38),
-                // (hexplay::color::blue(), 200..226),
             ])
             .address_offset(0)
             .row_width(16)
             .finish();
-            // instruction_data_view.print();
+
         log_trace!("{} | incoming data {} bytes:", 
             style("CTX").magenta(),
             self.incoming_data.len()
@@ -528,7 +429,6 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         let string = instruction_data_view.to_string();
         let lines: Vec<String> = string.split("\n").map(|l|format!("{} | {}",style("CTX").magenta(), l).to_string()).collect();
         log_trace!("{}", lines.join("\n"));
-        // log_trace!("{}", instruction_data_view);
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -553,52 +453,26 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         }
 
-
-
-
         Ok(())
     }
 
     pub fn try_consume_collection_template_address_data(&self) -> Result<(ProgramAddressData<'instr>, &'refs AccountInfo<'info>)> {
 
-        // log_trace!("try_consume_program_address_data()");
-        
         let mut meta = self.meta.borrow_mut();
         let account_index = meta.collection_template_accounts_consumed;
         let byte_offset = meta.collection_template_data_bytes_consumed;
-        // log_trace!("~~~ current byte offset: {}", byte_offset);
-        // log_trace!("try_consume_program_address_data() A: byte_offset:{:?}", byte_offset);
-        // log_trace!("self.template_address_data.len: {}", self.template_address_data.len());
-        
-        // log_trace!("all data:");
-        // trace_hex(self.template_address_data);
-        // log_trace!("template address data:");
-        // trace_hex(&self.template_address_data[byte_offset..]);
 
         let (program_address_data_ref, bytes_used) = ProgramAddressData::try_from(
             &self.collection_template_data[byte_offset..]
         )?;
-        // log_trace!("~~~ current bytes used: {}", bytes_used);
-        // log_trace!("try_consume_program_address_data() B");
+
         if byte_offset + bytes_used > self.collection_template_data.len() {
             return Err(ErrorCode::PDAAccountArgumentData.into());
         }
-        // log_trace!("try_consume_program_address_data() C");
+
         meta.collection_template_accounts_consumed += 1;
         meta.collection_template_data_bytes_consumed += bytes_used;
         
-        // log_trace!("try_consume_program_address_data() D");
-        // let seed :[u8;32] = self.program_id.to_bytes();
-        // let bump: u8 = 255u8;
-        // let seed_suffix_str: String = String::from("");
-        
-        // ^ TODO: deserealize PAD from IB!
-        // ? TODO: deserealize PAD from IB!
-        
-        // let program_address_data = ProgramAddressData {
-        //     seed, bump, seed_suffix_str
-        // };
-
         let account_info = &self.collection_template_accounts[account_index];
 
         Ok((program_address_data_ref, account_info))
@@ -606,44 +480,21 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
 
     pub fn try_consume_generic_template_address_data(&self) -> Result<(ProgramAddressData<'instr>, &'refs AccountInfo<'info>)> {
 
-        // log_trace!("try_consume_program_address_data()");
-        
         let mut meta = self.meta.borrow_mut();
         let account_index = meta.generic_template_accounts_consumed;
         let byte_offset = meta.generic_template_data_bytes_consumed;
-        // log_trace!("~~~ current byte offset: {}", byte_offset);
-        // log_trace!("try_consume_program_address_data() A: byte_offset:{:?}", byte_offset);
-        // log_trace!("self.template_address_data.len: {}", self.template_address_data.len());
-        
-        // log_trace!("all data:");
-        // trace_hex(self.template_address_data);
-        // log_trace!("template address data:");
-        // trace_hex(&self.template_address_data[byte_offset..]);
 
         let (program_address_data_ref, bytes_used) = ProgramAddressData::try_from(
             &self.generic_template_data[byte_offset..]
         )?;
-        // log_trace!("~~~ current bytes used: {}", bytes_used);
-        // log_trace!("try_consume_program_address_data() B");
+
         if byte_offset + bytes_used > self.generic_template_data.len() {
             return Err(ErrorCode::PDAAccountArgumentData.into());
         }
-        // log_trace!("try_consume_program_address_data() C");
+
         meta.generic_template_accounts_consumed += 1;
         meta.generic_template_data_bytes_consumed += bytes_used;
         
-        // log_trace!("try_consume_program_address_data() D");
-        // let seed :[u8;32] = self.program_id.to_bytes();
-        // let bump: u8 = 255u8;
-        // let seed_suffix_str: String = String::from("");
-        
-        // ^ TODO: deserealize PAD from IB!
-        // ? TODO: deserealize PAD from IB!
-        
-        // let program_address_data = ProgramAddressData {
-        //     seed, bump, seed_suffix_str
-        // };
-
         let account_info = &self.generic_template_accounts[account_index];
 
         Ok((program_address_data_ref, account_info))
@@ -653,12 +504,9 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         &self,
         data_len : usize,
         allocation_args : &AccountAllocationArgs<'info,'_,'_>,
-        // pda_domain : &[u8],
-        // tpl_program_address_data : ProgramAddressData,
         tpl_seeds : &[&[u8]],
         tpl_account_info : &AccountInfo<'info>,
         validate_pda : bool
-    // ) -> Result<&'refs AccountInfo<'info>> {
     ) -> Result<()> {
 
         cfg_if! {
@@ -685,7 +533,6 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         };
         
-        // log_trace!("| pda: checking allocation args");
         let payer = match allocation_args.payer {
             AllocationPayer::Authority => {
                 &self.authority
@@ -703,52 +550,30 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             }
         };
 
-
-
-
-        // let account_info = 
         crate::allocate_pda(
             payer,
             self.program_id,
             tpl_seeds,
-            //&[&domain_seed,&tpl_program_address_data.seed],
             tpl_account_info,
             data_len,
             lamports,
             validate_pda,
         )?;
 
-        // match allocation_args.domain {
-        //     AddressDomain::D
-        // }
-
-
-        // Ok(account_info)
         Ok(())
 
     }
 
-    // pub fn try_create_pda<'ctx : 'info + 'refs>(
     pub fn try_create_pda(
         &self,
         // &'ctx self,
         data_len : usize,
         allocation_args : &AccountAllocationArgs<'info,'_,'_>
     ) -> Result<&'refs AccountInfo<'info>> {
-    // ) -> Result<&'ctx AccountInfo<'info>> {
-    // ) -> Result<()> {
 
-        log_trace!("[pda] ... create_pda() starting for {} bytes", data_len);
+        // log_trace!("[pda] ... create_pda() starting for {} bytes", data_len);
         let (tpl_program_address_data,tpl_account_info) = self.try_consume_generic_template_address_data()?;
-        log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
         // log_trace!("[pda] ... create_pda() for account {}", tpl_account_info.key.to_string());
-        
-        // let user_seed = match &self.identity {
-        //     Some(identity) => identity.pubkey().to_bytes(),
-        //     None => {
-        //         self.authority.key.to_bytes()
-        //     }
-        // };
             
         let mut advance_pda_sequence = false;
         let domain_seed = match &allocation_args.domain {
@@ -777,10 +602,8 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
                     return Err(error_code!(ErrorCode::IdentityMissingForAlloc))
                 }
             },
-            // AddressDomain::Custom(seed) => seed.to_vec()
         };
 
-        // let account_info = 
         self.try_create_pda_with_args(
             data_len,
             allocation_args,
@@ -794,26 +617,14 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
             self.identity.as_ref().unwrap().advance_pda_sequence()?;
         }
 
-        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // if let Some(identity) = &self.identity {
-        //     identity.advance_pda_sequence()?;
-        // }
-
-        // Ok(account_info)
         Ok(tpl_account_info)
     }
 
     pub fn sync_rent(&self, account_info : &'refs AccountInfo<'info>, _rent_collector : &RentCollector<'info,'refs>) -> Result<()> {
 
-        // let rent = Rent::default();
         let data_len = account_info.data_len();
         let minimum_balance = self.rent.minimum_balance(data_len);
         let lamports = account_info.lamports();
-
-        // let authority_lamports = self.authority.lamports();
-        // if authority_lamports < lamports {
-        //     return Err(error_code!(ErrorCode::InsufficientBalanceForRentSync));
-        // }
 
         if lamports < minimum_balance {
             let delta = minimum_balance - lamports;
@@ -824,8 +635,6 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
                 self.authority,
                 self.authority,//TODO @MATOO
                 delta,
-                // from, to, authority, amount
-
             )?;
         }
 
@@ -854,7 +663,6 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     }
 
     #[inline(always)]
-    // pub fn locate_index_account<'ctx>(&'ctx self, pubkey : &Pubkey) -> Option<&'ctx AccountInfo<'info>> {
     pub fn locate_index_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
         if let Some(index) = self.index_accounts.iter().position(|account| account.key == pubkey) {
             Some(&self.index_accounts[index])
@@ -862,7 +670,6 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     }
 
     #[inline(always)]
-    // pub fn locate_index_account<'ctx>(&'ctx self, pubkey : &Pubkey) -> Option<&'ctx AccountInfo<'info>> {
     pub fn locate_collection_account(&self, pubkey : &Pubkey) -> Option<&'refs AccountInfo<'info>> {
         if let Some(index) = self.collection_accounts.iter().position(|account| account.key == pubkey) {
             Some(&self.collection_accounts[index])
