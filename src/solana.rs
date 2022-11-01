@@ -16,16 +16,8 @@ pub fn allocate_pda<
 >(
     payer: &'payer AccountInfo<'info>,
     program_id:&'pid Pubkey,
-    // user_seed: &[u8],
-
-    // account_template: &AccountInfoTemplate<'info, 'refs>,
-    // tpl: &AccountInfoTemplate<'info, 'refs>,
-    // tpl_address_data : &ProgramAddressData,
-    // tpl_address_data : &[&[u8]],
     tpl_seeds : &[&[u8]],
     tpl_account_info: &'refs AccountInfo<'info>,
-
-    // settings : &(usize,u64)
     space: usize,
     lamports : u64,
     validate_pda: bool,
@@ -36,8 +28,6 @@ pub fn allocate_pda<
     if validate_pda {
         match Pubkey::create_program_address(
             tpl_seeds,
-            // &[user_seed, tpl_address_data.seed],
-            // &[seed, seed_suffix, &[tpl_address_data.bump]],
             &program_id
         ) {
             Ok(address)=>{
@@ -45,7 +35,6 @@ pub fn allocate_pda<
                     // msg!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
                     return Err(error_code!(ErrorCode::PDAAddressMatch));
                 }
-
                 // msg!("| pda: PDA ADDRESS OK");
             },
             Err(_e)=>{
@@ -77,19 +66,8 @@ pub fn allocate_pda<
             payer.clone(),
             tpl_account_info.clone(),
         ],
-        // A slice of seed slices, each seed slice being the set
-        // of seeds used to generate one of the PDAs required by the
-        // callee program, the final seed being a single-element slice
-        // containing the `u8` bump seed.
         &[
             tpl_seeds
-            // tpl_adderss_data
-            // &[
-            //     user_seed,
-            //     tpl_address_data.seed,
-            //     // seed_suffix,
-            //     // &[tpl_address_data.bump]
-            // ]
         ]
     );
     // msg!("invoke_signed:result: {:?}", result);
@@ -100,7 +78,6 @@ pub fn allocate_pda<
         Err(e)=>{
             // msg!("allocate_pda:AllocatorError");
             return Err(program_error!(e));
-            //vec.push(Err(e));
         }
     }
 }
@@ -115,12 +92,11 @@ pub fn allocate_multiple_pda<
     payer: &'payer AccountInfo<'info>,
     program_id:&'pid Pubkey,
     user_seed : &[u8],
-    account_templates: &[(&ProgramAddressData,&'refs AccountInfo<'info>)], //AccountInfoTemplate<'info, 'refs>],
+    account_templates: &[(&ProgramAddressData,&'refs AccountInfo<'info>)], 
     settings : &[(usize,u64)]
 ) -> Result<Vec<&'refs AccountInfo<'info>>> {
 
     let mut vec:Vec<&AccountInfo<'info>> = Vec::new();
-    //for info in account_templates {
     for idx in 0..settings.len() {
         let (tpl_address_data, tpl_account_info) = account_templates[idx];
         let (space, lamports) = settings[idx]; // as u64;
@@ -186,12 +162,8 @@ pub fn allocate_multiple_pda<
             Err(e)=>{
                 // msg!("allocate_multiple_pda:AllocatorError");
                 return Err(program_error!(e));
-                //vec.push(Err(e));
             }
         };
-        
-
-        // vec.push(Err(AllocatorError::NotImplemented));
     };
 
     Ok(vec)
@@ -216,11 +188,10 @@ pub fn transfer_sol<'info>(
         lamports
     );
 
-    // invoke()
     let result = invoke(
         &ix,
-        &[source.clone(), destination.clone(), system_program_account.clone()],
         //signers,
+        &[source.clone(), destination.clone(), system_program_account.clone()],
     );
 
     match result{

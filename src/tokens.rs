@@ -1,11 +1,7 @@
-// use js_sys::{Array, Object};
 use std::str::FromStr;
 use crate::{trace, transport::Transport};
-// use wasm_bindgen::prelude::*;
 use solana_program::pubkey::Pubkey;
-// use solana_program::{program_pack::Pack, pubkey::Pubkey};
 use metaplex_meta_decoder::{Metadata, borsh, get_metadata_pda };
-// use metaplex_meta_decoder::{Metadata, borsh, PREFIX, get_metadata_pda };
 use crate::result::Result;
 use crate::error::*;
 use std::collections::HashMap;
@@ -115,12 +111,6 @@ pub fn get_tokens()->Vec<Pubkey>{
     pubkeys.push(Pubkey::from_str("So11111111111111111111111111111111111111112").unwrap());
     pubkeys.push(Pubkey::from_str("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v").unwrap());
     pubkeys.push(Pubkey::from_str("9MwGzSyuQRqmBHqmYwE6wbP3vzRBj4WWiYxWns3rkR7A").unwrap());
-    //BUGuuhPsHpk8YZrL2GctsCtXGneL1gmT5zYb7eMHZDWf
-    
-
-    
-    //let tokens = get_tokens_list().unwrap();
-    //println!("tokens:{}", tokens);
 
     pubkeys
 }
@@ -147,7 +137,6 @@ pub async fn get_tokens_info(keys:Vec<Pubkey>)->Result<Vec<TokenInfo>>{
 
         let account_data = account_data.write().await;
 
-        //log_trace!("account_data: {:?}", account_data);
         let meta:Metadata = match borsh::BorshDeserialize::deserialize(&mut account_data.data.as_slice()){
             Ok(meta)=>{
                 meta
@@ -180,7 +169,6 @@ pub async fn get_tokens_info(keys:Vec<Pubkey>)->Result<Vec<TokenInfo>>{
 
     Ok(list)
 }
-
 
 #[cfg(target_arch = "wasm32")]
 pub async fn get_tokens_info_array(keys:Vec<Pubkey>)->Result<js_sys::Array>{

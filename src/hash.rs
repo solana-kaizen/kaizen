@@ -21,8 +21,6 @@ impl std::hash::Hasher for PubkeyHasher {
     }
 }
 
-// pub struct PubkeyHasher;
-
 impl std::hash::BuildHasher for PubkeyHasher {
     type Hasher = PubkeyHasher;
     fn build_hasher(&self) -> PubkeyHasher {
@@ -36,20 +34,8 @@ impl std::default::Default for PubkeyHasher {
     }
 }
 
-// pub type PubkeyHashMap<V, K = Pubkey, S = PubkeyHasher> = std::collections::HashMap<K,V,S>;
-
-// ahash::AHashMap
-// impl<V,K,S> PubkeyHashMap<V,K,S> {
-
-// }
-// std::collections::HashMap::with_hasher(PubkeyHasher);
-
-// #[derive(Clone, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
-// #[derive(Clone, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
-// pub struct PubkeyHashMap<V, K = Pubkey, S = PubkeyHasher>(std::collections::HashMap<K,V,S>)
 pub struct PubkeyHashMap<V, K = Pubkey, S = PubkeyHasher>(std::collections::HashMap<K,V,S>)
-// pub struct PubkeyHashMap<K, V, S = PubkeyHasher>(std::collections::HashMap<K,V,S>)
 where 
 K : BorshSerialize + BorshDeserialize + Hash + Eq + PartialEq + PartialOrd,
 V : BorshSerialize + BorshDeserialize,
@@ -87,8 +73,6 @@ where
     {
         self.0.remove(k)
     }
-
-    
 
 }
 

@@ -1,7 +1,5 @@
 use workflow_allocator::result::Result;
-// use workflow_allocator::error::*;
 
-// pub const PAYLOAD_HAS_SYSTEM_ACCOUNT : u16      = 0x0001;
 pub const PAYLOAD_HAS_IDENTITY_ACCOUNT : u16    = 0x0001;
 
 #[derive(Copy, Clone)]
@@ -16,16 +14,6 @@ pub struct Payload {
     pub collection_accounts_len : u8,   
     pub generic_template_accounts_len : u8,   
     pub collection_template_accounts_len : u8,   
-
-/*
-
-    // dynamic_template_accounts_len
-    generic_template_accounts_len
-    collection_template_accounts_len
-
-    collection_accounts_len
-
-*/
 
     pub collection_data_offset : u16,
     pub instruction_data_offset : u16,

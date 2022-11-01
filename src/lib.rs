@@ -22,9 +22,9 @@ pub mod context;
 pub mod program;
 pub mod instruction;
 pub mod prelude;
-// pub mod btree;
 pub mod identity;
-pub mod pgp;
+// pub mod btree;
+// pub mod pgp;
 
 pub use utils::generate_random_pubkey;
 

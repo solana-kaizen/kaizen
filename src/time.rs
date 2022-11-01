@@ -64,4 +64,3 @@ impl Duration {
     pub const DAY: Duration = Duration(3600 * 24);
     pub const WEEK: Duration = Duration(3600 * 24 * 7);
 }
-// let clock = Clock::get()
