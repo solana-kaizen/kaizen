@@ -1,31 +1,23 @@
 #![allow(unused_unsafe)]
-// use std::cell::RefCell;
 use std::*;
 use rand::*;
-// use std::sync::Mutex;
-// use std::collections::HashMap;
 use async_std::sync::RwLock;
 use wasm_bindgen::prelude::*;
 use solana_program::pubkey::Pubkey;
-// use solana_program::entrypoint::ProcessInstruction;
 use crate::accounts::AccountData;
 use crate::emulator::Simulator;
 use crate::emulator::client::EmulatorRpcClient;
 use crate::emulator::interface::EmulatorInterface;
-// use crate::wasm::*;
 use workflow_wasm::utils;
 use crate::transport::queue::TransactionQueue;
 use js_sys::*;
 use wasm_bindgen_futures::JsFuture;
-// use derivative::Derivative;
 use solana_program::instruction::Instruction;
 use crate::result::Result;
-// use crate::error::*;
 use crate::error;
 use workflow_log::*;
 use async_trait::async_trait;
 use std::sync::{Mutex, Arc};
-// use async_std::sync::RwLock;
 use workflow_allocator::cache::Cache;
 use std::convert::From;
 use crate::transport::{Transaction, TransportConfig};
@@ -35,23 +27,6 @@ use wasm_bindgen_futures::future_to_promise;
 use crate::accounts::AccountDataReference;
 use super::TransportMode;
 use crate::wallet::*;
-
-// use crate::wallet::wasm;
-
-// pub mod router {
-//     use super::*;
-
-//     thread_local!{
-//         pub static PIEP : RefCell<Vec<(String, Pubkey, Arc<ProcessInstruction>)>> = RefCell::new(Vec::new());
-//     }
-
-//     pub fn register_entry_point(ident:&str,id:Pubkey,piep: ProcessInstruction) {
-//         PIEP.with(|list| {
-//             list.borrow_mut().push((ident.into(),id,Arc::new(piep)));
-//         });
-//     }
-// }
-
 
 static mut TRANSPORT : Option<Arc<Transport>> = None;
 
@@ -91,82 +66,21 @@ mod wasm_bridge {
                 let balance = transport.balance().await?;
                 Ok(JsValue::from(balance))
             })
-        }
-
-    
-/* 
-        pub fn with_programs(&self, pkg: JsValue) -> Result<()>  {
-
-            let mut fn_names = Vec::new();
-            let keys = unsafe { js_sys::Reflect::own_keys(&pkg)? };
-            let keys_vec = keys.to_vec();
-            for idx in 0..keys_vec.len() {
-                let name: String = keys_vec[idx].as_string().unwrap_or("".into());
-                if name.starts_with("piep_register") {
-                    // log_trace!("init_bindings() - found one: {}", name);
-                    fn_names.push(keys_vec[idx].clone());
-                }
-            }
-    
-            if fn_names.len() == 0 {
-                panic!("workflow_allocator::Transport::init_bindings(): no wasm bindings found!");
-            }
-    
-            for fn_name in fn_names.iter() {
-                let fn_jsv = unsafe { js_sys::Reflect::get(&pkg,fn_name)? };
-                let args = Array::new();
-                let _ret_jsv = unsafe { js_sys::Reflect::apply(&fn_jsv.into(),&pkg,&args.into())? };
-            }
-    
-            let mut entrypoints = self.entrypoints.try_write().ok_or(error!("unable to acquire write lock on transport entrypoints"))?;
-    
-            router::PIEP.with(|list_ref| {
-                let list = list_ref.borrow();
-                for (ident,id,piep) in list.iter() {
-                    log_trace!("binding program {} ▷ {}",id.to_string(),ident);
-                    entrypoints.insert(id.clone(),piep.clone());
-                }
-            });
-    
-            Ok(())
-        }
-*/    
+        }    
 
     }
 }
-
-// pub struct Transport
-
-// #[derive(Derivative)]
-// #[derivative(Debug)] // , Clone)]
 pub struct Transport {
-    // pub simulator : Option<Arc<Simulator>>,
-
     mode : TransportMode,
-
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
-
     pub wallet : Arc<dyn foreign::WalletInterface>,
-
-    // #[wasm_bindgen(skip)]
     pub queue : Arc<TransactionQueue>,
-    // #[wasm_bindgen(skip)]
-    cache : Cache, //Arc<Store>,
-    
+    cache : Cache,
     pub config : Arc<RwLock<TransportConfig>>,
-
     pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
-
     connection : JsValue,
-    // wallet : JsValue,
-    // #[wasm_bindgen(skip)]
-    // #[derivative(Debug="ignore")]
-    // pub entrypoints : Arc<RwLock<HashMap<Pubkey,Arc<ProcessInstruction>>>>,
-    // #[derivative(Debug="ignore")]
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
-
     pub reflector : Reflector,
-
 }
 
 unsafe impl Send for Transport {}
@@ -193,7 +107,6 @@ impl Transport {
 
     pub fn connection(&self) -> std::result::Result<JsValue,JsValue> {
         Ok(self.connection.clone())
-        // Ok(js_sys::Reflect::get(&Self::solana()?, &"connection".into())?)
     }
 
     pub fn with_wallet(&self, wallet: JsValue) -> std::result::Result<JsValue, JsValue> {
@@ -223,20 +136,8 @@ impl Transport {
         _program_id : Pubkey, 
         _authority : Option<Pubkey>,
         config : TransportConfig) -> Result<Arc<Transport>> {
-        // let mut transport_env_var = std::env::var("TRANSPORT").unwrap_or("simulator".into());
-        // if transport_env_var.starts_with("local") || transport_env_var.starts_with("native") {
-        //     transport_env_var = "http://127.0.0.1:8899".into();
-        // }
-        // Self::try_new(transport_env_var.as_str(), config)//.await
-        Self::try_new("inproc", config)//.await
+        Self::try_new("inproc", config)
     }
-
-    // pub fn simulator(&self) -> Result<Arc<Simulator>> {
-    //     match &self.simulator {
-    //         Some(simulator) => Ok(simulator.clone()),
-    //         None => Err(error!("transport is missing simulator"))
-    //     }
-    // }
 
     #[inline(always)]
     pub fn new_wallet(&self) -> Arc<dyn foreign::WalletInterface> {
@@ -252,7 +153,6 @@ impl Transport {
 
     pub async fn balance(&self) -> Result<u64> {
 
-        // let simulator = { self.try_inner()?.simulator.clone() };//.unwrap().clone();//Simulator::from(&self.0.borrow().simulator);
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
@@ -267,16 +167,6 @@ impl Transport {
                         return Err(error!("[Emulator] - WASM::Transport::balance() unable to lookup account: {}", pubkey)); 
                     }
                 }
-
-                // Ok(0u64)
-                // match simulator.store.lookup(&simulator.authority()).await? {
-                //     Some(authority) => {
-                //         Ok(authority.lamports().await)
-                //     },
-                //     None => {
-                //         Err(error!("WASM::Transport: simulator dataset is missing authority account"))
-                //     }
-                // }
             },
             TransportMode::Validator => {
                 let pubkey: Pubkey = self.get_authority_pubkey_impl()?;
@@ -284,16 +174,6 @@ impl Transport {
                 match result{
                     Some(reference)=>{
                         Ok(reference.lamports()?)
-                        // match Arc::try_unwrap(data_arc){
-                        //     Ok(data_rwlock)=>{
-                        //         let account_data = data_rwlock.read().await;
-                        //         log_trace!("account_data: {:#?}", account_data);
-                        //         return Ok(account_data.lamports);
-                        //     },
-                        //     Err(err)=>{
-                        //         return Err(error!("WASM::Transport::balance() account_data read error {:?}", err)); 
-                        //     }
-                        // };
                     },
                     None=>{
                         return Err(error!("WASM::Transport::balance() unable to lookup account: {}", pubkey)); 
@@ -307,10 +187,6 @@ impl Transport {
     pub fn get_authority_pubkey_impl(&self) -> Result<Pubkey> {
 
         match self.mode {
-
-        // }
-        // match &self.emulator {
-            // Some(simulator) => {
             TransportMode::Inproc => {
 
                 let simulator = self.emulator
@@ -333,10 +209,7 @@ impl Transport {
                 Ok(pubkey)
 
             },
-    
-                // Ok(simulator.authority())
-            //     unimplemented!("TODO")
-            // },
+
             TransportMode::Validator => {
                 let wallet_adapter = &self.wallet_adapter()?;
                 let public_key = unsafe{js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))?};
@@ -350,15 +223,12 @@ impl Transport {
         self.config.read().await.root
     }
 
-    // #![feature(local_key_cell_methods)]
     pub fn try_new(network: &str, config : TransportConfig) -> Result<Arc<Transport>> {
 
-        // let transport = ;
         log_trace!("Creating transport (rust) for network {}", network);
         if let Some(_) = unsafe { (&TRANSPORT).as_ref() } {
             return Err(error!("Transport already initialized"));
             // log_trace!("Transport already initialized");
-            // panic!("Transport already initialized");
         }
 
         // log_trace!("loading workflow global");
@@ -400,26 +270,11 @@ impl Transport {
             } else {
                 return Err(error!("Transport cluster must be mainnet-beta, devnet, testnet, simulation").into());
             };
-        // match network {
-            // "simulator" | "simulation" => {
-            //     // (JsValue::NULL, Some(Arc::new(Box::new(Simulator::try_new_with_store()?))))
-            // },
-            // "mainnet-beta" | "testnet" | "devnet" => {
-            // },
-            // _ => {
-            //     let is_match = regex::Regex::new(r"^https?://").unwrap().is_match(network);
-            //     if is_match {
-            //     } else {
-            //         //log_trace!("Transport creation error");
-            //     }
-            // }
-        // };
 
         let wallet = Arc::new(foreign::Wallet::try_new()?);
 
         log_trace!("Transport interface creation ok...");
         
-        // let entrypoints = Arc::new(RwLock::new(HashMap::new()));
         let queue  = Arc::new(TransactionQueue::new());
         log_trace!("Creating caching store");
         let cache = Cache::new_with_default_capacity();
@@ -435,7 +290,6 @@ impl Transport {
             config,
             connection,
             wallet,
-            // wallet : JsValue::UNDEFINED,
             queue,
             cache,
             lookup_handler,
@@ -457,7 +311,7 @@ impl Transport {
 
     #[inline(always)]
     pub fn emulator<'transport>(&'transport self) -> Option<&'transport Arc<dyn EmulatorInterface>> {
-        self.emulator.as_ref()//.expect("missing emulator interface")
+        self.emulator.as_ref()
     }
 
     pub async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
@@ -466,13 +320,8 @@ impl Transport {
         
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
-                // let emulator = self.emulator.as_ref().unwrap();
-                // self.emulator().lookup(pubkey).await
-            // Some(emulator) => {
-            //     Ok(emulator.lookup(&pubkey).await?)
                 let delay: u64 = rand::thread_rng().gen_range(500,1500);
                 workflow_core::task::sleep(std::time::Duration::from_millis(delay)).await;
-                // workflow_core::task::sleep(std::time::Duration::from_millis(5000)).await;
 
                 let reference = self
                     .emulator()
@@ -532,11 +381,8 @@ impl Transport {
         Ok(pk_jsv)
     }
 
-
-    // async fn execute(self: &Arc<Self>, instruction : &Instruction) -> Result<()> { 
     async fn execute_impl(&self, instruction : &Instruction) -> Result<()> { 
         log_trace!("transport execute");
-        // match &self.emulator {
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
 
@@ -567,11 +413,9 @@ impl Transport {
                 Ok(())
             },
             TransportMode::Validator => {
-                log_trace!("native A");
                 let wallet_adapter = &self.wallet_adapter()?;
                 let accounts = &instruction.accounts;
                 let accounts_arg = js_sys::Array::new_with_length(accounts.len() as u32);
-                log_trace!("native B accounts.len():{}", accounts.len());
                 for idx in 0..accounts.len() {
                     let account = &accounts[idx];
                     let account_public_key_jsv = self.pubkey_to_jsvalue(&account.pubkey)?;
@@ -584,7 +428,7 @@ impl Transport {
                     }
                     accounts_arg.set(idx as u32, cfg.into());
                 }
-                log_trace!("native C");
+
                 let program_id = self.pubkey_to_jsvalue(&instruction.program_id)?;
 
                 let instr_data_u8arr = unsafe { js_sys::Uint8Array::view(&instruction.data) };
@@ -598,7 +442,6 @@ impl Transport {
                     js_sys::Reflect::set(&cfg, &"data".into(), &instr_data_jsv)?;
                 }
 
-                log_trace!("native D");
                 let tx_ins_args = js_sys::Array::new_with_length(1);
                 tx_ins_args.set(0, JsValue::from(cfg));
                 let tx_instruction_jsv = unsafe { js_sys::Reflect::construct(&ctor.into(), &tx_ins_args)? };
@@ -632,8 +475,6 @@ impl Transport {
                 log_trace!("signTransaction result {:?}", result);
                 let buffer_jsv = utils::apply_with_args0(&tx_jsv, "serialize")?;
 
-                //let result = utils::apply_with_args1(&inner.connection, "sendRawTransaction", buffer_jsv)?;
-                
                 let options = js_sys::Object::new();
                 unsafe {
                     js_sys::Reflect::set(&options, &"skipPreflight".into(), &JsValue::from(true))?;
@@ -654,25 +495,11 @@ impl Transport {
 
 }
 
-// unsafe impl Send for Transport {}
-
 #[async_trait(?Send)]
-// #[async_trait]
 impl super::Interface for Transport {
 
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
         self.get_authority_pubkey_impl()
-        // // let simulator = { self.try_inner()?.simulator.clone() };
-        // match &self.emulator {
-        //     Some(emulator) => {
-        //         unimplemented!("TODO")
-        //         // Ok(simulator.authority())
-        //     },
-        //     None => {
-        //         todo!("not implemented")
-        //     }
-        // }
-
     }
 
     async fn post(&self, tx : Arc<Transaction>) -> Result<()> { 
@@ -690,8 +517,6 @@ impl super::Interface for Transport {
         Ok(self.cache.purge(pubkey)?)
     }
 
-
-    // async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let reference = self.clone().lookup_local(pubkey).await?;
         match reference {
@@ -702,7 +527,6 @@ impl super::Interface for Transport {
         }
     }
 
-    // async fn lookup_local(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_local(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let pubkey = Arc::new(pubkey.clone());
         Ok(self.cache.lookup(&pubkey)?)
@@ -728,18 +552,5 @@ impl super::Interface for Transport {
         self.reflector.reflect(reflector::Event::PendingLookups(lookup_handler.pending()));
         result
     }
-
-
-
-    // async fn lookup_remote(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
-    //     match &self.simulator {
-    //         Some(simulator) => {
-    //             Ok(simulator.lookup(&pubkey).await?)
-    //         },
-    //         None => {
-    //             Ok(self.lookup_remote_impl(&pubkey).await?)
-    //         }
-    //     }
-    // }
 }
 
