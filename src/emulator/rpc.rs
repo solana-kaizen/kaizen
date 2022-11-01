@@ -43,16 +43,12 @@ pub struct ExecuteReq {
 
 impl From<(&Pubkey,instruction::Instruction)> for ExecuteReq {
     fn from((authority,instruction) : (&Pubkey,instruction::Instruction)) -> Self {
-        // let accounts : Vec<AccountMeta> = accounts.iter().map(|meta| meta.into()).collect();
         
         Self {
             program_id: instruction.program_id.clone(),
             accounts: instruction.accounts.iter().map(|account| account.into()).collect(),
             instruction_data: instruction.data.clone(),
             authority: authority.clone(),
-            // program_id,
-            // accounts,
-            // instruction_data,
         }
     }
 }

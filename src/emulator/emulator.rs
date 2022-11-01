@@ -77,9 +77,6 @@ impl Emulator {
         Emulator { 
             store,
             log_sink
-            // capture: AtomicBool::new(false),
-            // logs: Arc::new(Mutex::new(None))
-
         }
     }
 
@@ -93,14 +90,12 @@ impl Emulator {
     pub fn execute_entrypoing_impl(
         &self,
         program_id: &Pubkey,
-        // accounts : &Arc<Mutex<Vec<AccountInfo>>>,
         accounts : &Vec<AccountInfo>,
         instruction_data: &[u8],
         entrypoint: ProcessInstruction,
 
     ) -> Result<()> {
         log_trace!("▷ entrypoint begin");
-        // let accounts = accounts.lock().unwrap();
         match entrypoint(program_id, &accounts[..], instruction_data) {
             Ok(_) => {}
             Err(e) => return Err(error!("entrypoint error: {:?}", e)),
@@ -115,7 +110,6 @@ impl Emulator {
         handler: SimulationHandlerFn,
     ) -> Result<()> {
 
-        // let store = self.store();
         let ec: Instruction = builder.try_into()?;
         let mut account_data = self.program_local_load(&ec.program_id, &ec.accounts).await?;
         {
@@ -140,12 +134,10 @@ impl Emulator {
                 .try_into()
                 .expect("Unable to create context");
             match handler(&Rc::new(Box::new(ctx))) {
-                //?;//.map_err(|err| format!("(handler) program error: {:?}", err).to_string())?;
                 Ok(_) => {}
                 Err(err) => {
                     log_trace!("{}", err);
                     return Err(err);
-                    // return Err(err.message());
                 }
             }
         }
@@ -153,7 +145,6 @@ impl Emulator {
 
         Ok(())
     }
-
 
     /// Load multiple accounts from local store for test program usage
     // pub async fn program_local_load(self : Arc<Self>, program_id : &Pubkey, accounts : &[AccountMeta]) -> Result<Vec<(Pubkey,AccountData)>> {
@@ -166,7 +157,6 @@ impl Emulator {
             let pubkey = descriptor.pubkey;
 
             if keyset.contains(&pubkey) {
-                // log_trace!("Duplicate account supplied to local load: {}", pubkey.to_string());
                 return Err(
                     error!("[store] Store::program_local_load(): duplicate account supplied to program: {}",pubkey.to_string())
                 );
@@ -176,7 +166,7 @@ impl Emulator {
 
             let mut account_data = match self.lookup(&pubkey).await? {
                 Some(reference) => {
-                    let account_data = reference.clone_for_program()?;//account_data.clone_for_prog//read().await.ok_or(error!("account read lock failed"))?.clone_for_program();
+                    let account_data = reference.clone_for_program()?;
                     log_trace!("[store] ...  loading: {}", account_data.info());
                     account_data
                 },
@@ -257,8 +247,6 @@ impl Emulator {
         authority : &Pubkey,
         instruction : &solana_program::instruction::Instruction
     ) -> Result<()> {
-        // std::thread::sleep(std::time::Duration::from_millis(5000));
-
         let payer = self.store.lookup(authority).await?;
         match payer {
             Some(payer) => {
@@ -299,7 +287,6 @@ impl Emulator {
                 account_info.is_signer = is_signer;
                 account_info.is_writable = is_writable;
 
-                // accounts.lock().unwrap().push(account_info);
                 accounts.push(account_info);
             }
 
@@ -331,15 +318,12 @@ impl EmulatorInterface for Emulator {
         log_sink.init();
         let result = self.execute_impl(authority,instruction).await;
         let logs = log_sink.take();
-        // log_trace!("logs: {:?}", logs);
         match result {
             Ok(_) => {
                 Ok(ExecutionResponse::new(None, logs))
             },
             Err(err) => {
                 log_trace!("Emulator error: {:?}", err);
-                // TODO refactor to return error
-                // Ok(ExecutionResponse::new(Some(err.to_string()), logs))
                 Err(err)
             }
         }

@@ -42,7 +42,6 @@ impl Server {
         let cache = Arc::new(Cache::new_with_capacity(DEFAULT_CAPACITY));
         let store = Arc::new(FileStore::try_new_with_cache(cache)?);
         let emulator = Arc::new(Emulator::new(store.clone()));
-        // let log_sink = downcast_::<LogSink>(emulator.clone())?;
 
         let server = Server {
             emulator
@@ -68,8 +67,6 @@ impl RpcHandler<EmulatorOps> for Server
                 let resp = match reference {
                     Some(reference) => {
                         let account_data_store = AccountDataStore::from(&*reference.account_data.lock()?);
-                        // let account_data = AccountData::from(&account_data_store);
-                        // rpc-failure
                         LookupResp { account_data_store : Some(account_data_store) }
                     },
                     None => {
@@ -80,13 +77,9 @@ impl RpcHandler<EmulatorOps> for Server
             },
             EmulatorOps::Execute => {
 
-                // std::thread::sleep(std::time::Duration::from_millis(5000));
-
                 let req = ExecuteReq::try_from_slice(data)?;
-                // let authority = req.authority.clone();
                 let (authority,instruction) : (Pubkey,Instruction) = req.into();
                 let resp = self.emulator.execute(&authority,&instruction).await?;
-                // let resp = ExecutionResponse::new(None,None);
                 Ok(resp.try_to_vec()?)
             },
             EmulatorOps::Fund => {
@@ -101,7 +94,6 @@ impl RpcHandler<EmulatorOps> for Server
             },
             EmulatorOps::Configure => {
                 let _config = EmulatorConfig::try_from_slice(data)?;
-                // let resp = self.emulator.list().await?;
                 Ok(().try_to_vec()?)
             },
         }

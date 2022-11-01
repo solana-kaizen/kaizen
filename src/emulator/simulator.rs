@@ -7,11 +7,6 @@ use workflow_allocator::result::Result;
 use workflow_allocator::accounts::{ AccountData, AccountDataReference };
 use workflow_allocator::builder::{ InstructionBuilder, InstructionBuilderConfig };
 use workflow_allocator::context::SimulationHandlerFn;
-// use workflow_log::log_trace;
-// use crate::generate_random_pubkey;
-
-// use crate::generate_random_pubkey;
-
 use crate::accounts::AccountDescriptorList;
 
 use super::interface::{EmulatorInterface, ExecutionResponse, EmulatorConfig};
@@ -68,6 +63,7 @@ impl Simulator {
 
         let authority = match authority {
             Some(authority) => authority,
+            // FIXME should user always supply a pubkey?
             None => { Pubkey::from_str("42bML5qB3WkMwfa2cosypjUrN7F2PLQm4qhxBdRDyW7f")? }
              //generate_random_pubkey(); 
         };
@@ -77,7 +73,7 @@ impl Simulator {
             program_id.clone(),
         ).with_lamports(lamports);
 
-        self.store.store(&Arc::new(AccountDataReference::new(authority_account_data))).await?;//.await?;
+        self.store.store(&Arc::new(AccountDataReference::new(authority_account_data))).await?;
 
         let mock_data = InProcMockData::new(
             &authority,
@@ -94,14 +90,6 @@ impl Simulator {
         &self.inproc_mock_data.as_ref().expect("simulator missing inproc mock account data")
     }
 
-    // pub fn with_simulated_identity(self : &Arc<Simulator>) -> Result<()> {
-    //     // let allocation_args = AccountAllocationArgs::default();
-    //     // let identity_account = ctx.create_pda(Identity::initial_data_len(), &allocation_args)?;
-    //     // let mut identity = Identity::try_create(identity_account)?;
-
-    //     Ok(())
-    // }
-
     pub fn program_id(&self) -> Pubkey {
         self.inproc_mock_data().program_id
     }
@@ -110,23 +98,15 @@ impl Simulator {
         self.inproc_mock_data().authority
     }
 
-    // pub fn identity(&self) -> Pubkey {
-    //     self.inproc_mock_data().identity
-    // }
-
     pub fn new_instruction_builder_config(
         &self,
     ) -> InstructionBuilderConfig {
 
         let InProcMockData { program_id, authority} = self.inproc_mock_data();
-        // self.inproc.expect("simulator is missing inproc mock data");
-
-        // let inner = self.inner().unwrap();
         let config = InstructionBuilderConfig::new(
             program_id.clone(),
         )
         .with_authority(authority);
-        // .with_identity(identity);
 
         config
     }
@@ -136,15 +116,12 @@ impl Simulator {
     ) -> Arc<InstructionBuilder> {
         let InProcMockData { program_id, authority} = self.inproc_mock_data();
 
-        // let inner = self.inner().unwrap();
-
         let builder = InstructionBuilder::new(
             &program_id,
             0,
             0u16,
         )
         .with_authority(authority);
-        // .with_identity(identity);
 
         builder
     }
@@ -168,6 +145,9 @@ impl EmulatorInterface for Simulator {
                 // in order to decouple account_data mutexes
                 // which can create deadlocks if held by client
                 // while executing programs.
+                // Update: due to potential of client-side
+                // deadlocks, client-side ContainerReferences
+                // now replicate data during try_into_container() call.
                 Ok(Some(reference.replicate()?))
             },
             None => {
