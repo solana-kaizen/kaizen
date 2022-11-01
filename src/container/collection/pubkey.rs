@@ -431,9 +431,12 @@ cfg_if! {
             //     Ok(list)
             // }
 
-            pub async fn reload(&self) -> Result<()> {
-                reload_reference(self.meta.pubkey()).await?;
-                Ok(())
+            pub async fn get_aggregator_cache_pubkeys(&self) -> Result<Vec<Pubkey>> {
+                Ok(vec![*self.meta.pubkey()])
+            }
+
+            pub async fn reload(&self) -> Result<Option<Arc<AccountDataReference>>>  {
+                reload_reference(self.meta.pubkey()).await
             }
 
             pub fn invalidate(&self) -> Result<()> {
