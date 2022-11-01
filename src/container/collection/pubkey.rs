@@ -436,6 +436,11 @@ cfg_if! {
                 Ok(())
             }
 
+            pub fn invalidate(&self) -> Result<()> {
+                Transport::global()?.purge(Some(self.meta.pubkey()))?;
+                Ok(())
+            }
+
             pub async fn find_container<'this,C>(&self)
             -> Result<Option<ContainerReference<'this,C>>> 
             where C: workflow_allocator::container::Container<'this,'this>
