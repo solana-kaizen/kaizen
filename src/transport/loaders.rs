@@ -174,6 +174,14 @@ pub async fn reload_references(pubkeys : &[Pubkey])
     Ok(join_all(lookups).await)
 }
 
+pub fn purge_reference(pubkey : &Pubkey) 
+-> Result<()> 
+{
+    let transport = Transport::global()?;
+    transport.purge(Some(pubkey))?;
+    Ok(())
+}
+
 // pub async fn reload_container_clone<'this,T> (pubkey : &Pubkey) 
 // -> Result<Option<AccountDataContainer<'this,T>>> 
 // where T: workflow_allocator::container::Container<'this,'this>
