@@ -25,9 +25,7 @@ use crate::transport::TransportConfig;
 use crate::transport::TransportMode;
 use crate::transport::lookup::{LookupHandler,RequestType};
 use crate::transport::{reflector,Reflector};
-// use workflow_core::channels::{Sender,Receiver,}
 use crate::wallet::*;
-// use workflow_core::channel::{Sender,Receiver,unbounded};
 
 use solana_client::{
     rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig,
@@ -46,13 +44,12 @@ pub struct Transport
 {
     mode : TransportMode,
     pub emulator : Option<Arc<dyn EmulatorInterface>>,
-    pub rpc_client : Option<RpcClient>, //Option<(RpcClient,Keypair,Pubkey)>,
+    pub rpc_client : Option<RpcClient>,
     pub wallet : Arc<dyn foreign::WalletInterface>,
     pub config : Arc<RwLock<TransportConfig>>,
     pub cache : Arc<Cache>,
     pub queue : Arc<TransactionQueue>,
     pub lookup_handler : LookupHandler<Pubkey,Arc<AccountDataReference>>,
-    // pub pending_lookups_reflect : Option<Sender<usize>>,
     pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
     pub reflector : Reflector,
 }
@@ -93,15 +90,6 @@ impl Transport {
         }
     }
 
-    // pub async fn try_new_for_unit_tests(config : TransportConfig) -> Result<Arc<Transport>> {
-    // pub async fn try_new_for_unit_tests_inproc(config : TransportConfig) -> Result<Arc<Transport>> {
-    //     let mut transport_env_var = std::env::var("TRANSPORT").unwrap_or("inproc".into());
-    //     if transport_env_var.starts_with("local") || transport_env_var.starts_with("native") {
-    //         transport_env_var = "http://127.0.0.1:8899".into();
-    //     }
-    //     Self::try_new(transport_env_var.as_str(), config).await
-    // }
-
     pub async fn try_new_for_unit_tests(program_id : Pubkey, authority : Option<Pubkey>, config : TransportConfig) -> Result<Arc<Transport>> {
         let mut network = std::env::var("TRANSPORT").unwrap_or("inproc".into());
         if network.starts_with("local") {
@@ -124,20 +112,10 @@ impl Transport {
 
     pub async fn try_new(network: &str, config : TransportConfig) -> Result<Arc<Transport>> {
 
-        // let (mode, rpc_client, emulator) = // match network {
-
-        // if network == "inproc" {
-        //     // let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
-        //     let simulator = Simulator::try_new_for_testing()?.with_mock_accounts().await?;
-        //     let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
-        //     Transport::try_new_with_args(Mode::Inproc, None, Some(emulator), config).await
-        //     // (Mode::Inproc, None, Some(emulator))
-        // } else 
         if regex::Regex::new(r"^rpc?://").unwrap().is_match(network) {
             let emulator = EmulatorRpcClient::new(network)?;
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(emulator);
             Transport::try_new_with_args(TransportMode::Emulator, None, Some(emulator), config).await
-            // (Mode::Emulator, None, Some(emulator))
         } else {
 
             let url = network;
@@ -150,7 +128,6 @@ impl Transport {
             );
         
             Transport::try_new_with_args(TransportMode::Validator, Some(client), None, config).await
-            // (Mode::Validator, Some(client), None)
         }
     }
 
@@ -192,15 +169,10 @@ impl Transport {
 
     #[inline(always)]
     pub fn emulator<'transport>(&'transport self) -> Option<&'transport Arc<dyn EmulatorInterface>> {
-        self.emulator.as_ref()//.expect("missing emulator interface")
+        self.emulator.as_ref()
     }
 
-    // pub fn emulator<'transport>(&'transport self) -> &'transport Arc<dyn EmulatorInterface> {
-    //     self.emulator.as_ref().expect("missing emulator interface")
-    // }
-
-    pub fn simulator<'transport>(&'transport self) -> Arc<Simulator> { ////&'transport Arc<dyn EmulatorInterface> {
-        // self.emulator.as_ref().expect("missing emulator interface")
+    pub fn simulator<'transport>(&'transport self) -> Arc<Simulator> {
         let simulator = self.emulator
             .clone()
             .expect("Transport::simulator() - emulator interface not present")
@@ -236,16 +208,7 @@ impl Transport {
                 }
             },
             TransportMode::Validator => {
-                // let (client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
-                //     client_ctx
-
                 let rpc_client = self.rpc_client.as_ref().expect("Transport: Missing RPC client");
-                // if let Some(rpc_client) = self.rpc_client {
-                //     rpc_client
-                // } else {
-                //     panic!("Transport: Missing RPC Client");
-                // };
-
                 let payer_balance = rpc_client
                     .get_balance(&self.wallet.pubkey()?)
                     .expect("Could not get payer balance");
@@ -284,13 +247,6 @@ impl Transport {
             TransportMode::Validator => {
 
                 Ok(self.wallet.pubkey()?.clone())
-                // let (_client, _payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
-                //     client_ctx
-                // } else {
-                //     return Err(error_code!(ErrorCode::MissingClient));
-                // };
-
-                // Ok(payer_pk.clone())
             }
         }
     }
@@ -330,9 +286,7 @@ impl Transport {
     
         Ok(hash)
     }
-    
 
-    // async fn lookup_remote_impl(self : Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup_remote_impl(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
 
         self.cache.purge(Some(pubkey))?;
@@ -354,7 +308,6 @@ impl Transport {
             TransportMode::Validator => {
 
                 let rpc_client = self.rpc_client.as_ref().expect("Missing RPC Client");
-                // let mut account = rpc_client.get_account(pubkey)?;
                 let commitment_config = CommitmentConfig::processed();
                 let response = rpc_client.get_account_with_commitment(pubkey, commitment_config)?;
                 match response.value {
@@ -375,7 +328,6 @@ impl Transport {
 
 }
 
-// #[async_trait(?Send)]
 #[async_trait]
 impl super::Interface for Transport {
     fn get_authority_pubkey(&self) -> Result<Pubkey> {
@@ -395,7 +347,6 @@ impl super::Interface for Transport {
         self.queue.enqueue_multiple(txs).await
     }
 
-    // async fn execute(self : &Arc<Self>, instruction : &Instruction) -> Result<()> { 
     async fn execute(&self, instruction : &Instruction) -> Result<()> { 
         match &self.emulator {
             Some(emulator) => {
@@ -424,12 +375,6 @@ impl super::Interface for Transport {
                 log_trace!("transport: running in native mode");
                 let rpc_client = self.rpc_client.as_ref().expect("Missing RPC Client");
 
-                // let (client, payer_kp, payer_pk) = if let Some(client_ctx) = &self.rpc_client {
-                //     client_ctx
-                // } else {
-                //     panic!("No client");
-                // };
-
                 let wallet = self.wallet.clone().downcast_arc::<foreign::native::Wallet>()
                     .expect("Unable to downcast native wallt");
 
@@ -440,9 +385,7 @@ impl super::Interface for Transport {
                 let transaction = Transaction::new_signed_with_payer(
                     &[instruction.clone()],
                     Some(&wallet.keypair().pubkey()),
-                    // Some(&payer_pk),
                     &[wallet.keypair()],
-                    // &[payer_kp],
                     recent_hash,
                 );
 
@@ -468,7 +411,6 @@ impl super::Interface for Transport {
         Ok(())
     }
  
-    // async fn lookup(self : &Arc<Self>, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
     async fn lookup(&self, pubkey:&Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
         let account_data = self.clone().lookup_local(pubkey).await?;
         match account_data {

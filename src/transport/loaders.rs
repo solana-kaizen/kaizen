@@ -3,27 +3,6 @@ use workflow_allocator::result::Result;
 use workflow_allocator::container::Container;
 use futures::future::join_all;
 
-// pub async fn load_container_clone<'this,T> (pubkey : &Pubkey) 
-// -> Result<Option<AccountDataContainer<'this,T>>> 
-// where T: workflow_allocator::container::Container<'this,'this>
-// {
-//     let transport = Transport::global()?;
-//     load_container_clone_with_transport::<T>(&transport, pubkey).await
-// }
-
-// pub async fn load_container_clone_with_transport<'this,T> (transport: &Arc<Transport>, pubkey : &Pubkey) 
-// -> Result<Option<AccountDataContainer<'this,T>>> 
-// where T: workflow_allocator::container::Container<'this,'this>
-// {
-//     match transport.lookup(pubkey).await? {
-//         Some(reference) => {
-//             let container = reference.try_load_container_clone::<T>()?;
-//             Ok(Some(container))
-//         },
-//         None => return Ok(None)
-//     }
-// }
-
 pub async fn with_loaded_container<'this, C>(
     pubkey:Pubkey,
     callback:impl Fn(Option<ContainerReference<'this, C>>)->Result<()>
@@ -191,21 +170,3 @@ pub fn purge_references(pubkeys : &[Pubkey])
     }
     Ok(())
 }
-
-// pub async fn reload_container_clone<'this,T> (pubkey : &Pubkey) 
-// -> Result<Option<AccountDataContainer<'this,T>>> 
-// where T: workflow_allocator::container::Container<'this,'this>
-// {
-//     let transport = Transport::global()?;
-//     transport.purge(pubkey)?;
-//     load_container_clone_with_transport::<T>(&transport,pubkey).await
-// }
-
-// pub async fn execute_and_load<'this,T> ((pubkey, instruction) : (Pubkey, Instruction))
-// -> Result<Option<ContainerReference<'this,T>>> 
-// where T: workflow_allocator::container::Container<'this,'this>
-// {
-//     let transport = Transport::global()?;
-//     transport.execute(&instruction).await?;
-//     load_container_with_transport::<T>(&transport,&pubkey).await
-// }

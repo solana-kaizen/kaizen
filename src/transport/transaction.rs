@@ -49,16 +49,15 @@ impl TransactionMeta {
     pub fn new_with_accounts(accounts: Vec<Pubkey>) -> TransactionMeta {
         TransactionMeta {
             signature: None,
-            accounts : accounts.to_vec() //.iter().map(|pk|*pk.clone()).collect::<Vec<Pubkey>>(),
+            accounts : accounts.to_vec()
         }
     }
 }
 
 pub type TxCallback = Arc<dyn Fn(Arc<TransactionChain>, Arc<Transaction>)->Result<()> + core::marker::Send + Sync>;
 
-#[derive(Clone)] //, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct Transaction {
-    /// Transaction caption
     pub name : String,
     pub id : Id,
     pub instruction : Option<Instruction>,
@@ -213,7 +212,6 @@ impl TransactionList {
 
     pub async fn post(&self) -> Result<()> {
         for tx in self.transactions.iter() {
-            // log_trace!("tx: {:?}", tx);
             tx.post().await?
         }
 
@@ -222,7 +220,6 @@ impl TransactionList {
 
     pub async fn execute(&self) -> Result<()> {
         for tx in self.transactions.iter() {
-            // log_trace!("tx: {:?}", tx);
             tx.execute().await?
         }
 

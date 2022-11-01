@@ -78,7 +78,6 @@ impl EmulatorInterface for EmulatorRpcClient {
         };
         let resp : Result<ExecutionResponse> = self.rpc.call(EmulatorOps::Execute, message).await
             .map_err(|err|err.into());
-            // log_trace!("response: {:?}", resp);
         if let Ok(resp) = &resp {
             for line in resp.logs.iter() {
                 log_trace!("| {}",line);

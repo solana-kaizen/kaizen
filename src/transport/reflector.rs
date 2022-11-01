@@ -1,9 +1,7 @@
 use std::sync::{Arc, Mutex};
 use ahash::HashMap;
 use solana_program::pubkey::Pubkey;
-// use workflow_allocator::result::Result;
 use workflow_log::log_error;
-// use super::Event;
 use workflow_core::channel::{Sender,Receiver,unbounded};
 use workflow_core::id::Id;
 

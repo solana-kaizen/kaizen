@@ -228,26 +228,16 @@ impl Transport {
         log_trace!("Creating transport (rust) for network {}", network);
         if let Some(_) = unsafe { (&TRANSPORT).as_ref() } {
             return Err(error!("Transport already initialized"));
-            // log_trace!("Transport already initialized");
         }
 
-        // log_trace!("loading workflow global");
-        // let workflow = js_sys::Reflect::get(&js_sys::global(), &"$workflow".into())?;
-        // log_trace!("loading solana global");
-        // let solana = js_sys::Reflect::get(&workflow, &"solana".into())?;
-        // log_trace!("initializing network setup, solana: {:?}", solana);
         let solana = Self::solana()?;
         let (mode, connection, emulator) = 
             if network == "inproc" {
                 let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
                 (TransportMode::Inproc, JsValue::NULL, Some(emulator))
             } else if regex::Regex::new(r"^rpcs?://").unwrap().is_match(network) {
-                // let emulator = EmulatorRpcClient::new(network)?;
                 let emulator = Arc::new(EmulatorRpcClient::new(network)?);
                 emulator.connect_as_task()?;
-                // workflow_core::task::spawn(async move {
-                //     emulator.connect(false).await;
-                // });
                 let emulator: Arc<dyn EmulatorInterface> = emulator;
                 (TransportMode::Emulator, JsValue::NULL, Some(emulator))
             } else if network == "mainnet-beta" || network == "testnet" || network == "devnet" {

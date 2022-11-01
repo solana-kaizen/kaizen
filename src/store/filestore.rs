@@ -7,11 +7,8 @@ use async_std::path::PathBuf;
 use std::sync::Arc;
 use async_std::fs;
 use async_trait::async_trait;
-// use std::env ;
 use borsh::*;
-// use crate::result::Result;
 use workflow_log::log_error;
-// use workflow_allocator::error::*;
 use workflow_allocator::accounts::AccountData;
 use workflow_allocator::result::Result;
 use workflow_allocator::cache::Cache;
@@ -71,10 +68,6 @@ impl Store for FileStore {
             let account_data = AccountData::from(&account_data_store);
             let descriptor: AccountDescriptor = account_data.into();
             account_descriptors.push(descriptor);
-            // let info = account_data.info();
-            // log_info!("{}", info);
-
-            // println!("{}", entry.into_os_string().into_string()?);
         }
         
         Ok(AccountDescriptorList::new(account_descriptors)) 
@@ -92,8 +85,6 @@ impl Store for FileStore {
                 //     log_trace!("################################### LOOKUP ");
                 // }
 
-
-
                 return Ok(Some(reference));
             }
         }
@@ -101,30 +92,13 @@ impl Store for FileStore {
         let filename = self.data_folder.join(pubkey.to_string());
         if filename.exists().await {
             let data = fs::read(&self.data_folder.join(pubkey.to_string())).await?;
-
-            // log_trace!("load {}",pubkey);
-            // // let account_data = &reference.account_data.read().await;
-            // trace_hex(&data);
-            // log_trace!("-");
-
-
             let account_data_store = AccountDataStore::try_from_slice(&data)?;
-
-
-
-
-
-
-            // let account_data = AccountData::try_from_slice(&data)?;
             let account_data = AccountData::from(&account_data_store);
-
-
 
             // log_trace!("################## LOADED DATA {}",account_data.key);
             // let account_data = &reference.account_data.read().await;
             // trace_hex(&account_data.data);
             // log_trace!("################################### LOADED DATA ");
-
 
             let reference = Arc::new(AccountDataReference::new(account_data));
 
@@ -138,12 +112,6 @@ impl Store for FileStore {
         }
     }
     async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
-        // log_trace!("storing account: {} size: {} lamports: {}", reference.key, reference.data_len, reference.lamports().await);
-        // if reference.data_len == 0 {
-        //     log_error!("WARNING - skipping zero size account storage: {}", reference.key);
-        //     return Ok(());
-        // }
-
 
         // {
         //     log_trace!("################## STORE {}",reference.key);
@@ -152,22 +120,15 @@ impl Store for FileStore {
         //     log_trace!("################################### STORE ");
         // }
 
-
         if let Some(cache) = &self.cache {
             cache.store(&reference)?;
         }
 
         let data = AccountDataStore::from(&*reference.account_data.lock()?).try_to_vec()?;
 
-        // if false {
-            // let account_data = &reference.account_data.read().await;
-            log_trace!("storing: {}",reference.key);
-            trace_hex(&data);
-            // log_trace!("################################### STORE ");
-        // }
+        log_trace!("storing: {}",reference.key);
+        trace_hex(&data);
 
-
-        // let data = reference.account_data.read().await.try_to_vec()?;
         fs::write(&self.data_folder.join(reference.key.to_string()),data).await?;
         Ok(())
     }

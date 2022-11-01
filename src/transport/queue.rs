@@ -182,13 +182,9 @@ impl TransactionQueue {
             let tx_chain = self.enqueue_only(transaction).await?;
             chains.insert(tx_chain.id, tx_chain);
         }
-        //log_trace!("chains len: {}", chains.len());
-        //let mut ids = Vec::new();
         let list:Vec<Arc<TransactionChain>> = chains.into_iter().map(|(_id, chain)|{
-            //ids.push(id);
             chain
         }).collect();
-        //log_trace!("chains len2: {}, ids:{:?}", list.len(), ids);
         self.process_chains(list).await?;
         Ok(())
     }

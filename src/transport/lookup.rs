@@ -1,32 +1,23 @@
 use std::sync::Arc;
 use std::sync::atomic::{Ordering, AtomicUsize};
 use async_std::sync::Mutex;
-// use manual_future::{ManualFuture, ManualFutureCompleter};
 use ahash::AHashMap;
 use std::hash::Hash;
 use std::cmp::Eq;
 use std::fmt::Display;
 use crate::result::Result;
 use workflow_core::channel::*;
-
 pub type LookupResult<T> = Result<Option<T>>;
-
-// pub enum RequestType<T : Unpin> {
 pub enum RequestType<T> {
-    // New(ManualFuture<LookupResult<T>>),
     New(Receiver<LookupResult<T>>),
-    // Pending(ManualFuture<LookupResult<T>>)
     Pending(Receiver<LookupResult<T>>)
 }
 
-// pub struct LookupHandler<K, T : Unpin> {
 pub struct LookupHandler<K, T> {
-    // pub pending : Arc<Mutex<AHashMap<K,Vec<ManualFutureCompleter<LookupResult<T>>>>>>
     pub map : Arc<Mutex<AHashMap<K,Vec<Sender<LookupResult<T>>>>>>,
     pending : AtomicUsize,
 }
 
-// impl<K,T> LookupHandler<K,T> where T : Unpin + Clone, K : Clone + Eq + Hash + Display {
 impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
     pub fn new() -> Self {
         LookupHandler {
@@ -41,8 +32,7 @@ impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
 
     pub async fn queue(&self, key: &K) -> RequestType<T> {
 
-        let mut pending = self.map.lock().await;//unwrap();
-        // let (future, completer) = ManualFuture::<LookupResult<T>>::new();
+        let mut pending = self.map.lock().await;
         let (sender, receiver) = oneshot::<LookupResult<T>>();
 
         if let Some(list) = pending.get_mut(&key) {
@@ -58,7 +48,7 @@ impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
     }
 
     pub async fn complete(&self, key : &K, result : LookupResult<T>) {
-        let mut pending = self.map.lock().await;//unwrap();
+        let mut pending = self.map.lock().await;
 
         if let Some(list) = pending.remove(&key) {
             self.pending.fetch_sub(1, Ordering::Relaxed);
@@ -75,8 +65,6 @@ impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
 #[cfg(any(test, feature="test"))]
 mod tests {
     use std::time::Duration;
-
-    // use super::*;
     use super::LookupHandler;
     use super::RequestType;
     use std::sync::Arc;
@@ -127,7 +115,6 @@ mod tests {
 
         pub async fn lookup_handler_request(self : &Arc<Self>, key:&u32) -> Result<Option<u32>> {
 
-            // let request_type = self.clone().lookup_handler.queue(key);
             let request_type = self.lookup_handler.queue(key).await;
             match request_type {
                 RequestType::New(receiver) => {

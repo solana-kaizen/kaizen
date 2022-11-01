@@ -1,9 +1,7 @@
 use workflow_allocator::prelude::*;
 use std::cell::RefCell;
-// use std::rc::Rc;
 use workflow_allocator::result::Result;
 use workflow_allocator::error::*;
-// use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 use workflow_allocator::container::Containers;
 use workflow_allocator::container::*;
@@ -64,9 +62,6 @@ impl Into<IdentityRecord> for &IdentityRecordStore {
 pub enum Op {
     CreateRecords(Vec<IdentityRecordStore>),
     CreateCollections(Vec<(u32,Option<u32>)>),
-    // CreateCollections(Vec<u32>),
-    // ChangeEntryFlags(u32),
-    // ChangeDataFlags(u32),
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -89,22 +84,7 @@ impl Instr {
         count
     }
 }
-// impl Instr {
-//     pub fn get_records<'instr>(&'instr self) -> Vec<&'instr IdentityRecordStore> {
-//         let mut records = Vec::new();
-//         match self {
-//             Instr::Ops(ops) => {
-//                 for op in ops.iter() {
-//                     if let Op::CreateRecords(vec) = op {
-//                         vec.iter().map(|record| records.push(record));
-//                     }
-//                 }
-//             }
-//         }
 
-//         records
-//     }
-// }
 
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
@@ -117,7 +97,6 @@ pub struct IdentityRecord {
 impl PartialEq for IdentityRecord {
     fn eq(&self, other: &Self) -> bool {
         self.data_type == other.data_type
-//        self.data_flags == other.data_flags
         && self.pubkey == other.pubkey
     }
 }
@@ -126,11 +105,9 @@ impl PartialEq for IdentityRecord {
 #[repr(packed)]
 pub struct IdentityMeta {
     pub version : u32,
-    // pub payload_len : u32,
     pub pda_sequence : u64,
     pub reserved_for_future_flags : u32,
     pub referrer : Pubkey,
-    // TODO init date
     pub creation_date : Date,
 }
 
@@ -195,7 +172,6 @@ impl<'info, 'refs> Identity<'info, 'refs> {
             pubkey:pubkey.clone(),
         };
         unsafe { self.records.try_insert(&record) }
-        // self.try_insert_entry(&entry)
     }
 
     /// Remove entry from the identity entry list
@@ -216,7 +192,6 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
     /// Check if identity has an authority pubkey in the list
     pub fn try_has_authority(&self, pubkey: &Pubkey) -> Result<bool> {
-        // let entries = self.try_get_entries()?;
         for entry in self.records.iter() {
             if entry.data_type == (DataType::Authority as u32) && entry.pubkey == *pubkey {
                 return Ok(true);
@@ -314,29 +289,6 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         }
         None
     }
-
-    // pub fn locate_collection_pubkeys(&self, data_type : u32) -> Option<Vec<Pubkey>> {
-    //     for idx in 0..self.collections.len() {
-    //         let collection = &self.collections[idx];
-    //         if collection.get_data_type() == data_type {
-    //             return Some(vec![collection.get_pubkey()]);
-    //         }
-    //     }
-    //     None
-    // }
-
-    // pub fn locate_collection_v1(&self, ctx:&'refs Rc<Box<Context<'info,'refs,'_,'_>>>, data_type : u32) -> Result<PubkeyCollectionStore<'info,'refs, Pubkey>> {
-    //     for idx in 0..self.collections.len() {
-    //         let collection = &self.collections[idx];
-    //         if collection.get_data_type() == data_type {
-    //             let pubkey = collection.get_pubkey();
-    //             let collection_account = ctx.locate_index_account(&pubkey).ok_or(program_error_code!(ErrorCode::OrderedCollectionAccountNotFound))?;
-    //             let collection_store = PubkeyCollectionStore::<Pubkey>::try_load(collection_account)?;
-    //             return Ok(collection_store);
-    //         }
-    //     }
-    //     Err(program_error_code!(ErrorCode::OrderedCollectionDataTypeNotFound))
-    // }
 
     // TODO: testing sandbox
     /// Register a separate authority with an identity and create a new proxy account for the authority being registered

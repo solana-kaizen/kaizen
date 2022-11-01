@@ -8,13 +8,6 @@ use workflow_allocator::result::Result;
 use workflow_allocator::accounts::{AccountDataReference,AccountDescriptorList};
 use downcast::{downcast_sync, AnySync};
 
-
-// #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-// pub struct ErrorData {
-//     pub message: String,
-//     pub error : Option<String>,
-// }
-
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct ExecutionResponse {
     pub error : Option<String>,

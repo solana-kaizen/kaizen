@@ -154,24 +154,11 @@ impl Emulator {
         Ok(())
     }
 
-    // pub fn get_account_data(&self, pubkey: &Pubkey) -> Result<Option<Arc<RwLock<AccountData>>>> {
-    //     Ok(self.store.lookup(pubkey)?)
-    //     // let store = self.store();
-    //     // let account_data = store.lookup(pubkey)?;
-    //     // let account_data = match account_data {
-    //     //     Some(account_data) => Some(account_data.clone()),
-    //     //     None => None,
-    //     // };
-    //     // Ok(account_data)
-    // }
-
-
 
     /// Load multiple accounts from local store for test program usage
     // pub async fn program_local_load(self : Arc<Self>, program_id : &Pubkey, accounts : &[AccountMeta]) -> Result<Vec<(Pubkey,AccountData)>> {
     pub async fn program_local_load(&self, program_id : &Pubkey, accounts : &[AccountMeta]) -> Result<Vec<(Pubkey,AccountData)>> {
 
-        // let self_ = self.clone();
         let mut keyset = AHashSet::<Pubkey>::new();
 
         let mut account_data_vec = Vec::new();
@@ -197,7 +184,6 @@ impl Emulator {
                     let account_data = AccountData::new_template_for_program(
                         pubkey.clone(),
                         program_id.clone(),
-                        // 0
                     );
 
                     if pubkey == Pubkey::default() {
@@ -215,11 +201,6 @@ impl Emulator {
 
             account_data_vec.push((pubkey,account_data));
         }
-
-        // let mut account_data = Vec::new();
-        // for (pubkey,account_ref_cell) in account_ref_cells.iter() {
-        //     account_data.push((pubkey.clone(),account_ref_cell.borrow().clone()));
-        // }
 
         Ok(account_data_vec)
     }
@@ -281,12 +262,10 @@ impl Emulator {
         let payer = self.store.lookup(authority).await?;
         match payer {
             Some(payer) => {
-                // payer.lock().unwrap().lamports.borro
                 let mut lamports = payer.lamports()?;
                 if lamports < DEFAULT_TRANSACTION_FEES {
                     return Err(ErrorCode::EmulatorInsufficientTransactionFees.into());
                 }
-                // let mut account_data = payer.account_data.lock()?;
                 lamports -= DEFAULT_TRANSACTION_FEES;
                 payer.set_lamports(lamports)?;
                 self.store.store(&payer).await?;
@@ -365,20 +344,10 @@ impl EmulatorInterface for Emulator {
             }
         }
 
-        // match  {
-        //     Ok(resp) => {
-
-        //     },
-        //     Err(err) => {
-        //         self.capture.store(false, Ordering::SeqCst);
-        //     }
-        // }
-        // Ok(ExecutionResponse::new(None,None))
     }
 
     async fn fund(
         &self,
-        // from_pubkey : &Pubkey,
         key : &Pubkey,
         owner : &Pubkey,
         lamports : u64
@@ -409,9 +378,7 @@ impl EmulatorInterface for Emulator {
             let mut to = ref_to.account_data.lock()?;
 
             from.lamports = from.lamports.saturating_sub(lamports);
-            // drop(from);
             to.lamports = to.lamports.saturating_add(lamports);
-            // drop(to);
 
             (ref_from.clone(),ref_to.clone())
         };
