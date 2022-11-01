@@ -93,7 +93,6 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
     let target_primitive_path = execution.target_primitive_path;
     let interface_dispatch_method = execution.interface_dispatch_method;
     let client_struct_name = execution.client_struct_decl.to_string();
-    // let client_lifetimes = execution.client_lifetimes;
 
     let impl_wasm_str = match &execution.client_lifetimes {
         Some(lifetimes) => format!("impl<{}> {}<{}>",lifetimes, execution.client_struct_decl, lifetimes),
@@ -110,7 +109,6 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
     let out = quote!{
 
         #impl_client_ts {
-            // type Output = wasm_bindgen_futures::JsFuture;
             fn handler_id(handler_fn: HandlerFn) -> usize {
 
                 #target_primitive_path::INTERFACE_HANDLERS.iter()
@@ -119,7 +117,6 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
             }
 
             fn execution_context_for(handler: HandlerFn) -> Arc<InstructionBuilder> {
-                // let program_id = crate::program_id(); 
                 let interface_id = crate::interface_id(#interface_dispatch_method);
                 let handler_id = Self::handler_id(handler);
 
@@ -130,17 +127,9 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
                     handler_id as u16
                 )
             }
-
-            // fn execute(instruction : solana_program::instruction::Instruction) -> Self::Output {
-            //     let promise = Self::execute_transaction_async(instruction);
-            //     wasm_bindgen_futures::JsFuture::from(promise)
-            //     // todo!("execute() needs to return a trait-related future");
-            // }
         }
 
         #impl_wasm_ts {
-
-            // use workflow_allocator::transport::Interface;
 
             pub fn bind() -> &'static str { #client_struct_name }
 
@@ -159,19 +148,6 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
                 use workflow_allocator::transport::Interface;
                 Ok(transport.execute(&instruction).await?)
             }
-
-            // pub fn execute_transaction_async(
-            //     // mut 
-            //     instruction : solana_program::instruction::Instruction
-            // ) -> Result<()> {
-            // // ) -> Promise {
-            //     use workflow_allocator::transport::Interface;
-            //     wasm_bindgen_futures::future_to_promise(async move {
-            //         let transport = workflow_allocator::transport::Transport::global()?;
-            //         Ok(transport.execute(&instruction).await?)
-            //         // Ok(JsValue::from(response))
-            //     })
-            // }
         }
     };
 

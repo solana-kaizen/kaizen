@@ -10,7 +10,6 @@ use syn::{
 
 #[derive(Debug)]
 struct Primitive {
-    // handler_struct : ExprPath,
     handler_struct_decl : String,
     handler_lifetimes : Option<String>,
     handler_methods : ExprArray
@@ -68,9 +67,8 @@ impl Parse for Primitive {
         };
 
         let handlers = Primitive {
-            // handler_struct,
             handler_struct_decl,
-            handler_lifetimes, // : lifetimes.unwrap_or("".into()),
+            handler_lifetimes,
             handler_methods
         };
         Ok(handlers)
@@ -90,13 +88,9 @@ pub fn declare_interface(input: TokenStream) -> TokenStream {
         None => format!("impl {}", primitive.handler_struct_decl),
     };
     let impl_ts: proc_macro2::TokenStream = impl_str.parse().unwrap();
-
-    // let struct_decl = primitive.struct_decl;//.clone();
     let handler_struct_path: proc_macro2::TokenStream = primitive.handler_struct_decl.parse().unwrap();
 
-
     let output = quote!{
-        // pub static PRIMITIVE_HANDLERS : [HandlerFn;#len] = #handler_methods;
 
         #impl_ts {
 
@@ -110,12 +104,10 @@ pub fn declare_interface(input: TokenStream) -> TokenStream {
             }
 
             pub fn program(ctx:&workflow_allocator::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
-            // pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> workflow_allocator::result::Result<()> {
                 if ctx.handler_id >= #handler_struct_path::INTERFACE_HANDLERS.len() {
                     workflow_log::log_error!("Error - invalid handler id {} for interface {}", ctx.handler_id, #handler_struct_name);
                     return Err(solana_program::program_error::ProgramError::InvalidArgument);
                 }
-                // println!("executing program ctx: {:#?}", ctx);
                 Ok(#handler_struct_path::INTERFACE_HANDLERS[ctx.handler_id](ctx)?)
             }
         }
@@ -123,5 +115,3 @@ pub fn declare_interface(input: TokenStream) -> TokenStream {
 
     output.into()
 }
-
-// ~

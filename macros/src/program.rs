@@ -118,11 +118,6 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         &format!("entrypoint_declaration_register_{}",program_id_string), 
         Span::call_site()
     );
-    // let program_declaration_ = Ident::new(
-    //     &format!("program_declaration_{}",program_id_string), 
-    //     Span::call_site()
-    // );
-
 
     let output = quote!{
         pub static PROGRAM_HANDLERS : [workflow_allocator::context::HandlerFn;#len] = #primitive_handlers;
@@ -133,11 +128,6 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         #[inline(never)]
         pub fn init() -> solana_program::pubkey::Pubkey { id() }
 
-        // #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))]
-        // lazy_static::lazy_static!{
-        //     static ref #program_declaration_ : String = #program_name.to_string();
-        // }
-
         #[inline(always)]
         pub fn program_id() -> solana_program::pubkey::Pubkey { id() }
 
@@ -146,22 +136,18 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         #[inline(always)]
         pub fn program_handlers() -> &'static [workflow_allocator::context::HandlerFn] { &PROGRAM_HANDLERS[..] }
 
-        // #[inline(always)]
         #[cfg(not(target_arch = "bpf"))]
         pub fn interface_id(handler_fn: workflow_allocator::context::HandlerFn) -> usize {
             PROGRAM_HANDLERS.iter()
                 .position(|&hfn| hfn as workflow_allocator::context::HandlerFnCPtr == handler_fn as workflow_allocator::context::HandlerFnCPtr )
                 .expect("Unknown interface handler! (check declare_program!())")
-                // .unwrap()
         }
 
-        // pub fn program(ctx:&std::rc::Rc<workflow_allocator::context::Context>) -> solana_program::entrypoint::ProgramResult {
         pub fn program(ctx:&workflow_allocator::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
             if ctx.interface_id >= PROGRAM_HANDLERS.len() {
                 println!("Error - invalid interface id");
                 return Err(solana_program::program_error::ProgramError::InvalidArgument);
             }
-            // println!("executing program ctx: {:#?}", ctx);
             Ok(PROGRAM_HANDLERS[ctx.interface_id](ctx)?)
         }
 
@@ -171,31 +157,21 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             accounts: &[solana_program::account_info::AccountInfo],
             instruction_data: &[u8],
         ) -> solana_program::entrypoint::ProgramResult {
-            // solana_program::msg!("XXX:program_id: {}", program_id);
-            // solana_program::msg!("XXX:accounts: {:?}", accounts);
-            // solana_program::msg!("XXX:instruction_data: {:?}", instruction_data);
-            //let mut ctx : workflow_allocator::context::Context = (program_id,accounts,instruction_data).try_into().ok().unwrap();
-            // let mut ctx_result = workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data));
-            // solana_program::msg!("XXX:ctx_result: {:?}", ctx_result);
+            // solana_program::msg!("program_id: {}", program_id);
+            // solana_program::msg!("accounts: {:?}", accounts);
+            // solana_program::msg!("instruction_data: {:?}", instruction_data);
             match workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data)) {
                 Err(err) => {
                     #[cfg(not(target_arch = "bpf"))]
                     workflow_log::log_error!("Fatal: unable to load Context: {}", err);
                     return Err(err.into());
-                    // return Err(solana_program::program_error::ProgramError::InvalidInstructionData);
                 },
                 Ok(mut ctx) => {
                     PROGRAM_HANDLERS[ctx.interface_id](&mut std::rc::Rc::new(std::boxed::Box::new(ctx)))?;
                 }
             }
-            // if ctx_result.is_err(){
-            // }
 
-            // let ctx = ctx_result.ok().unwrap();
-            
-            // println!("processing instruction for primitive id: {}", ctx.interface_id);
             Ok(())
-
         }
 
         #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))]
@@ -203,20 +179,13 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             workflow_allocator::program::registry::EntrypointDeclaration::new(
                 ID,
                 #program_name,
-                process_instruction //#struct_path_with_generics::print
+                process_instruction
             )
         }
-        // --- WASM ----
-        // static fnptr = process_instruction;
 
         #[cfg(target_arch = "wasm32")]
         #[macro_use]
         mod wasm {
-            // #[cfg(target_arch = "wasm32")]
-            // #[wasm_bindgen::prelude::wasm_bindgen]
-            // pub fn program_id() -> solana_program::pubkey::Pubkey{
-            //     super::program_id()
-            // } 
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen::prelude::wasm_bindgen]
             pub fn #entrypoint_declaration_register_() -> workflow_allocator::result::Result<()> {
@@ -224,20 +193,11 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
                     workflow_allocator::program::registry::EntrypointDeclaration::new(
                         super::ID,
                         super::program_name(),
-                        // super::program_id(),
                         super::process_instruction
                     )
                 )?;
                 Ok(())
             }
-            // pub fn piep_register_() {
-            // pub fn piep_register_() {
-            //     workflow_allocator::transport::router::register_entry_point(
-            //         super::program_name(),
-            //         super::program_id(),
-            //         super::process_instruction
-            //     )
-            // }
         }
     };
 
