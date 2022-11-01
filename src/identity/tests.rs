@@ -12,20 +12,16 @@ mod tests {
     async fn identity_init() -> Result<()> {
         workflow_allocator::container::registry::init()?;
 
-        // let program_id = Pubkey::from_str("F9SsGPgxpBdTyiZA41X1HYLR5QtcXnNBvhoE374DWhjg")?; //generate_random_pubkey();
         let program_id = generate_random_pubkey();
         let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id,None).await?;
 
         let config = InstructionBuilderConfig::new(simulator.program_id())
             .with_authority(&simulator.authority())
-        //     .with_identity(&identity)
             .with_sequence(0u64);
 
         let builder = InstructionBuilder::new_with_config_for_testing(&config)
-            .with_account_templates_with_seeds(&[(AddressDomain::Authority,"proxy")]) // [proxy, identity]
-            // .with_account_templates_with_custom_suffixes(&["proxy"]) // [proxy, identity]
-            .with_account_templates(1) // [proxy, identity]
-            // .with_account_templates(2) // [proxy, identity]
+            .with_account_templates_with_seeds(&[(AddressDomain::Authority,"proxy")])
+            .with_account_templates(1)
             .seal()?;
 
         let accounts = builder.generic_template_accounts();
@@ -48,11 +44,6 @@ mod tests {
 
         // load test container
         let builder = InstructionBuilder::new_with_config_for_testing(&config)
-            // .with_identity
-            // .with_handler_accounts(&[
-            //     test_container_account
-            // ])
-            //.with_account_templates(1)
             .seal()?;
         
         simulator.execute_handler(builder,|ctx:&ContextReference| {

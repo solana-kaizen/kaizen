@@ -362,10 +362,7 @@ impl Transport {
         let u8arr = unsafe { js_sys::Uint8Array::view(&pubkey_bytes[..]) };
         let pkargs = Array::new_with_length(1);
         pkargs.set(0 as u32, u8arr.into());
-        // ? TODO - cache ctor inside Transport
-        // let ctx = self.try_read().ok_or(JsValue::from("Transport rwlock solana"))?;
-        // let inner = self.try_inner_with_msg("rwlock: Transport::solana")?;
-        // let bridge = self.bridge.read().await;
+        // TODO - cache ctor inside Transport
         let ctor = unsafe { js_sys::Reflect::get(&Self::solana()?,&JsValue::from("PublicKey"))? };
         let pk_jsv = unsafe { js_sys::Reflect::construct(&ctor.into(),&pkargs)? };
         Ok(pk_jsv)

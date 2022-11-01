@@ -1,7 +1,5 @@
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
-// use solana_program::instruction::Instruction;
-// use solana_sdk::transaction::Transaction;
 use downcast::{downcast_sync,AnySync};
 use workflow_allocator::result::Result;
 use cfg_if::cfg_if;

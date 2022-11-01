@@ -133,8 +133,6 @@ mod tests {
             }
         }
     }
-
-    
     
     #[wasm_bindgen]
     pub async fn lookup_handler_test() -> Result<()> {

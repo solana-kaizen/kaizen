@@ -15,7 +15,6 @@ pub struct IdentityProxyMeta {
     identity_pubkey : Pubkey,
 }
 
-// #[derive(Debug)]
 #[container(Containers::IdentityProxy)]
 pub struct IdentityProxy<'info,'refs> {
     pub meta : RefCell<&'info mut IdentityProxyMeta>,
@@ -116,7 +115,6 @@ pub struct Identity<'info,'refs> {
     pub meta : RefCell<&'info mut IdentityMeta>,
     pub store : SegmentStore<'info,'refs>,
     // ---
-    // #[segment(reserve(Array::<IdentityRecord>::calculate_data_len(5)))]
     pub records : Array<'info,'refs, IdentityRecord>,
     pub collections : Array<'info,'refs, PubkeyCollectionMeta>,
 }
@@ -151,14 +149,6 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         Ok(())
     }
 
-    /// Insert IdentityEntry into the entry list
-    // pub fn try_insert_entry(&mut self, entry : &IdentityRecord) -> Result<()> {
-    //     let new_entry = self.records.try_allocate_volatile(false)?;
-    //     *new_entry = *entry;
-    //     Ok(())
-    // }
-
-
     pub fn referrer(&self) -> Result<Pubkey> {
         let meta = self.meta.try_borrow()?;
         Ok(meta.referrer)
@@ -176,7 +166,6 @@ impl<'info, 'refs> Identity<'info, 'refs> {
 
     /// Remove entry from the identity entry list
     pub unsafe fn try_remove_entry(&mut self, target : &IdentityRecord) -> Result<()> {
-        // let entries = self.try_get_entries()?;
         for idx in 0..self.records.len() {
             let entry = self.records.get_at(idx);
             if entry == target {
@@ -304,8 +293,6 @@ impl<'info, 'refs> Identity<'info, 'refs> {
             &ctx.handler_accounts[0]
         };
 
-        // TODO: generate PDA dynamically or validate incoming PDA
-        // ! WARNING this derivation is not correct (testing) 
         let allocation_args = AccountAllocationArgs::new(AddressDomain::Authority);
         let proxy_account = ctx.try_create_pda(IdentityProxy::initial_data_len(), &allocation_args)?;
         let proxy = IdentityProxy::try_create(proxy_account)?;

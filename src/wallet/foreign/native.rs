@@ -2,20 +2,14 @@
 use std::path::Path;
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
-// use solana_program::instruction::Instruction;
 use solana_sdk::signature::{Keypair, read_keypair_file};
 use solana_sdk::signer::Signer;
-// use solana_sdk::transaction::Transaction;
-// use downcast::{downcast_sync,AnySync};
 use workflow_allocator::result::Result;
 
 
-// #[derive(Clone)]
 pub struct Wallet {
-    // keypair : Arc<Keypair>,
     keypair : Keypair,
 }
-
 
 impl Wallet {
 
@@ -29,14 +23,12 @@ impl Wallet {
             .expect("Couldn't read authority keypair from '~/.config/solana/id.json'");
         
         let wallet = Self {
-            // keypair : Arc::new(keypair),
-            keypair //: keypair),
+            keypair
         };
 
         Ok(wallet)
     }
 
-    // pub fn keypair<'wallet>(&'wallet self) -> &'wallet Arc<Keypair> {
     pub fn keypair<'wallet>(&'wallet self) -> &'wallet Keypair {
         &self.keypair
     }

@@ -55,7 +55,6 @@ pub async fn create_identity(
 
     let builder = InstructionBuilder::new(program_id, interface_id, handler_id as u16)
         .with_authority(authority)
-        // .with_account_templates_with_custom_suffixes(&["proxy"]) 
         .with_account_templates_with_seeds(&[(AddressDomain::Authority,"proxy")]) 
         .with_account_templates(1 + instructions.get_collection_count())
         .with_sequence(0u64) 
@@ -93,7 +92,6 @@ pub async fn create_identity_for_unit_tests(
     let accounts = builder.generic_template_accounts();
     let identity = accounts[1].clone();
 
-
     simulator.execute_handler(builder,|ctx:&ContextReference| {
         log_trace!("create identity");
         Identity::create(ctx)?;
@@ -101,6 +99,4 @@ pub async fn create_identity_for_unit_tests(
     }).await?;
 
     Ok(identity.pubkey)
-
-
 }

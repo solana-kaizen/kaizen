@@ -79,10 +79,10 @@ impl Store for FileStore {
             if let Ok(Some(reference)) = cache.lookup(pubkey) {
 
                 // {
-                //     log_trace!("################################### LOOKUP ");
+                //     log_trace!("~~~ lookup ");
                 //     let account_data = &reference.account_data.read().await;
                 //     trace_hex(&*account_data.data);
-                //     log_trace!("################################### LOOKUP ");
+                //     log_trace!("~~~ lookup ");
                 // }
 
                 return Ok(Some(reference));
@@ -95,10 +95,10 @@ impl Store for FileStore {
             let account_data_store = AccountDataStore::try_from_slice(&data)?;
             let account_data = AccountData::from(&account_data_store);
 
-            // log_trace!("################## LOADED DATA {}",account_data.key);
+            // log_trace!("~~~ load data {}",account_data.key);
             // let account_data = &reference.account_data.read().await;
             // trace_hex(&account_data.data);
-            // log_trace!("################################### LOADED DATA ");
+            // log_trace!("~~~ load data");
 
             let reference = Arc::new(AccountDataReference::new(account_data));
 
@@ -114,10 +114,10 @@ impl Store for FileStore {
     async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
 
         // {
-        //     log_trace!("################## STORE {}",reference.key);
+        //     log_trace!("~~~ store {}",reference.key);
         //     let account_data = &reference.account_data.read().await;
         //     trace_hex(&*account_data.data);
-        //     log_trace!("################################### STORE ");
+        //     log_trace!("~~~ store");
         // }
 
         if let Some(cache) = &self.cache {

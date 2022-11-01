@@ -1,6 +1,4 @@
-// #![allow(unused_unsafe)]
 use std::*;
-// use std::sync::Mutex;
 use async_std::sync::RwLock;
 use workflow_log::log_error;
 use std::time::Duration;

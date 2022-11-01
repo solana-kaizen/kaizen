@@ -58,7 +58,6 @@ pub fn adapters() -> std::result::Result<Vec<JsValue>, JsValue> {
                         //
                     }
                 }
-                
             }
             Err(_e)=>{
                 //

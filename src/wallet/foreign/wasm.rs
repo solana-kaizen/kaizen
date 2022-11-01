@@ -13,7 +13,6 @@ pub struct Wallet {
 
 }
 
-
 impl Wallet {
 
     pub fn try_new() -> Result<Wallet> {
