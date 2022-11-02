@@ -497,17 +497,18 @@ impl InstructionBuilder {
         })
     }
 
-    pub fn with_account_templates_with_custom_suffixes(self: Arc<Self>, suffixes : &[&str]) -> Arc<Self> {
+    // pub fn with_account_templates_with_custom_suffixes(self: Arc<Self>, suffixes : &[&str]) -> Arc<Self> {
+    pub fn with_account_templates_with_custom_suffixes(self: Arc<Self>, suffixes : &[&[u8]]) -> Arc<Self> {
         self.with_inner(|mut inner| {
             for n in 0..suffixes.len() {
-                inner.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffixes[n].to_string())))
+                inner.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffixes[n].to_vec())))
             }
         })
     }
 
     // pub fn with_account_templates_with_custom_domains_and_suffixes(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
     // pub fn with_account_templates_with_custom_seeds(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
-    pub fn with_account_templates_with_seeds(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
+    pub fn with_account_templates_with_seeds(self: Arc<Self>, suffixes : &[(AddressDomain,&[u8])]) -> Arc<Self> {
         self.with_inner(|mut inner| {
             for (domain, suffix) in suffixes {
                 inner.generic_template_account_descriptors.push(
@@ -515,19 +516,19 @@ impl InstructionBuilder {
                         IsSigner::NotSigner,
                         Access::Write,
                         domain.clone(),
-                        SeedSuffix::Custom(suffix.to_string())
+                        SeedSuffix::Custom(suffix.to_vec())
                     )
                 )
             }
         })
     }
 
-    pub fn with_account_templates_with_custom_suffixes_prefixed(self: Arc<Self>, prefix : &str, suffixes : &[&str]) -> Arc<Self> {
+    pub fn with_account_templates_with_custom_suffixes_prefixed(self: Arc<Self>, prefix : &[u8], suffixes : &[&[u8]]) -> Arc<Self> {
         self.with_inner(|mut inner| {
             for n in 0..suffixes.len() {
-                let mut suffix = prefix.to_string();
-                suffix.push_str(suffixes[n]);
-                inner.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffix)))
+                let mut suffix = prefix.to_vec();
+                suffix.extend_from_slice(suffixes[n]);
+                inner.generic_template_account_descriptors.push((IsSigner::NotSigner,Access::Write,AddressDomain::Default,SeedSuffix::Custom(suffix.to_vec())))
             }
         })
     }
@@ -721,10 +722,8 @@ impl InstructionBuilder {
 
                         bytes
                     },
-                    SeedSuffix::Custom(seed_suffix_str) => {
-                        let bytes = seed_suffix_str.as_bytes();
-                        // seeds.push(bytes);
-                        bytes.to_vec()
+                    SeedSuffix::Custom(seed_suffix) => {
+                        seed_suffix.clone()
                     }
                 };
 

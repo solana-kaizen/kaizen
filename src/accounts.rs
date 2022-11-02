@@ -47,7 +47,7 @@ impl Into<bool> for Access {
 pub enum SeedSuffix {
     Blank,
     Sequence,
-    Custom(String)
+    Custom(Vec<u8>)
 }
 
 pub type SeedBump = u8;
