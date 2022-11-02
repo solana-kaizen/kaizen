@@ -39,7 +39,7 @@ pub use crate::container::collection::{
 pub use crate::container::ContainerHeader;
 pub use crate::identity::program::Identity;
 
-pub use workflow_log::{log_trace, log_error};
+pub use workflow_log::{log_trace, log_info, log_debug, log_warning, log_error};
 pub use workflow_log;
 
 pub use workflow_allocator::error_code;

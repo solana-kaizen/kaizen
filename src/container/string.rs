@@ -28,14 +28,14 @@ impl<'info,'refs> Utf8String<'info,'refs> {
     }
 
     #[inline]
-    pub fn store(&self, text: &str) -> Result<()> {
+    pub unsafe fn store(&self, text: &str) -> Result<()> {
         let bytes = text.as_bytes();
         self.store_bytes(&bytes)?;
         Ok(())
     }
 
     #[inline]
-    pub fn store_bytes(&self, bytes: &[u8]) -> Result<()> {
+    pub unsafe fn store_bytes(&self, bytes: &[u8]) -> Result<()> {
         self.segment.try_resize(bytes.len(), false)?;
         self.segment.as_slice_mut().copy_from_slice(&bytes);
         Ok(())
