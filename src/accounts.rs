@@ -709,7 +709,7 @@ mod client {
             let lamports: u64 = **account_info.lamports.borrow();
             let src = account_info.data.borrow();
             let space = src.len();
-            let buffer_len = src.len();
+            let buffer_len = src.len() + ACCOUNT_DATA_OFFSET;
 
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
