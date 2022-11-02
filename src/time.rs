@@ -6,7 +6,7 @@ use serde::*;
 use borsh::*;
 
 cfg_if! {
-    if #[cfg(target_arch = "bpf")] {
+    if #[cfg(target_os = "solana")] {
         use solana_program::clock::Clock;
         use solana_program::sysvar::Sysvar;
     } else if #[cfg(target_arch = "wasm32")] {
@@ -28,7 +28,7 @@ impl Instant {
     pub fn now() -> Result<Instant> {
 
         cfg_if! {
-            if #[cfg(target_arch = "bpf")] {
+            if #[cfg(target_os = "solana")] {
                 let unix_timestamp = Clock::get()?.unix_timestamp;
             } else if #[cfg(target_arch = "wasm32")] {
                 let unix_timestamp = Date::now() / 1000.0;

@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 
 cfg_if! {
-    if #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))] {
+    if #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))] {
         use solana_client::client_error::ClientError;
         use solana_client::client_error::ClientErrorKind;
         use solana_client::rpc_request;
@@ -11,7 +11,7 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(not(target_arch = "bpf"))] {
+    if #[cfg(not(target_os = "solana"))] {
         use workflow_rpc::asynchronous::error::RpcResponseError;
         use std::sync::PoisonError;
         use std::sync::Arc;
@@ -169,15 +169,15 @@ pub enum Variant {
     ErrorCode(ErrorCode),
     BorrowError(BorrowError),
     BorrowMutError(BorrowMutError),
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
     ClientError(Arc<ClientError>),
     // IoError(Arc<IoError>),
     IoError(IoError),
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
     OsString(OsString),
-    #[cfg(not(target_arch = "bpf"))]
+    #[cfg(not(target_os = "solana"))]
     RpcError(Arc<workflow_rpc::asynchronous::client::error::Error>),
-    #[cfg(not(target_arch = "bpf"))]
+    #[cfg(not(target_os = "solana"))]
     JsValue(String)
 }
 
@@ -190,15 +190,15 @@ impl Clone for Variant {
             Variant::ErrorCode(e) => Variant::ErrorCode(e.clone()),
             Variant::BorrowError(_e) => Variant::ErrorCode(ErrorCode::BorrowError),
             Variant::BorrowMutError(_e) => Variant::ErrorCode(ErrorCode::BorrowMutError),
-            #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+            #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::ClientError(e) => Variant::ClientError(e.clone()),
             Variant::IoError(_e) => Variant::ErrorCode(ErrorCode::IoError),
             // Variant::IoError(e) => Variant::IoError(e.clone()),
-            #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+            #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::OsString(e) => Variant::OsString(e.clone()),
-            #[cfg(not(target_arch = "bpf"))]
+            #[cfg(not(target_os = "solana"))]
             Variant::RpcError(e) => Variant::RpcError(e.clone()),
-            #[cfg(not(target_arch = "bpf"))]
+            #[cfg(not(target_os = "solana"))]
             Variant::JsValue(e) => Variant::JsValue(e.clone()),
         
         }
@@ -216,7 +216,7 @@ impl Variant {
 
             },
 
-            #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+            #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::OsString(os_str) => {
                 format!("OsString error: {:?}", os_str)
             },
@@ -231,15 +231,15 @@ impl Variant {
                 format!("borrow mut error: {:?}",error)
             },
             // #[cfg(target_arch = "wasm32")]
-            #[cfg(not(target_arch = "bpf"))]
+            #[cfg(not(target_os = "solana"))]
             Variant::JsValue(js_value) => {
                 format!("{:?}",js_value)
             }
-            #[cfg(not(target_arch = "bpf"))]
+            #[cfg(not(target_os = "solana"))]
             Variant::RpcError(err) => {
                 format!("{:?}",err)
             }
-            #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+            #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::ClientError(client_error) => {
                 
                 match client_error.kind() {
@@ -327,7 +327,7 @@ impl Error {
         match &self.variant {
             Some(variant) => {
                 match variant {
-                    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+                    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
                     Variant::ClientError(_) => {
                         format!("\n+---\n{}\n+---\n", variant.info())
                     },
@@ -395,7 +395,7 @@ impl Error {
     }
     
     pub fn with_code(mut self, code : ErrorCode) -> Self {
-        #[cfg(target_arch = "bpf")]
+        #[cfg(target_os = "solana")]
         solana_program::msg!("*** ERROR: {:?} ***", code);
 
         self.variant = Some(Variant::ErrorCode(code));
@@ -466,7 +466,7 @@ pub fn parse_js_error(e: wasm_bindgen::JsValue, msg:Option<&str>)->Error{
 }
 
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 impl From<Error> for RpcResponseError {
     fn from(err: Error) -> Self {
         RpcResponseError::Text(err.to_string())
@@ -531,7 +531,7 @@ impl From<ProgramError> for Error {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 impl<T> From<PoisonError<T>> for Error {
     fn from(error: PoisonError<T>) -> Error {
         Error::new()
@@ -561,7 +561,7 @@ impl From<IoError> for Error {
     }
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
 impl From<OsString> for Error {
     fn from(os_str: OsString) -> Error {
         Error::new()
@@ -582,7 +582,7 @@ impl From<Error> for String {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 impl From<Error> for wasm_bindgen::JsValue {
     fn from(error: Error) -> wasm_bindgen::JsValue {
         match error.variant {
@@ -594,7 +594,7 @@ impl From<Error> for wasm_bindgen::JsValue {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(error: wasm_bindgen::JsValue) -> Error {
         Error::new()
@@ -602,7 +602,7 @@ impl From<wasm_bindgen::JsValue> for Error {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 impl From<workflow_rpc::asynchronous::client::error::Error> for Error {
     fn from(error: workflow_rpc::asynchronous::client::error::Error) -> Error {
         Error::new()
@@ -610,7 +610,7 @@ impl From<workflow_rpc::asynchronous::client::error::Error> for Error {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 impl From<async_std::channel::RecvError> for Error {
     fn from(error: async_std::channel::RecvError) -> Error {
         Error::new()
@@ -619,7 +619,7 @@ impl From<async_std::channel::RecvError> for Error {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 impl<T> From<async_std::channel::SendError<T>> for Error {
     fn from(error: async_std::channel::SendError<T>) -> Error {
         Error::new()
@@ -628,7 +628,7 @@ impl<T> From<async_std::channel::SendError<T>> for Error {
     }
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
 impl From<ClientError> for Error {
     fn from(error: ClientError) -> Error {
         Error::new()
@@ -639,7 +639,7 @@ impl From<ClientError> for Error {
 
 impl From<Error> for ProgramError {
     fn from(e:Error) -> ProgramError {
-        #[cfg(not(target_arch = "bpf"))]
+        #[cfg(not(target_os = "solana"))]
         log_trace!("Converting Error to ProgramError\n{}", e);
         match e.variant {
             None => {
@@ -647,7 +647,7 @@ impl From<Error> for ProgramError {
             },
             Some(variant) => {
                 match variant {
-                    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+                    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
                     Variant::OsString(os_str) => {
                         log_trace!("OsString error: {:?}",os_str);
                         ProgramError::Custom(ErrorCode::OsString as u32)
@@ -668,15 +668,15 @@ impl From<Error> for ProgramError {
                     Variant::ProgramError(error) => {
                         error
                     },
-                    #[cfg(not(target_arch = "bpf"))]
+                    #[cfg(not(target_os = "solana"))]
                     Variant::JsValue(_error) => {
                         ProgramError::Custom(0)
                     },
-                    #[cfg(not(target_arch = "bpf"))]
+                    #[cfg(not(target_os = "solana"))]
                     Variant::RpcError(_error) => {
                         ProgramError::Custom(ErrorCode::RpcError as u32)
                     },
-                    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+                    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
                     Variant::ClientError(_error) => {
                         panic!("client error in program is not allowed");
                     }

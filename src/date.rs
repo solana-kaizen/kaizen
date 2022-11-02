@@ -17,7 +17,7 @@ impl From<Date> for i32{
 
 use cfg_if::cfg_if;
 cfg_if! {
-    if #[cfg(not(target_arch = "bpf"))] {
+    if #[cfg(not(target_os = "solana"))] {
         use chrono::prelude::*;
 
         impl Date{

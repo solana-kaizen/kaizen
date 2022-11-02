@@ -16,7 +16,7 @@ pub mod string;
 pub use string::*;
 
 cfg_if::cfg_if! {
-    if #[cfg(not(target_arch = "bpf"))] {
+    if #[cfg(not(target_os = "solana"))] {
         pub mod interfaces;
         pub use interfaces::*;
     }

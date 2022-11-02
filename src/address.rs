@@ -21,7 +21,7 @@ pub enum AddressDomain {
 
 impl AddressDomain {
 
-    #[cfg(not(target_arch = "bpf"))]
+    #[cfg(not(target_os = "solana"))]
     pub fn get_seed(&self, authority: Option<&AccountMeta>, identity: Option<&AccountMeta>) -> Result<Vec<u8>> {
         let seed_prefix = match self {
             AddressDomain::None => vec![],

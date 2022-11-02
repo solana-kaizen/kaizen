@@ -198,7 +198,7 @@ where M: CollectionMeta
 
 
 cfg_if! {
-    if #[cfg(not(target_arch = "bpf"))] {
+    if #[cfg(not(target_os = "solana"))] {
         
         use futures::{stream::FuturesOrdered, StreamExt};
 

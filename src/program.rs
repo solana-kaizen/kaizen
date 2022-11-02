@@ -1,4 +1,4 @@
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub mod registry {
     use std::sync::Arc;
     use std::sync::RwLock;

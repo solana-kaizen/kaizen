@@ -31,9 +31,9 @@ pub fn account_info_realloc<'info>(account_info : &AccountInfo<'info>, new_len: 
 
     if is_alloc == false {
         if new_len > orig_len && new_len - orig_len > MAX_PERMITTED_DATA_INCREASE {
-            #[cfg(target_arch = "bpf")]
+            #[cfg(target_os = "solana")]
             return Err(error_code!(ErrorCode::MaxPermittedAccountDataIncrease));
-            #[cfg(not(target_arch = "bpf"))]
+            #[cfg(not(target_os = "solana"))]
             panic!("maximum permitted account data increase - orig len: {} new len: {}", orig_len, new_len);
         }
     }
@@ -82,9 +82,9 @@ pub fn account_info_realloc<'info>(account_info : &AccountInfo<'info>, new_len: 
 
     if is_alloc == false {
         if new_len > orig_len && new_len - orig_len > MAX_PERMITTED_DATA_INCREASE {
-            #[cfg(target_arch = "bpf")]
+            #[cfg(target_os = "solana")]
             return Err(error_code!(ErrorCode::MaxPermittedAccountDataIncrease));
-            #[cfg(not(target_arch = "bpf"))]
+            #[cfg(not(target_os = "solana"))]
             panic!("maximum permitted account data increase - orig len: {} new len: {}", orig_len, new_len);
         }
     }

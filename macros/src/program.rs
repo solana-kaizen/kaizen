@@ -136,7 +136,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         #[inline(always)]
         pub fn program_handlers() -> &'static [workflow_allocator::context::HandlerFn] { &PROGRAM_HANDLERS[..] }
 
-        #[cfg(not(target_arch = "bpf"))]
+        #[cfg(not(target_os = "solana"))]
         pub fn interface_id(handler_fn: workflow_allocator::context::HandlerFn) -> usize {
             PROGRAM_HANDLERS.iter()
                 .position(|&hfn| hfn as workflow_allocator::context::HandlerFnCPtr == handler_fn as workflow_allocator::context::HandlerFnCPtr )
@@ -162,7 +162,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             // solana_program::msg!("instruction_data: {:?}", instruction_data);
             match workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data)) {
                 Err(err) => {
-                    #[cfg(not(target_arch = "bpf"))]
+                    #[cfg(not(target_os = "solana"))]
                     workflow_log::log_error!("Fatal: unable to load Context: {}", err);
                     return Err(err.into());
                 },
@@ -174,7 +174,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))]
+        #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))]
         inventory::submit! {
             workflow_allocator::program::registry::EntrypointDeclaration::new(
                 ID,

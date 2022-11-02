@@ -45,7 +45,7 @@ pub use workflow_log;
 pub use workflow_allocator::error_code;
 pub use workflow_allocator::error::ErrorCode;
 
-// #[cfg(not(target_arch = "bpf"))]
+// #[cfg(not(target_os = "solana"))]
 // pub use crate::tokens::{get_tokens, get_tokens_info, get_tokens_info_array, TokenInfo};
 
 pub use workflow_allocator_macros::{
@@ -58,7 +58,7 @@ pub use workflow_allocator_macros::{
 };
 
 cfg_if::cfg_if! {
-    if #[cfg(not(target_arch = "bpf"))] {
+    if #[cfg(not(target_os = "solana"))] {
 
         pub use workflow_core::workflow_async_trait;
 
@@ -83,7 +83,7 @@ cfg_if::cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))] {
+    if #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))] {
         pub use workflow_allocator::inventory;
     }
 }

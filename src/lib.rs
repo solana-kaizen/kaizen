@@ -29,7 +29,7 @@ pub mod identity;
 pub use utils::generate_random_pubkey;
 
 cfg_if! {
-    if #[cfg(not(target_arch = "bpf"))] {
+    if #[cfg(not(target_os = "solana"))] {
         pub mod wasm;
         pub mod builder;
         pub mod sequencer;
@@ -46,7 +46,7 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(target_arch = "bpf")] {
+    if #[cfg(target_os = "solana")] {
         pub mod solana;
         pub use solana::{
             allocate_pda,
@@ -78,7 +78,7 @@ cfg_if! {
             Ok(())
         }
 
-    } else if #[cfg(not(target_arch = "bpf"))] {
+    } else if #[cfg(not(target_os = "solana"))] {
 
         pub fn init() -> crate::result::Result<()> {
         
@@ -92,7 +92,7 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))] {
+    if #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))] {
         pub use inventory;
     }
 }

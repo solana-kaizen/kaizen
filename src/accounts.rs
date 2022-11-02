@@ -52,7 +52,7 @@ pub enum SeedSuffix {
 
 pub type SeedBump = u8;
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 mod client {
 
     use crate::container::Container;
@@ -509,7 +509,7 @@ mod client {
         }
     }
 
-    #[cfg(not(target_arch = "bpf"))]
+    #[cfg(not(target_os = "solana"))]
     #[derive(Debug, Clone)]
     pub struct AccountData {
         pub data_type: AccountType,
@@ -811,6 +811,6 @@ mod client {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub use client::*;
 

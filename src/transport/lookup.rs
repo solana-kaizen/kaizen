@@ -61,7 +61,7 @@ impl<K,T> LookupHandler<K,T> where T: Clone, K : Clone + Eq + Hash + Display {
     }
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 #[cfg(any(test, feature="test"))]
 mod tests {
     use std::time::Duration;
@@ -157,7 +157,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(not(any(target_arch = "wasm32", target_arch = "bpf")))]
+    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
     #[cfg(test)]
     mod tests {
         use super::*;

@@ -12,7 +12,7 @@ use crate::utils;
 use workflow_core::enums::u16_try_from;
 use num::Integer;
 
-// #[cfg(not(target_arch = "bpf"))]
+// #[cfg(not(target_os = "solana"))]
 use workflow_log::*;
 
 pub const SEGMENT_STORE_MAGIC : u32 = 0x47455347;
@@ -393,7 +393,7 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
             log_trace!("[{}] segment store magic {:#x} should be: {:#x}",account.key,magic,SEGMENT_STORE_MAGIC);
             log_trace!("meta: {:#?}", meta);
             log_trace!("loading segment store from offset {}", offset);
-            #[cfg(not(target_arch = "bpf"))]
+            #[cfg(not(target_os = "solana"))]
             log_trace!("{}",format_hex(&data));
             return Err(error_code!(ErrorCode::SegmentStoreMagic)
                 .with_account(account.key));
@@ -530,9 +530,9 @@ log_trace!("ALLOC A");
             IndexUnitSize::Bits16 => {
 
                 if new_len > 0xffff {
-                    #[cfg(not(target_arch = "bpf"))]
+                    #[cfg(not(target_os = "solana"))]
                     panic!("segment size is too large for 16 bit indexes");
-                    #[cfg(target_arch = "bpf")]
+                    #[cfg(target_os = "solana")]
                     return Err(error_code!(ErrorCode::SegmentSizeTooLargeForIndexUnitSize));
                 }
 

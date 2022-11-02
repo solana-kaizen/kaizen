@@ -335,7 +335,7 @@ impl<'info, 'refs, 'pid, 'instr>
             rent : Rent::default(),
         };
 
-        #[cfg(not(target_arch = "bpf"))]
+        #[cfg(not(target_os = "solana"))]
         {
             log_trace!("");
             ctx.view_info();
@@ -360,7 +360,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         }
     }
 
-    #[cfg(not(target_arch = "bpf"))]
+    #[cfg(not(target_os = "solana"))]
     pub fn view_info(&self) {
         let authority_accounts =1;
         let identity_accounts = if self.identity.is_some() { 1 } else { 0 };
@@ -410,7 +410,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
 
     }
 
-    #[cfg(not(target_arch = "bpf"))]
+    #[cfg(not(target_os = "solana"))]
     pub fn view_hex(&self) {
         let instruction_data_view = hexplay::HexViewBuilder::new(&self.incoming_data)
             .force_color()
@@ -510,7 +510,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
     ) -> Result<()> {
 
         cfg_if! {
-            if #[cfg(not(target_arch = "bpf"))] {
+            if #[cfg(not(target_os = "solana"))] {
                 if self.system_accounts.iter().position(|account_info| account_info.key == &solana_sdk::system_program::id()).is_none() {
                     return Err(error_code!(ErrorCode::SystemProgramAccountMissing));
                 }

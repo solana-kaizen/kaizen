@@ -765,7 +765,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
                     let header_container_type = header.get_container_type();
                     if header_container_type != container_type {
-                        #[cfg(not(target_arch = "bpf"))] {
+                        #[cfg(not(target_os = "solana"))] {
                             let header_container_type_str = if let Ok(Some(declaration)) = workflow_allocator::container::registry::lookup(header_container_type) {
                                 declaration.name
                             } else { "n/a" };
@@ -894,7 +894,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
         }
 
-        #[cfg(not(any(target_arch = "bpf",target_arch = "wasm32")))]
+        #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))]
         workflow_allocator::inventory::submit! {
             workflow_allocator::container::registry::ContainerDeclaration::new(
                 #container_type as u32,

@@ -26,12 +26,12 @@ pub fn u64sol_to_lamports(sol: u64) -> u64 {
     sol * LAMPORTS_PER_SOL
 }
 
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub fn generate_random_pubkey() -> Pubkey {
     Pubkey::new(&rand::random::<[u8; 32]>())
 }
 
-#[cfg(target_arch = "bpf")]
+#[cfg(target_os = "solana")]
 pub fn generate_random_pubkey() -> Pubkey {
     Pubkey::new_unique()
 }

@@ -257,7 +257,7 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
 // ~~~
 
 cfg_if! {
-    if #[cfg(not(target_arch = "bpf"))] {
+    if #[cfg(not(target_os = "solana"))] {
         use workflow_allocator::error;
         use futures::future::join_all;
         use solana_program::instruction::AccountMeta;
