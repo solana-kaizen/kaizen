@@ -101,10 +101,6 @@ impl<'info, 'refs> Segment<'info, 'refs> {
         self.store.get_segment_offset(self.idx)
     }
 
-    // pub fn as_ref_unsafe(&self) -> &[u8] {
-    //     self.store.get_segment_ref(self.idx)
-    // }
-
     pub fn try_as_ref_mut_u8(&self) -> Result<&mut [u8]> {
         self.store.try_get_segment_ref_mut_u8(self.idx)
     }
@@ -157,22 +153,6 @@ impl<'info, 'refs> Segment<'info, 'refs> {
 
 }
 
-
-// impl<'info,'refs> AsRef<[u8]> for Segment<'info,'refs> {
-//     fn as_ref(&self) -> &[u8] {
-//     // fn as_ref(&self) -> &'info [u8] {
-//         self.store.get_segment_ref(self.idx)
-//     }
-// }
-
-// impl<'info,'refs> AsMut<[u8]> for Segment<'info,'refs> {
-//     fn as_mut(&mut self) -> &mut [u8] {
-//     // fn as_mut(&mut self) -> &'info mut [u8] {
-//         self.store.get_segment_ref_mut(self.idx)
-//     }
-// }
-
-
 u16_try_from!(
     #[derive(Debug, Copy, Clone)]
     pub enum IndexUnitSize {
@@ -181,12 +161,9 @@ u16_try_from!(
     }
 );
 
-// pub struct IndexUnit<T>(T);
-
 pub trait IndexUnit {
     fn from_usize(v: usize) -> Self;
     fn as_usize(v: Self) -> usize;
-    // fn as_usize(v: Self) -> usize;
     fn value(v: Self) -> usize;
 }
 
@@ -216,7 +193,6 @@ pub use impl_index_unit;
 
 impl_index_unit!(u16 u32);
 // impl_index_unit!(u8 u16 u32 u64 usize);
-
 
 fn value_of<T>(v:T) -> usize where T : IndexUnit {
     T::value(v)
@@ -363,16 +339,11 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
             offset,
             index_unit_size
         };
-        // store.try_init_meta(&index)?;
         store.try_init_meta(&index)?;
-        // store.try_init_meta(index_unit_size, layout)?;
         Ok(store)
     }
 
     pub fn try_load(account: &'refs AccountInfo<'info>, offset: usize) -> Result<SegmentStore<'info, 'refs>> {
-        // pub fn try_from_account(account: &'refs AccountInfo<'info>, offset: usize) -> Result<SegmentStore<'info, 'refs>> {
-
-        // log_trace!("%%%%%%% -> SegmetStore::try_load() offset: {:?}", offset);
 
         let data = account.data.try_borrow()?;
 
@@ -406,7 +377,6 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
             account,
             offset,
             index_unit_size,
-            // phantom : PhantomData
         };
 
         Ok(store)
@@ -422,12 +392,7 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         SegmentStoreMeta::from(&self.account.data, self.offset)
     }
 
-
-    //? ----------------------------------------------------------------
-    // TODO -
     pub fn try_allocate_segment<'store>(&self, _data_len : usize) -> Result<Segment<'info,'refs>> {
-        // let meta = self.get_meta();
-        // let index = self.try_get_segment_at
         let idx = self.len(); //meta.segments as usize;
         let segments = idx+1;
         self.get_meta().segments = segments as u32;
@@ -439,22 +404,13 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
             assert_eq!(index_size,self.get_segment_data_len(0));
         }
 
-        // let bytes_used = meta.bytes_used;
-        // let buffer_len = self.account.data_len();
-        // let available_len = buffer_len - bytes_used;
-        // if data_len < available_len {
-        //     if meta.indices 
-        // } else {
-        // }
-
         let segment = Segment::<'info,'refs> {
             store : self.clone(),
             idx,
             resizable : true,
         };
 
-        // FIXME implement try_allocate_segment
-        // todo!("finish implementation");
+        // FIXME review!
         Ok(segment)
     }
     pub fn try_purge_segment(&mut self, idx: usize) -> Result<()> {
@@ -476,7 +432,6 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         }
 
         let dest = self.get_segment_offset(idx);
-        // let sizes = self.get_segment_sizes().borrow();
         let index = self.get_index::<T>();
         let segment_data_len = IndexUnit::as_usize(index[idx].size);
         let src = dest+segment_data_len;
@@ -490,14 +445,8 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
                 dest
             );
         }
-log_trace!("ALLOC A");
-        account_info_realloc(self.account, account_data_len - segment_data_len, false,false)?;
 
-        //? TODO
-        //? TODO
-        //? TODO
-        //? TODO
-        //? TODO
+        account_info_realloc(self.account, account_data_len - segment_data_len, false,false)?;
 
         // we do not reize the index segment (there is potential for too much memory movement)
         //let mut segment_offsets = self.segment_offsets.borrow_mut();
@@ -505,22 +454,10 @@ log_trace!("ALLOC A");
 
             index[k].size = index[k+1].size;
             index[k].offset = index[k+1].offset - IndexUnit::from_usize(segment_data_len);
-            
-            // let dest = &mut index[k];
-            // let src = &mut index[k+1];
-            // dest.size = src.size;
-            // // index[k] = sizes[k+1];
-            // dest.offset = src.offset - segment_data_len as u32;
-            // segment_offsets[k] = segment_offsets[k+1] - segment_data_len;
         }
 
         // TODO - zero memory
-        // TODO - zero memory
-        // TODO - zero memory
-        // TODO - zero memory
-
         index[segments].zero();
-        // segment_offsets.pop();
 
         Ok(())
     }
@@ -536,8 +473,6 @@ log_trace!("ALLOC A");
                     return Err(error_code!(ErrorCode::SegmentSizeTooLargeForIndexUnitSize));
                 }
 
-                // log_trace!("try_resize_segment");
-
                 self.try_resize_segment_impl::<u16>(idx,new_len,zero_init)
             },
             IndexUnitSize::Bits32 => {
@@ -546,12 +481,6 @@ log_trace!("ALLOC A");
         }
     }
 
-    // ^ TODO
-    // ^ TODO
-    // ^ TODO
-    // ^ TODO
-    // ^ TODO
-    // ^ TODO
     pub fn try_resize_segment_impl<T>(&self, idx: usize, new_len : usize, zero_init : bool) 
     -> Result<()> 
     where T : 'info + Integer + IndexUnit + std::fmt::Debug + std::ops::SubAssign + Copy + std::ops::AddAssign
@@ -579,13 +508,9 @@ log_trace!("ALLOC A");
             let account_data_len = self.account.data_len();
 
             // !  - - - - - - - - - - - -
-            // !  - - - - - - - - - - - -
-            // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
             // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
             // let headers = accounts::account_info_headers(self.account)?;
             // log_trace!("{} serialized: {} slice: {}",style("HEADERS ===============>").white().on_red(),headers.0,headers.1);
-
-
             // let new_account_data_len = account_data_len + delta;
             // let migration_data_len = if next_idx == segments {
             //     0
@@ -595,8 +520,6 @@ log_trace!("ALLOC A");
             // log_trace!("ALLOC B - account_data_len: {}, new_account_data_len: {}", account_data_len, new_account_data_len);
 
             // account_info_realloc(self.account, new_account_data_len, false,false)?;
-// ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
-            // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
             // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
 
             let total_segment_data_len = 
@@ -607,7 +530,6 @@ log_trace!("ALLOC A");
                 panic!("account data len is less than total segment data len");
             }
 
-            // let new_account_data_len = account_data_len + delta;
             let new_account_data_len = total_segment_data_len + delta;
             let migration_data_len = if next_idx == segments {
                 0
@@ -623,11 +545,8 @@ log_trace!("ALLOC A");
                 account_info_realloc(self.account, new_account_data_len, false,false)?;
             } else {
                 log_trace!("[segment store] capacity ok, skipping allocation");
-                // log_trace!("{}",style("~ ~ ~ ~ ~ ~ ~ ~ SKIPPING ALLOCATION ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~").white().on_red());
             }
-            // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
 
-            // log_trace!("index after: {:?}", index);
             let index = self.get_index::<T>();
             // log_trace!("index reaquire: {:?}", index);
             // log_trace!("index[{}] = {}",idx,new_len);
@@ -643,7 +562,7 @@ log_trace!("ALLOC A");
                 );
 
                 for k in next_idx..segments {
-                    index[k].offset += IndexUnit::from_usize(delta);// as u32;
+                    index[k].offset += IndexUnit::from_usize(delta);
                 }
 
                 if zero_init {
@@ -652,14 +571,8 @@ log_trace!("ALLOC A");
                 }
             }
 
-            // log_trace!("data[{}]: {:?}",data.len(), data);
-
-
         } else if new_len < segment_data_len {
 
-            log_trace!("!!!!!!!!!!!!!!!!!!");
-            log_trace!("!!!!!!!!!!!!!!!!!!");
-            log_trace!("!!!!!!!!!!!!!!!!!!");
             log_trace!("[segment store] reduce segment size... idx: {}", idx);
             log_trace!("[segment store] segment_data_len: {}", segment_data_len);
             log_trace!("[segment store] new_len: {}", new_len);
@@ -672,15 +585,13 @@ log_trace!("ALLOC A");
             if idx < segments-1 {
                 let src = index[idx].next_offset();
                 log_trace!("[segment store] src:{}", src);
-                //self.get_segment_offset(idx+1);
 
                 let migration_data_len = account_data_len - src;
 
                 log_trace!("[segment store] resize [reduce segment size] segment[{}] account_data_len: {} delta: {}  new_account_data_len: {}",
                     idx, self.account.data_len(), delta, new_account_data_len);
-                // let mut segment_offsets = self.segment_offsets.borrow_mut();
                 for k in idx..segments {
-                    index[k].offset -= IndexUnit::from_usize(delta);// as u32;
+                    index[k].offset -= IndexUnit::from_usize(delta);
                 }
 
                 let dest = src-delta;
@@ -694,8 +605,7 @@ log_trace!("ALLOC A");
                 }
             }
 
-            index[idx].size = IndexUnit::from_usize(new_len);// as u32;
-            log_trace!("ALLOC C");
+            index[idx].size = IndexUnit::from_usize(new_len);
 
             account_info_realloc(self.account, new_account_data_len, false,false)?;
             log_trace!("[segment store] reduce segment size is done");
@@ -703,8 +613,6 @@ log_trace!("ALLOC A");
 
         Ok(())
     }
-
-
 
     #[inline(always)]
     pub fn try_get_segment_data_len(&self, idx: usize) -> Result<usize> {
@@ -833,14 +741,12 @@ log_trace!("ALLOC A");
     {
 
         let segment = self.try_get_segment_at(idx)?;
-        // log_trace!("{:#?}", segment);
         let linear_store = Array::try_load_from_segment(segment)?;
         Ok(linear_store)
 
     }
 
     pub fn try_init_meta<T>(&self, new_index : &[IndexEntry<T>]) -> Result<()> where T : 'info+Integer+IndexUnit+Copy+std::fmt::Debug {
-        // let meta = SegmentStoreMeta::from(&self.account.data, self.offset);
         let meta = self.get_meta();
         if meta.magic != 0 {
             return Err(ErrorCode::SegmentStoreMetaNotBlank.into())
@@ -1057,14 +963,11 @@ mod tests {
         //     let data = store.account.data.borrow();
         //     log_trace!("data: {:?}",data);
         // }
-//        log_trace!("account: {:#?}",data);
+        //        log_trace!("account: {:#?}",data);
 
         // let account_data_len = 128;
         // let mut account_data = AccountData::new_as_detached_container(account_data_len);
-
         // let account_info : AccountInfo = (account_data;
-
-
 
         Ok(())
     }
