@@ -124,12 +124,83 @@ impl Store for FileStore {
             cache.store(&reference)?;
         }
 
-        let data = AccountDataStore::from(&*reference.account_data.lock()?).try_to_vec()?;
+        let data = AccountDataStore::from(&*reference.account_data.lock()?);
+        let data_vec = data.try_to_vec()?;
+        //log_error!("AccountDataStore: {:?}\nVec: {:02x?}", data, data_vec);
+        //log_trace!("storing: {}",reference.key);
+    
+        //color name : black, blue green red cyan magenta yellow    
+        /*
+        let mut i = 0;
+        let mut r = |len:usize|->core::ops::Range<usize>{
+            let end = i+len;
+            let range = i..end;
+            i = end;
+            range
+        };
+        */
 
-        log_trace!("storing: {}",reference.key);
-        trace_hex(&data);
+        let mut colors = vec![
+            ("214", 1),//container type : 1
+            ("147", 32),//key : 32
+            ("12", 32),//owner pubkey : 32
+            ("13", 8),//lamports : 8
+            ("14", 4),//data length : 4
+            ("5", 4),//container type : 4
+            ("37,188,36", 4),//store magic : 4
+            ("169", 4),//store version : 4
+            ("161", 2),//store payload_len : 2
+            ("cyan", 2),//store index_unit_size : 2
+            ("blue", 4),//store segments count : 4
+            //("0xcc", 2),//store Index.offset : 2/4 ? // use index_unit_size
+            //("0xdc", 2),//store Index.size : 2/4 ? // use index_unit_size
+            //("0xcc", 2),//store Index.offset : 2/4 ? // use index_unit_size
+            //("0xdc", 2),//store Index.size : 2/4 ? // use index_unit_size
+            //("0xcc", 2),//store Index.offset : 2/4 ? // use index_unit_size
+            //("0xdc", 2),//store Index.size : 2/4 ? // use index_unit_size
+        ];
 
-        fs::write(&self.data_folder.join(reference.key.to_string()),data).await?;
+        let data_index = 1+32+32+8+4;
+        let seg_count_index = data_index+4+4+4+2+2;
+        let segments_count = unsafe { std::mem::transmute::<_, &u32>(data_vec.as_ptr().offset(seg_count_index)) }+0;
+        let seg_count_length = 4;
+        //log_trace!("segments_count: {segments_count}");
+        if segments_count > 0 && segments_count < 100{
+            for _ in 0..segments_count{
+                colors.push(("0xcc", 2));
+                colors.push(("0xdc", 2));
+            }
+            let mut odd = true;
+            for index in 1..segments_count{
+                let index_offset = seg_count_index + seg_count_length + (index as isize * 4 );
+                let offset = unsafe {
+                    std::mem::transmute::<_, &u16>(data_vec.as_ptr()
+                    .offset(index_offset))
+                }+0;
+                let size = unsafe {
+                    std::mem::transmute::<_, &u16>(data_vec.as_ptr()
+                    .offset(index_offset+2))
+                }+0;
+                log_trace!("offset: {offset}, size:{size}");
+                
+                if odd {
+                    odd = false;
+                    colors.push(("red", size as usize));
+                }else{
+                    odd = true;
+                    colors.push(("green", size as usize));
+                }
+            }
+        }
+        
+        let view = format_hex_with_colors(&data_vec, colors);
+
+        if let Err(_) = view.try_print(){
+            trace_hex(&data_vec);
+        }
+
+
+        fs::write(&self.data_folder.join(reference.key.to_string()), data_vec).await?;
         Ok(())
     }
     async fn purge(&self, pubkey : &Pubkey) -> Result<()> {
