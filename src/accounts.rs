@@ -340,6 +340,83 @@ mod client {
         pub executable: bool,
     }
 
+    impl ColoLogTrace for AccountDataStore{
+        fn log_data(&self)->Vec<u8>{
+            if let Ok(data) = self.try_to_vec(){
+                return data;
+            }
+
+            Vec::new()
+        }
+
+        fn log_index_and_type<'a>(&self)->Option<Vec<(color_log::Index, DataType<'a>)>>{
+            let mut index_and_type = vec![
+                (0, DataType::ContainerType(1)),//container type : 1
+                (1, DataType::Pubkey),//key : 32
+                (33, DataType::Pubkey2),//owner pubkey : 32
+                (65, DataType::Custom(8, "4")),//lamports : 8
+                (73, DataType::Custom(4, "6")),//data length : 4
+                (77, DataType::ContainerType(4)),//container type : 4
+                (81, DataType::Custom(4, "168")),//store magic : 4
+                (85, DataType::Custom(4, "169")),//store version : 4
+                (87, DataType::Custom(2, "161")),//store payload_len : 2
+                (89, DataType::Custom(2, "cyan")),//store index_unit_size : 2
+                (93, DataType::Custom(4, "blue")),//store segments count : 4
+            ];
+
+            let data_vec = self.log_data();
+
+            fn get_num<U:Sized+Copy>(data_vec:&Vec<u8>, offset:isize)->Option<U>{
+                let size = std::mem::size_of::<U>();
+                if (offset as usize + size) > data_vec.len(){
+                    return None;
+                }
+                let v = *unsafe { std::mem::transmute::<_, &U>(data_vec.as_ptr().offset(offset)) };
+                Some(v)
+            }
+
+            let data_index = 77;//1+32+32+8+4;
+            let seg_count_index = 93;//data_index+4+4+4+2+2;
+            if let Some(segments_count) = get_num::<u16>(&data_vec, seg_count_index){
+                let seg_count_length = 4;
+                let mut index = 97;
+                //log_trace!("segments_count: {segments_count}");
+                if segments_count > 0 && segments_count < 100{
+                    
+                    for _ in 0..segments_count{
+                        index_and_type.push((index, DataType::Custom(2, "0xcc")));
+                        index_and_type.push((index + 2, DataType::Custom(2, "0xdc")));
+                        index += 4;
+                    }
+
+                    let mut odd = true;
+                    for index in 1..segments_count{
+                        let index_offset = seg_count_index + seg_count_length + (index as isize * 4 );
+                        if let Some(offset) = get_num::<u16>(&data_vec, index_offset){
+                            let offset = offset as usize;
+                            if let Some(size) = get_num::<u16>(&data_vec, index_offset+2){
+                                let size = size as usize;
+
+                                log_trace!("Index: {{ offset:{offset}, size:{size} }}");
+                                
+                                if odd {
+                                    odd = false;
+                                    index_and_type.push((data_index as usize + offset, DataType::Custom(size, "red")));
+                                }else{
+                                    odd = true;
+                                    index_and_type.push((data_index as usize + offset, DataType::Custom(size, "green")));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            
+            Some(index_and_type)
+        }
+    }
+
     impl From<&AccountData> for AccountDataStore {
         fn from(account_data: &AccountData) -> Self {
             Self {
