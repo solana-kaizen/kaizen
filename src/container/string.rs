@@ -2,7 +2,7 @@ use std::rc::Rc;
 use crate::result::Result;
 use crate::container::segment::Segment;
 use std::string::*;
-// use workflow_allocator::prelude::*;
+// use kaizen::prelude::*;
 
 pub struct Utf8String<'info,'refs> {
     pub segment : Rc<Segment<'info,'refs>>,

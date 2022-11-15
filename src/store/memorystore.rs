@@ -4,7 +4,7 @@ use super::*;
 use std::sync::Arc;
 use async_std::sync::RwLock;
 use solana_program::pubkey::Pubkey;
-use workflow_allocator::error::*;
+use kaizen::error::*;
 use ahash::AHashMap;
 
 #[derive(Clone)]

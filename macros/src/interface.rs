@@ -103,7 +103,7 @@ pub fn declare_interface(input: TokenStream) -> TokenStream {
                 as u16
             }
 
-            pub fn program(ctx:&workflow_allocator::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
+            pub fn program(ctx:&kaizen::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
                 if ctx.handler_id >= #handler_struct_path::INTERFACE_HANDLERS.len() {
                     workflow_log::log_error!("Error - invalid handler id {} for interface {}", ctx.handler_id, #handler_struct_name);
                     return Err(solana_program::program_error::ProgramError::InvalidArgument);

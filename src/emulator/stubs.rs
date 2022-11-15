@@ -1,11 +1,11 @@
 use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::slot_history::AccountInfo;
 use workflow_log::*;
-use workflow_allocator::realloc::account_info_realloc;
-use workflow_allocator::result::Result;
-use workflow_allocator::error::*;
-use workflow_allocator::address::ProgramAddressData;
-use workflow_allocator::accounts::*;
+use kaizen::realloc::account_info_realloc;
+use kaizen::result::Result;
+use kaizen::error::*;
+use kaizen::address::ProgramAddressData;
+use kaizen::accounts::*;
 
 pub fn allocate_pda<'info,'pid>(
     payer: &AccountInfo<'info>,

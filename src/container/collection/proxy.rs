@@ -1,8 +1,8 @@
-use workflow_allocator::prelude::*;
-use workflow_allocator::error::ErrorCode;
-use workflow_allocator::result::Result;
-use workflow_allocator::container::*;
-use workflow_allocator::context::*;
+use kaizen::prelude::*;
+use kaizen::error::ErrorCode;
+use kaizen::result::Result;
+use kaizen::container::*;
+use kaizen::context::*;
 
 #[derive(Meta)]
 pub struct ProxyMeta {
@@ -105,7 +105,7 @@ impl<'info,'refs> Container<'info,'refs> for Proxy<'info,'refs> {
         _ctx: &ContextReference<'info,'refs,'_,'_>,
         _allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
         _reserve_data_len : usize
-    ) -> workflow_allocator::result::Result<Proxy<'info,'refs>> {
+    ) -> kaizen::result::Result<Proxy<'info,'refs>> {
         // #struct_name :: #struct_params :: try_allocate(ctx, allocation_args, reserve_data_len)
 
         // let account_info = ctx.try_create_pda(Proxy::data_len(),allocation_args)?;

@@ -6,11 +6,11 @@ use solana_program::pubkey::Pubkey;
 use workflow_rpc::asynchronous::server::RpcHandler;
 use workflow_rpc::asynchronous::server::RpcResponseError;
 use workflow_rpc::asynchronous::result::RpcResult;
-use workflow_allocator::emulator::interface::EmulatorInterface;
-use workflow_allocator::emulator::rpc::*;
-use workflow_allocator::store::FileStore;
-use workflow_allocator::cache::Cache;
-use workflow_allocator::result::Result;
+use kaizen::emulator::interface::EmulatorInterface;
+use kaizen::emulator::rpc::*;
+use kaizen::store::FileStore;
+use kaizen::cache::Cache;
+use kaizen::result::Result;
 use crate::accounts::AccountDataStore;
 
 use super::Emulator;

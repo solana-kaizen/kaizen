@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
 use downcast::{downcast_sync,AnySync};
-use workflow_allocator::result::Result;
+use kaizen::result::Result;
 use cfg_if::cfg_if;
 
 cfg_if! {

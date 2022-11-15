@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
-use workflow_allocator_macros::Meta;
+use kaizen_macros::Meta;
 use crate::result::Result;
-use workflow_allocator::prelude::*;
+use kaizen::prelude::*;
 
 pub trait CollectionMeta {
     fn min_data_len() -> usize;

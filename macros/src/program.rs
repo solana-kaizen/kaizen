@@ -120,7 +120,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
     );
 
     let output = quote!{
-        pub static PROGRAM_HANDLERS : [workflow_allocator::context::HandlerFn;#len] = #primitive_handlers;
+        pub static PROGRAM_HANDLERS : [kaizen::context::HandlerFn;#len] = #primitive_handlers;
 
         solana_program::declare_id!(#program_id);
         solana_program::entrypoint!(process_instruction);
@@ -134,16 +134,16 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         pub fn program_name() -> &'static str { #program_name }
 
         #[inline(always)]
-        pub fn program_handlers() -> &'static [workflow_allocator::context::HandlerFn] { &PROGRAM_HANDLERS[..] }
+        pub fn program_handlers() -> &'static [kaizen::context::HandlerFn] { &PROGRAM_HANDLERS[..] }
 
         #[cfg(not(target_os = "solana"))]
-        pub fn interface_id(handler_fn: workflow_allocator::context::HandlerFn) -> usize {
+        pub fn interface_id(handler_fn: kaizen::context::HandlerFn) -> usize {
             PROGRAM_HANDLERS.iter()
-                .position(|&hfn| hfn as workflow_allocator::context::HandlerFnCPtr == handler_fn as workflow_allocator::context::HandlerFnCPtr )
+                .position(|&hfn| hfn as kaizen::context::HandlerFnCPtr == handler_fn as kaizen::context::HandlerFnCPtr )
                 .expect("Unknown interface handler! (check declare_program!())")
         }
 
-        pub fn program(ctx:&workflow_allocator::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
+        pub fn program(ctx:&kaizen::context::ContextReference) -> solana_program::entrypoint::ProgramResult {
             if ctx.interface_id >= PROGRAM_HANDLERS.len() {
                 println!("Error - invalid interface id");
                 return Err(solana_program::program_error::ProgramError::InvalidArgument);
@@ -160,7 +160,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
             // solana_program::msg!("program_id: {}", program_id);
             // solana_program::msg!("accounts: {:?}", accounts);
             // solana_program::msg!("instruction_data: {:?}", instruction_data);
-            match workflow_allocator::context::Context::try_from((program_id,accounts,instruction_data)) {
+            match kaizen::context::Context::try_from((program_id,accounts,instruction_data)) {
                 Err(err) => {
                     #[cfg(not(target_os = "solana"))]
                     workflow_log::log_error!("Fatal: unable to load Context: {}", err);
@@ -176,7 +176,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
 
         #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))]
         inventory::submit! {
-            workflow_allocator::program::registry::EntrypointDeclaration::new(
+            kaizen::program::registry::EntrypointDeclaration::new(
                 ID,
                 #program_name,
                 process_instruction
@@ -188,9 +188,9 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         mod wasm {
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen::prelude::wasm_bindgen]
-            pub fn #entrypoint_declaration_register_() -> workflow_allocator::result::Result<()> {
-                workflow_allocator::program::registry::register_entrypoint_declaration(
-                    workflow_allocator::program::registry::EntrypointDeclaration::new(
+            pub fn #entrypoint_declaration_register_() -> kaizen::result::Result<()> {
+                kaizen::program::registry::register_entrypoint_declaration(
+                    kaizen::program::registry::EntrypointDeclaration::new(
                         super::ID,
                         super::program_name(),
                         super::process_instruction

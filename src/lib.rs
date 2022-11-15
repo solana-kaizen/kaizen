@@ -1,9 +1,9 @@
 use cfg_if::cfg_if;
 
-extern crate self as workflow_allocator;
+extern crate self as kaizen;
 
 pub mod macros {
-    pub use workflow_allocator_macros::*;
+    pub use kaizen_macros::*;
 }
 
 pub mod error;

@@ -5,8 +5,8 @@ pub type KeystoreCollection<'info,'refs> = OrderedCollectionInterface<'info,'ref
 use std::cmp::Ordering;
 
 use solana_program::pubkey::Pubkey;
-use workflow_allocator::time::Instant;
-// use workflow_allocator::result::Result;
+use kaizen::time::Instant;
+// use kaizen::result::Result;
 
 #[derive(Clone, Copy)]
 #[repr(packed)]

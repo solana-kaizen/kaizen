@@ -1,7 +1,7 @@
 use std::sync::Mutex;
-use workflow_allocator::prelude::*;
-use workflow_allocator::result::Result;
-use workflow_allocator::transport::TransportMode;
+use kaizen::prelude::*;
+use kaizen::result::Result;
+use kaizen::transport::TransportMode;
 
 use crate::error;
 
@@ -103,7 +103,7 @@ impl User {
     }
 
     pub async fn load_identity(&self, program_id : &Pubkey, authority: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        match workflow_allocator::identity::client::load_identity(program_id, authority).await? {
+        match kaizen::identity::client::load_identity(program_id, authority).await? {
             Some(identity) => {
                 let transport_mode = Transport::global()?.mode();
                 self.sequencer.load_from_identity(&identity)?;

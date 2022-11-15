@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, read_keypair_file};
 use solana_sdk::signer::Signer;
-use workflow_allocator::result::Result;
+use kaizen::result::Result;
 
 
 pub struct Wallet {

@@ -13,10 +13,10 @@ use crate::user::User;
 // use crate::transport::load_container;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction::AccountMeta;
-use workflow_allocator::prelude::*;
-use workflow_allocator::address::AddressDomain;
-use workflow_allocator::context::{ HandlerFn, HandlerFnCPtr };
-use workflow_allocator::container::{
+use kaizen::prelude::*;
+use kaizen::address::AddressDomain;
+use kaizen::context::{ HandlerFn, HandlerFnCPtr };
+use kaizen::container::{
     AccountAggregatorInterface,
     AsyncAccountAggregatorInterface,
     PdaCollectionCreatorInterface,
@@ -24,7 +24,7 @@ use workflow_allocator::container::{
     PdaCollectionAccessorInterface,
     AsyncPdaCollectionAccessorInterface,
 };
-use workflow_allocator::identity::program::Identity;
+use kaizen::identity::program::Identity;
 use workflow_log::{log_warning, style};
 
 pub enum Gather {

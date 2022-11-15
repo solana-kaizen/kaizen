@@ -1,5 +1,5 @@
-use workflow_allocator::prelude::*;
-use workflow_allocator::result::Result;
+use kaizen::prelude::*;
+use kaizen::result::Result;
 use solana_program::pubkey::Pubkey;
 use borsh::*;
 use workflow_log::*;
@@ -24,7 +24,7 @@ pub async fn locate_identity_pubkey(transport : &Arc<Transport>, program_id : &P
 }
 
 pub async fn load_identity(program_id: &Pubkey, authority: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-    let transport = workflow_allocator::transport::Transport::global()?;
+    let transport = kaizen::transport::Transport::global()?;
     if let Some(identity_pubkey) = locate_identity_pubkey(&transport, &program_id, &authority).await? {
         Ok(transport.lookup(&identity_pubkey).await?)
     } else {
@@ -34,7 +34,7 @@ pub async fn load_identity(program_id: &Pubkey, authority: &Pubkey) -> Result<Op
 }
 
 pub async fn reload_identity(program_id: &Pubkey, authority: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-    let transport = workflow_allocator::transport::Transport::global()?;
+    let transport = kaizen::transport::Transport::global()?;
     if let Some(identity_pubkey) = locate_identity_pubkey(&transport, &program_id, &authority).await? {
         Ok(transport.lookup_remote(&identity_pubkey).await?)
     } else {

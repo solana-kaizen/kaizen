@@ -323,7 +323,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
     let mut store_field_visibility = quote!{ };
     let mut store_field_name = quote!{ __store__ };
-    let mut store_field_type = quote!{ workflow_allocator::container::segment::SegmentStore<'info,'refs> };
+    let mut store_field_type = quote!{ kaizen::container::segment::SegmentStore<'info,'refs> };
     // let mut idx : usize = 0;
     for segment in segments.iter() {
         match segment.type_ident.as_ref() {
@@ -625,13 +625,13 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
     let init_offset = if let Some(type_path) = &meta_type_path {
         quote!{
-            let container_meta_offset = std::mem::size_of::<workflow_allocator::container::ContainerHeader>();
-            let segment_store_offset = std::mem::size_of::<workflow_allocator::container::ContainerHeader>() 
+            let container_meta_offset = std::mem::size_of::<kaizen::container::ContainerHeader>();
+            let segment_store_offset = std::mem::size_of::<kaizen::container::ContainerHeader>() 
                 + std::mem::size_of::<#type_path>();
         }
     } else {
         quote!{
-            let segment_store_offset = std::mem::size_of::<workflow_allocator::container::ContainerHeader>();
+            let segment_store_offset = std::mem::size_of::<kaizen::container::ContainerHeader>();
         }
     };
 
@@ -691,18 +691,18 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             #(#collection_inits)*
         
             pub fn try_allocate_default<'pid,'instr>(
-                ctx: &std::rc::Rc<std::boxed::Box<workflow_allocator::context::Context<'info,'refs,'pid,'instr>>>,
-                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs,'_>,
-            ) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+                ctx: &std::rc::Rc<std::boxed::Box<kaizen::context::Context<'info,'refs,'pid,'instr>>>,
+                allocation_args : &kaizen::context::AccountAllocationArgs<'info,'refs,'_>,
+            ) -> kaizen::result::Result<#struct_name #struct_params> {
                 
                 Ok(Self::try_allocate(ctx,allocation_args,0)?)
             }
         
             pub fn try_allocate(
-                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
-                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'_,'_>,
+                ctx: &kaizen::context::ContextReference<'info,'refs,'_,'_>,
+                allocation_args : &kaizen::context::AccountAllocationArgs<'info,'_,'_>,
                 reserve_data_len : usize
-            ) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            ) -> kaizen::result::Result<#struct_name #struct_params> {
 
                 let data_len = Self::initial_data_len() + reserve_data_len;
                 let account_info = ctx.try_create_pda(data_len,allocation_args)?;
@@ -710,19 +710,19 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             }
         
 
-            pub fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            pub fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<#struct_name #struct_params> {
         
                 #init_offset
                 let container_type : u32 = #container_type as u32;
                 #init_layout
-                let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_create(
+                let #store_field_name = kaizen::container::segment::SegmentStore::try_create(
                     &account, segment_store_offset, &layout,
                 )?;
                 #inits_ts2
 
                 {
                     let data = account.data.borrow_mut();
-                    let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
+                    let header = unsafe { std::mem::transmute::<_,&mut kaizen::container::ContainerHeader>(
                         data.as_ptr()
                     ) };
                     header.set_container_type(container_type);
@@ -731,11 +731,11 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                 Ok(#inits_create)
             }
 
-            pub fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>, layout : &workflow_allocator::container::segment::Layout<#index_unit_size>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            pub fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>, layout : &kaizen::container::segment::Layout<#index_unit_size>) -> kaizen::result::Result<#struct_name #struct_params> {
         
                 #init_offset
                 let container_type : u32 = #container_type as u32;
-                let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_create(
+                let #store_field_name = kaizen::container::segment::SegmentStore::try_create(
                     &account, segment_store_offset, &layout,
                 )?;
 
@@ -743,7 +743,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
                 {
                     let data = account.data.borrow_mut();
-                    let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
+                    let header = unsafe { std::mem::transmute::<_,&mut kaizen::container::ContainerHeader>(
                         data.as_ptr()
                     ) };
                     header.set_container_type(container_type);
@@ -752,24 +752,24 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                 Ok(#inits_create)
             }
 
-            pub fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            pub fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<#struct_name #struct_params> {
 
                 #init_offset
                 let container_type : u32 = #container_type as u32;
 
                 {
                     let data = account.data.borrow_mut();
-                    let header = unsafe { std::mem::transmute::<_,&mut workflow_allocator::container::ContainerHeader>(
+                    let header = unsafe { std::mem::transmute::<_,&mut kaizen::container::ContainerHeader>(
                         data.as_ptr()
                     )};
 
                     let header_container_type = header.get_container_type();
                     if header_container_type != container_type {
                         #[cfg(not(target_os = "solana"))] {
-                            let header_container_type_str = if let Ok(Some(declaration)) = workflow_allocator::container::registry::lookup(header_container_type) {
+                            let header_container_type_str = if let Ok(Some(declaration)) = kaizen::container::registry::lookup(header_container_type) {
                                 declaration.name
                             } else { "n/a" };
-                            let container_type_str = if let Ok(Some(declaration)) = workflow_allocator::container::registry::lookup(container_type) {
+                            let container_type_str = if let Ok(Some(declaration)) = kaizen::container::registry::lookup(container_type) {
                                 declaration.name
                             } else { "n/a" };
 
@@ -781,15 +781,15 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                             );
                         }
                         return Err(
-                            workflow_allocator::error::Error::new()
-                                .with_code(workflow_allocator::error::ErrorCode::ContainerTypeMismatch)
+                            kaizen::error::Error::new()
+                                .with_code(kaizen::error::ErrorCode::ContainerTypeMismatch)
                                 .with_source(file!(),line!())
                         );
                     }
                 }
 
                 let layout = Self::layout();
-                let #store_field_name = workflow_allocator::container::segment::SegmentStore::try_load(
+                let #store_field_name = kaizen::container::segment::SegmentStore::try_load(
                     &account, segment_store_offset,
                 )?;
 
@@ -801,8 +801,8 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             #try_create_with_meta
 
             #[inline]
-            pub fn layout() -> workflow_allocator::container::segment::Layout<#index_unit_size> {
-                workflow_allocator::container::segment::Layout::<#index_unit_size>::from(&#struct_path_with_generics::segments()) // @aspect
+            pub fn layout() -> kaizen::container::segment::Layout<#index_unit_size> {
+                kaizen::container::segment::Layout::<#index_unit_size>::from(&#struct_path_with_generics::segments()) // @aspect
             }
 
             #[inline]
@@ -814,9 +814,9 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             #[inline]
             pub fn sync_rent<'pid,'instr>(
                 &self,
-                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'pid,'instr>,
-                rent_collector : &workflow_allocator::rent::RentCollector<'info,'refs>,
-            ) -> workflow_allocator::result::Result<()> {
+                ctx: &kaizen::context::ContextReference<'info,'refs,'pid,'instr>,
+                rent_collector : &kaizen::rent::RentCollector<'info,'refs>,
+            ) -> kaizen::result::Result<()> {
                 ctx.sync_rent(self.account(),rent_collector)?;
                 Ok(())
             }
@@ -824,9 +824,9 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             #[inline]
             pub fn purge<'pid,'instr>(
                 &self,
-                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'pid,'instr>,
-                rent_collector : &workflow_allocator::rent::RentCollector<'info,'refs>,
-            ) -> workflow_allocator::result::Result<()> {
+                ctx: &kaizen::context::ContextReference<'info,'refs,'pid,'instr>,
+                rent_collector : &kaizen::rent::RentCollector<'info,'refs>,
+            ) -> kaizen::result::Result<()> {
                 // TODO: move out lamports from the account
                 ctx.purge(self.account(),rent_collector)?;
                 Ok(())
@@ -857,7 +857,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             }
         }
 
-        impl #struct_params workflow_allocator::container::Container<'info,'refs> for #struct_name #struct_params #where_clause {
+        impl #struct_params kaizen::container::Container<'info,'refs> for #struct_name #struct_params #where_clause {
             type T = Self;
 
             fn container_type() -> u32 {
@@ -877,26 +877,26 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             }
 
             fn try_allocate(
-                ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
-                allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs,'_>,
+                ctx: &kaizen::context::ContextReference<'info,'refs,'_,'_>,
+                allocation_args : &kaizen::context::AccountAllocationArgs<'info,'refs,'_>,
                 reserve_data_len : usize
-            ) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            ) -> kaizen::result::Result<#struct_name #struct_params> {
                 #struct_name :: #struct_params :: try_allocate(ctx, allocation_args, reserve_data_len)
             }
 
-            fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<#struct_name #struct_params> {
                 #struct_name :: #struct_params :: try_create(account)
             }
             
-            fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<#struct_name #struct_params> {
+            fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<#struct_name #struct_params> {
                 #struct_name :: #struct_params :: try_load(account)
             }
 
         }
 
         #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))]
-        workflow_allocator::inventory::submit! {
-            workflow_allocator::container::registry::ContainerDeclaration::new(
+        kaizen::inventory::submit! {
+            kaizen::container::registry::ContainerDeclaration::new(
                 #container_type as u32,
                 #struct_name_str, 
             )
@@ -908,12 +908,12 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
             use super::*;
             #[cfg(target_arch = "wasm32")]
             #[wasm_bindgen::prelude::wasm_bindgen]
-            pub fn #container_declaration_register_() -> workflow_allocator::result::Result<()> {
-                let container_declaration = workflow_allocator::container::registry::ContainerDeclaration::new(
+            pub fn #container_declaration_register_() -> kaizen::result::Result<()> {
+                let container_declaration = kaizen::container::registry::ContainerDeclaration::new(
                     #container_type as u32,
                     #struct_name_str, 
                 );
-                workflow_allocator::container::registry::register_container_declaration(
+                kaizen::container::registry::register_container_declaration(
                     container_declaration
                 )?;
                 Ok(())

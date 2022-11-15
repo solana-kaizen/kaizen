@@ -5,11 +5,11 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use ahash::HashMap;
 use workflow_core::id::Id;
-use workflow_allocator::prelude::*;
-use workflow_allocator::transport::transaction::Transaction;
-use workflow_allocator::transport::transaction::TransactionChain;
-use workflow_allocator::transport::observer::Observer;
-use workflow_allocator::result::Result;
+use kaizen::prelude::*;
+use kaizen::transport::transaction::Transaction;
+use kaizen::transport::transaction::TransactionChain;
+use kaizen::transport::observer::Observer;
+use kaizen::result::Result;
 use workflow_log::log_error;
 use workflow_log::log_warning;
 
@@ -34,7 +34,7 @@ use workflow_log::log_warning;
 /// can be discarded from the queue with `TransactionQueue::discard_chain(id:&Id)`
 /// at which point `Observer::tx_chain_discarded(id:&Id)` will be called.
 /// 
-/// Please see workflow_allocator::transport::observer::Observer for details on how to
+/// Please see kaizen::transport::observer::Observer for details on how to
 /// handle transaction chain and transaction notifications.
 /// 
 

@@ -4,8 +4,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
 use solana_program::instruction;
-use workflow_allocator::result::Result;
-use workflow_allocator::accounts::{AccountDataReference,AccountDescriptorList};
+use kaizen::result::Result;
+use kaizen::accounts::{AccountDataReference,AccountDescriptorList};
 use downcast::{downcast_sync, AnySync};
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]

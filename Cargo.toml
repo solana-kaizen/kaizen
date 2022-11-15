@@ -1,9 +1,9 @@
 [package]
-name = "workflow-allocator"
+name = "kaizen"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/workflow-rs/workflow-allocator"
+repository = "https://github.com/solana-kaizen/kaizen"
 keywords = ["wasm","framework","transport","solana","bpf","contract"]
 categories = []
 exclude = ["/.*", "/test"]
@@ -30,7 +30,7 @@ solana-program = "1.14.1"
 # spl-token = { path = "../solana-program-library/token/program", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.5", features = [ "no-entrypoint" ] }
 
-workflow-allocator-macros = { path = "macros" }
+kaizen-macros = { path = "macros" }
 # workflow-core = "0.1.0"
 # workflow-log = "0.1.0"
 # workflow-wasm = "0.1.0"

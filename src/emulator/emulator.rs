@@ -10,17 +10,17 @@ use solana_program::account_info::IntoAccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::entrypoint::ProcessInstruction;
 use workflow_log::*;
-use workflow_allocator::context::SimulationHandlerFn;
-use workflow_allocator::result::Result;
-use workflow_allocator::error::*;
-use workflow_allocator::context::Context;
-use workflow_allocator::accounts::*;
-use workflow_allocator::builder::{
+use kaizen::context::SimulationHandlerFn;
+use kaizen::result::Result;
+use kaizen::error::*;
+use kaizen::context::Context;
+use kaizen::accounts::*;
+use kaizen::builder::{
     InstructionBuilder,
 };
-use workflow_allocator::accounts::AccountData;
-use workflow_allocator::store;
-use workflow_allocator::utils;
+use kaizen::accounts::AccountData;
+use kaizen::store;
+use kaizen::utils;
 
 
 // use crate::utils::sol_to_lamports;
@@ -266,7 +266,7 @@ impl Emulator {
         // FIXME emulate transaction fee processing
 
         let entrypoint = {
-            match workflow_allocator::program::registry::lookup(&instruction.program_id)? {
+            match kaizen::program::registry::lookup(&instruction.program_id)? {
                 Some(entry_point) => { entry_point.entrypoint_fn },
                 None => {
                     log_trace!("program entrypoint not found: {:?}",instruction.program_id);

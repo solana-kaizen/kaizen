@@ -9,9 +9,9 @@ use async_std::fs;
 use async_trait::async_trait;
 use borsh::*;
 use workflow_log::log_error;
-use workflow_allocator::accounts::AccountData;
-use workflow_allocator::result::Result;
-use workflow_allocator::cache::Cache;
+use kaizen::accounts::AccountData;
+use kaizen::result::Result;
+use kaizen::cache::Cache;
 use workflow_log::*;
 
 #[derive(Clone)]

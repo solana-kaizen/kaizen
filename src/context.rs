@@ -8,20 +8,20 @@ use solana_program::entrypoint::ProgramResult;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
 
-use workflow_allocator::address::{
+use kaizen::address::{
     AddressDomain,
     ProgramAddressData
 };
-use workflow_allocator::accounts::{
+use kaizen::accounts::{
     LamportAllocation, 
     AllocationPayer,
 };
-use workflow_allocator::error::*;
-use workflow_allocator::result::*;
-use workflow_allocator::rent::RentCollector;
-use workflow_allocator::identity::program::Identity;
-use workflow_allocator::payload::Payload;
-use workflow_allocator::container;
+use kaizen::error::*;
+use kaizen::result::*;
+use kaizen::rent::RentCollector;
+use kaizen::identity::program::Identity;
+use kaizen::payload::Payload;
+use kaizen::container;
 use workflow_log::*;
 pub enum AccountType {
     Token,
@@ -629,7 +629,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr>
         if lamports < minimum_balance {
             let delta = minimum_balance - lamports;
             log_trace!("... transferring additional {} lamports to compensate rent", delta);
-            workflow_allocator::transfer_sol(
+            kaizen::transfer_sol(
                 self.authority,
                 account_info,
                 self.authority,

@@ -1,7 +1,7 @@
-use workflow_allocator::prelude::*;
+use kaizen::prelude::*;
 use std::sync::{atomic::{AtomicU64, Ordering}, Arc};
-use workflow_allocator::identity::program::Identity;
-use workflow_allocator::result::Result;
+use kaizen::identity::program::Identity;
+use kaizen::result::Result;
 
 #[derive(Debug, Clone)]
 pub struct Sequencer {

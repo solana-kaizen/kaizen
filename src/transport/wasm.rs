@@ -18,7 +18,7 @@ use crate::error;
 use workflow_log::*;
 use async_trait::async_trait;
 use std::sync::{Mutex, Arc};
-use workflow_allocator::cache::Cache;
+use kaizen::cache::Cache;
 use std::convert::From;
 use crate::transport::{Transaction, TransportConfig};
 use crate::transport::lookup::{LookupHandler,RequestType};

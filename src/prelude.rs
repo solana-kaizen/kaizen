@@ -42,13 +42,13 @@ pub use crate::identity::program::Identity;
 pub use workflow_log::{log_trace, log_info, log_debug, log_warning, log_error};
 pub use workflow_log;
 
-pub use workflow_allocator::error_code;
-pub use workflow_allocator::error::ErrorCode;
+pub use kaizen::error_code;
+pub use kaizen::error::ErrorCode;
 
 // #[cfg(not(target_os = "solana"))]
 // pub use crate::tokens::{get_tokens, get_tokens_info, get_tokens_info_array, TokenInfo};
 
-pub use workflow_allocator_macros::{
+pub use kaizen_macros::{
     declare_handlers,
     declare_interface,
     declare_program,
@@ -62,21 +62,21 @@ cfg_if::cfg_if! {
 
         pub use workflow_core::workflow_async_trait;
 
-        pub use workflow_allocator::builder::{
+        pub use kaizen::builder::{
             Gather,
             InstructionBuilder,
             InstructionBuilderConfig,
         };
-        pub use workflow_allocator::utils::generate_random_pubkey;
-        pub use workflow_allocator::accounts::{AccountData,AccountDataReference};
-        pub use workflow_allocator::transport::*;
+        pub use kaizen::utils::generate_random_pubkey;
+        pub use kaizen::accounts::{AccountData,AccountDataReference};
+        pub use kaizen::transport::*;
 
-        pub use workflow_allocator::sequencer::Sequencer;
-        pub use workflow_allocator::client::Client;
-        pub use workflow_allocator::container::{ 
+        pub use kaizen::sequencer::Sequencer;
+        pub use kaizen::client::Client;
+        pub use kaizen::container::{ 
             ContainerReference, 
         };
-        pub use workflow_allocator_macros::declare_client;
+        pub use kaizen_macros::declare_client;
         pub use async_std;
     }
 
@@ -84,6 +84,6 @@ cfg_if::cfg_if! {
 
 cfg_if! {
     if #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))] {
-        pub use workflow_allocator::inventory;
+        pub use kaizen::inventory;
     }
 }

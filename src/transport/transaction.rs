@@ -4,9 +4,9 @@ use serde::{ Serialize, Deserialize };
 use solana_sdk::signature::Signature;
 use workflow_core::id::Id;
 use workflow_core::channel::*;
-use workflow_allocator::prelude::*;
-use workflow_allocator::result::Result;
-use workflow_allocator::error::Error;
+use kaizen::prelude::*;
+use kaizen::result::Result;
+use kaizen::error::Error;
 
 pub type TransactionResult = Result<()>;
 
@@ -171,7 +171,7 @@ impl Transaction {
     /// Used for unit tests
     pub async fn execute_and_load<'this,T> (&self) -> Result<Option<ContainerReference<'this,T>>> 
     // pub async fn execute_and_load<'this,T> (&self) -> Result<Option<AccountDataContainer<'this,T>>> 
-    where T: workflow_allocator::container::Container<'this,'this> 
+    where T: kaizen::container::Container<'this,'this> 
     {
         let pubkey = self.target_account()?;
         let transport = Transport::global()?;
@@ -227,7 +227,7 @@ impl TransactionList {
     }
 
     pub async fn execute_and_load<'this, C>(&self) -> Result<Option<ContainerReference<'this,C>>>
-    where C: workflow_allocator::container::Container<'this,'this> 
+    where C: kaizen::container::Container<'this,'this> 
     {
         let first_transaction = &self.transactions[0];
         let container = first_transaction.execute_and_load::<C>().await?;

@@ -2,8 +2,8 @@
 pub mod registry {
     use std::sync::Arc;
     use std::sync::RwLock;
-    use workflow_allocator::prelude::*;
-    use workflow_allocator::result::Result;
+    use kaizen::prelude::*;
+    use kaizen::result::Result;
     use workflow_log::log_trace;
     use ahash::AHashMap;
     use derivative::Derivative;
@@ -120,7 +120,7 @@ pub mod registry {
             }
 
             if fn_names.len() == 0 {
-                panic!("workflow_allocator::entrypoint::registry::with_entrypoints(): no registered entrypoints found!");
+                panic!("kaizen::entrypoint::registry::with_entrypoints(): no registered entrypoints found!");
             }
 
             for fn_name in fn_names.iter() {

@@ -136,16 +136,16 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
             pub async fn execute(
                 instruction : solana_program::instruction::Instruction
             ) -> Result<()> {
-                use workflow_allocator::transport::Interface;
-                let transport = workflow_allocator::transport::Transport::global()?;
+                use kaizen::transport::Interface;
+                let transport = kaizen::transport::Transport::global()?;
                 Ok(transport.execute(&instruction).await?)
             }
 
             pub async fn execute_with_transport(
-                transport : &Arc<workflow_allocator::transport::Transport>,
+                transport : &Arc<kaizen::transport::Transport>,
                 instruction : solana_program::instruction::Instruction
             ) -> Result<()> {
-                use workflow_allocator::transport::Interface;
+                use kaizen::transport::Interface;
                 Ok(transport.execute(&instruction).await?)
             }
         }

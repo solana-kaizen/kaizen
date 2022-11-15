@@ -1,5 +1,5 @@
 [package]
-name = "workflow-allocator-macros"
+name = "kaizen-macros"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,8 +11,4 @@ workflow-macro-tools = { path = "../../workflow-macro-tools" }
 syn = {version="1.0.91",features=["full","fold","extra-traits"]}
 quote = "1.0.8"
 proc-macro2 = { version = "1.0.37" }
-# darling = "0.13"
 parse-variants = "0.1"
-# num = "0.4.0"
-# sha2 = "*"
-# convert_case = "0.5.0"

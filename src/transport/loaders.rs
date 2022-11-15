@@ -1,6 +1,6 @@
-use workflow_allocator::prelude::*;
-use workflow_allocator::result::Result;
-use workflow_allocator::container::Container;
+use kaizen::prelude::*;
+use kaizen::result::Result;
+use kaizen::container::Container;
 use futures::future::join_all;
 
 pub async fn with_loaded_container<'this, C>(
@@ -33,7 +33,7 @@ pub async fn with_reloaded_container<'this, C>(
 
 pub async fn load_container<'this,T> (pubkey : &Pubkey) 
 -> Result<Option<ContainerReference<'this,T>>> 
-where T: workflow_allocator::container::Container<'this,'this>
+where T: kaizen::container::Container<'this,'this>
 {
     let transport = Transport::global()?;
     load_container_with_transport::<T>(&transport,pubkey).await
@@ -41,7 +41,7 @@ where T: workflow_allocator::container::Container<'this,'this>
 
 pub async fn load_containers<'this,T> (pubkeys : &[Pubkey]) 
 -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
-where T: workflow_allocator::container::Container<'this,'this>
+where T: kaizen::container::Container<'this,'this>
 {
     let transport = Transport::global()?;
 
@@ -55,7 +55,7 @@ where T: workflow_allocator::container::Container<'this,'this>
 
 pub async fn load_container_with_transport<'this,T> (transport : &Arc<Transport>, pubkey : &Pubkey) 
 -> Result<Option<ContainerReference<'this,T>>> 
-where T: workflow_allocator::container::Container<'this,'this>
+where T: kaizen::container::Container<'this,'this>
 {
     let account_data_reference = match transport.lookup(pubkey).await? {
         Some(account_data_reference) => account_data_reference,
@@ -68,7 +68,7 @@ where T: workflow_allocator::container::Container<'this,'this>
 
 pub async fn reload_container<'this,T> (pubkey : &Pubkey) 
 -> Result<Option<ContainerReference<'this,T>>> 
-where T: workflow_allocator::container::Container<'this,'this>
+where T: kaizen::container::Container<'this,'this>
 {
     let transport = Transport::global()?;
     reload_container_with_transport::<T>(&transport,pubkey).await
@@ -76,7 +76,7 @@ where T: workflow_allocator::container::Container<'this,'this>
 
 pub async fn reload_containers<'this,T> (pubkeys : &[Pubkey]) 
 -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
-where T: workflow_allocator::container::Container<'this,'this>
+where T: kaizen::container::Container<'this,'this>
 {
     let transport = Transport::global()?;
 
@@ -90,7 +90,7 @@ where T: workflow_allocator::container::Container<'this,'this>
 
 pub async fn reload_container_with_transport<'this,T> (transport : &Arc<Transport>, pubkey : &Pubkey) 
 -> Result<Option<ContainerReference<'this,T>>> 
-where T: workflow_allocator::container::Container<'this,'this>
+where T: kaizen::container::Container<'this,'this>
 {
     log_trace!("... reloading container {}",pubkey);
     transport.purge(Some(pubkey))?;
