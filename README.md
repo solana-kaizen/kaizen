@@ -1,11 +1,7 @@
-## WORKFLOW-ALLOCATOR
+## Kaizen
 
-Part of the [WORKFLOW-RS](https://github.com/workflow-rs) application framework.
-
-***
-
-[![Crates.io](https://img.shields.io/crates/l/workflow-allocator.svg?maxAge=2592000)](https://crates.io/crates/workflow-allocator)
-[![Crates.io](https://img.shields.io/crates/v/workflow-allocator.svg?maxAge=2592000)](https://crates.io/crates/workflow-allocator)
+[![Crates.io](https://img.shields.io/crates/l/kaizen.svg?maxAge=2592000)](https://crates.io/crates/kaizen)
+[![Crates.io](https://img.shields.io/crates/v/kaizen.svg?maxAge=2592000)](https://crates.io/crates/kaizen)
 ![platform](https://img.shields.io/badge/platform-Native-informational)
 ![platform](https://img.shields.io/badge/platform-Web%20%28wasm32%29-informational)
 ![platform](https://img.shields.io/badge/platform-BPF-informational)

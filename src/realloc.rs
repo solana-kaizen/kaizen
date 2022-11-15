@@ -3,9 +3,9 @@ use solana_program::{
     entrypoint::MAX_PERMITTED_DATA_INCREASE,
     program_memory::sol_memset
 };
-use workflow_allocator::result::Result;
+use kaizen::result::Result;
 #[allow(unused_imports)]
-use workflow_allocator::error::*;
+use kaizen::error::*;
 
 // ^ WARNING: This code is lifted from Solana SDK
 #[cfg(target_pointer_width = "64")]

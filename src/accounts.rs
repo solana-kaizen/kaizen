@@ -71,15 +71,15 @@ mod client {
     use owning_ref::OwningHandle;
     use serde::{Deserialize, Serialize};
     //use std::time::Instant;
-    use workflow_allocator::time::Instant;
+    use kaizen::time::Instant;
     use solana_program::account_info::IntoAccountInfo;
     use solana_program::account_info;
     use solana_program::clock::Epoch;
     use solana_program::pubkey::Pubkey;
     use solana_program::rent::Rent;
     use workflow_log::*;
-    use workflow_allocator::container::*;
-    use workflow_allocator::result::Result;
+    use kaizen::container::*;
+    use kaizen::result::Result;
     
     const ACCOUNT_DATA_OFFSET: usize = 8;
     const ACCOUNT_DATA_PADDING: usize = 1024;
@@ -170,19 +170,19 @@ mod client {
         }
 
         pub fn try_into_container<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
-        where T: workflow_allocator::container::Container<'this,'this>
+        where T: kaizen::container::Container<'this,'this>
         {
             self.try_into_container_replica::<T>(true)
         }
 
         pub fn try_into_container_cache<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
-        where T: workflow_allocator::container::Container<'this,'this>
+        where T: kaizen::container::Container<'this,'this>
         {
             self.try_into_container_replica::<T>(false)
         }
 
         pub fn try_into_container_replica<'this,T> (self : &Arc<Self>, replicate : bool) -> Result<ContainerReference<'this, T>> 
-        where T: workflow_allocator::container::Container<'this,'this>
+        where T: kaizen::container::Container<'this,'this>
         {
             let target = if replicate {
                 self.replicate()?
@@ -270,7 +270,7 @@ mod client {
         }
         
         // pub fn try_load_container_clone<'this,T> (self : &Arc<Self>) -> Result<AccountDataContainer<'this,T>> 
-        // where T: workflow_allocator::container::Container<'this,'this>
+        // where T: kaizen::container::Container<'this,'this>
         // {
         //     let account_data = self.clone_for_storage()?;
 
@@ -436,7 +436,7 @@ mod client {
 
             let (container_type, container_type_name) = match self.container_type {
                 Some(container_type) => {
-                    match workflow_allocator::container::registry::lookup(container_type) {
+                    match kaizen::container::registry::lookup(container_type) {
                         Ok(Some(declaration)) => {
                             let container_type = format!("0x{:08x}", container_type);
                             (container_type, declaration.name)

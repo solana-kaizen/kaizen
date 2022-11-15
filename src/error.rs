@@ -696,7 +696,7 @@ pub struct Source {
 #[macro_export]
 macro_rules! error {
         ($($t:tt)*) => ( 
-            workflow_allocator::error::Error::new()
+            kaizen::error::Error::new()
                 .with_source(file!(),line!())
                 .with_message(&format_args!($($t)*).to_string()) 
         )
@@ -717,7 +717,7 @@ pub use js_error;
 #[macro_export]
 macro_rules! error_code {
     ($code:expr) => (
-        workflow_allocator::error::Error::new()
+        kaizen::error::Error::new()
             .with_source(file!(),line!())
             .with_code($code)
     )
@@ -727,7 +727,7 @@ pub use error_code;
 #[macro_export]
 macro_rules! program_error_code {
     ($code:expr) => ( 
-        workflow_allocator::error::Error::new()
+        kaizen::error::Error::new()
             .with_source(file!(),line!())
             .with_program_code($code as u32)
     )
@@ -737,7 +737,7 @@ pub use program_error_code;
 #[macro_export]
 macro_rules! program_error {
     ($err:expr) => ( 
-        workflow_allocator::error::Error::new()
+        kaizen::error::Error::new()
             .with_source(file!(),line!())
             .with_program_error($err)
     )

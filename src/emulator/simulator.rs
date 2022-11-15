@@ -2,11 +2,11 @@ use std::str::FromStr;
 use std::sync::Arc;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
-use workflow_allocator::store;
-use workflow_allocator::result::Result;
-use workflow_allocator::accounts::{ AccountData, AccountDataReference };
-use workflow_allocator::builder::{ InstructionBuilder, InstructionBuilderConfig };
-use workflow_allocator::context::SimulationHandlerFn;
+use kaizen::store;
+use kaizen::result::Result;
+use kaizen::accounts::{ AccountData, AccountDataReference };
+use kaizen::builder::{ InstructionBuilder, InstructionBuilderConfig };
+use kaizen::context::SimulationHandlerFn;
 use crate::accounts::AccountDescriptorList;
 
 use super::interface::{EmulatorInterface, ExecutionResponse, EmulatorConfig};

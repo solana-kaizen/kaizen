@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use workflow_allocator::prelude::*;
-    use workflow_allocator::result::Result;
-    use workflow_allocator::emulator::Simulator;
+    use kaizen::prelude::*;
+    use kaizen::result::Result;
+    use kaizen::emulator::Simulator;
     use crate::identity::program::*;
 
     #[allow(unused_imports)]
@@ -10,7 +10,7 @@ mod tests {
  
     #[async_std::test]
     async fn identity_init() -> Result<()> {
-        workflow_allocator::container::registry::init()?;
+        kaizen::container::registry::init()?;
 
         let program_id = generate_random_pubkey();
         let simulator = Simulator::try_new_for_testing()?.with_mock_accounts(program_id,None).await?;

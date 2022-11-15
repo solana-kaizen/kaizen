@@ -17,7 +17,7 @@ use crate::emulator::client::EmulatorRpcClient;
 use crate::emulator::interface::EmulatorInterface;
 use crate::transport::queue::TransactionQueue;
 use workflow_log::log_trace;
-use workflow_allocator::cache::Cache;
+use kaizen::cache::Cache;
 use solana_program::instruction::Instruction;
 use crate::transport::TransportConfig;
 use crate::transport::TransportMode;

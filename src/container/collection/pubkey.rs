@@ -1,11 +1,11 @@
 use cfg_if::cfg_if;
 use solana_program::pubkey::Pubkey;
-use workflow_allocator_macros::{Meta, container};
-use workflow_allocator::error::ErrorCode;
-use workflow_allocator::container::Containers;
-use workflow_allocator::container::Container;
-use workflow_allocator::result::Result;
-use workflow_allocator::prelude::*;
+use kaizen_macros::{Meta, container};
+use kaizen::error::ErrorCode;
+use kaizen::container::Containers;
+use kaizen::container::Container;
+use kaizen::result::Result;
+use kaizen::prelude::*;
 use super::meta::*;
 
 pub type PubkeyCollection<'info,'refs> = PubkeyCollectionInterface<'info,'refs, PubkeyCollectionSegmentInterface<'info,'refs>>;
@@ -180,8 +180,8 @@ where M : PubkeyCollectionMetaTrait
     pub fn sync_rent(
         &self,
         ctx: &ContextReference<'info,'refs,'_,'_>,
-        rent_collector : &workflow_allocator::rent::RentCollector<'info,'refs>,
-    ) -> workflow_allocator::result::Result<()> {
+        rent_collector : &kaizen::rent::RentCollector<'info,'refs>,
+    ) -> kaizen::result::Result<()> {
         // TODO: @alpha - transfer out excess rent
         if let Some(container) = &self.container {
             ctx.sync_rent(container.account(),rent_collector)?;
@@ -258,10 +258,10 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
 
 cfg_if! {
     if #[cfg(not(target_os = "solana"))] {
-        use workflow_allocator::error;
+        use kaizen::error;
         use futures::future::join_all;
         use solana_program::instruction::AccountMeta;
-        use workflow_allocator::container::{AccountAggregatorInterface,AsyncAccountAggregatorInterface};
+        use kaizen::container::{AccountAggregatorInterface,AsyncAccountAggregatorInterface};
 
         impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
         where M : PubkeyCollectionMetaTrait
@@ -339,7 +339,7 @@ cfg_if! {
 
             pub async fn load_container_at<'this,C>(&self, idx: usize)
             -> Result<ContainerReference<'this,C>>
-            where C: workflow_allocator::container::Container<'this,'this>
+            where C: kaizen::container::Container<'this,'this>
             {
                 let reference = self.load_reference_at(idx).await?;
                 let container = reference.try_into_container::<C>()?;
@@ -348,7 +348,7 @@ cfg_if! {
 
             pub async fn load_container_range<'this,C>(&self, range: std::ops::Range<usize>)
             -> Result<Vec<Option<ContainerReference<'this,C>>>> 
-            where C: workflow_allocator::container::Container<'this,'this>
+            where C: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
                 let mut list = Vec::new();
@@ -383,7 +383,7 @@ cfg_if! {
 
             pub async fn load_container_range_strict<'this,C>(&self, range: std::ops::Range<usize>)
             -> Result<Vec<ContainerReference<'this,C>>>
-            where C: workflow_allocator::container::Container<'this,'this>
+            where C: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
                 let mut list = Vec::new();
@@ -413,7 +413,7 @@ cfg_if! {
 
             // pub async fn load_container_range_strict<'this,C>(&self, range: std::ops::Range<usize>)
             // -> Result<Vec<ContainerReference<'this,C>>> 
-            // where C: workflow_allocator::container::Container<'this,'this>
+            // where C: kaizen::container::Container<'this,'this>
             // {
             //     let transport = Transport::global()?;
             //     let mut list = Vec::new();
@@ -446,7 +446,7 @@ cfg_if! {
 
             pub async fn find_container<'this,C>(&self)
             -> Result<Option<ContainerReference<'this,C>>> 
-            where C: workflow_allocator::container::Container<'this,'this>
+            where C: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
 
@@ -498,7 +498,7 @@ cfg_if! {
 
             // pub async fn load_containers<'this, T>(&self)
             // -> Result<Vec<ContainerReference<'this, T>>>
-            // where T: workflow_allocator::container::Container<'this,'this>
+            // where T: kaizen::container::Container<'this,'this>
             // {
             //     let references = self.load_references().await?;
             //     let mut containers = Vec::new();

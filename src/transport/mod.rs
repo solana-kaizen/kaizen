@@ -2,8 +2,8 @@
 mod lookup;
 use std::sync::Arc;
 use solana_program::pubkey::Pubkey;
-use workflow_allocator::result::Result;
-use workflow_allocator::accounts::AccountDataReference;
+use kaizen::result::Result;
+use kaizen::accounts::AccountDataReference;
 use solana_program::instruction::Instruction;
 use downcast::{downcast_sync, AnySync};
 use workflow_core::workflow_async_trait;

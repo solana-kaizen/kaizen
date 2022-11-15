@@ -1,11 +1,11 @@
 use cfg_if::cfg_if;
 // use wasm_bindgen::prelude::*;
-// use workflow_allocator::*;
-use workflow_allocator::prelude::*;
-use workflow_allocator::result::Result;
-use workflow_allocator::error::ErrorCode;
+// use kaizen::*;
+use kaizen::prelude::*;
+use kaizen::result::Result;
+use kaizen::error::ErrorCode;
 // use solana_program::account_info::AccountInfo;
-// use workflow_allocator_macros::Meta;
+// use kaizen_macros::Meta;
 
 pub trait Container<'info,'refs> {
     type T;
@@ -13,14 +13,14 @@ pub trait Container<'info,'refs> {
     fn container_type() -> u32;
     fn initial_data_len() -> usize;
     fn try_allocate(
-        ctx: &workflow_allocator::context::ContextReference<'info,'refs,'_,'_>,
-        allocation_args : &workflow_allocator::context::AccountAllocationArgs<'info,'refs,'_>,
+        ctx: &kaizen::context::ContextReference<'info,'refs,'_,'_>,
+        allocation_args : &kaizen::context::AccountAllocationArgs<'info,'refs,'_>,
         reserve_data_len : usize
-    ) -> workflow_allocator::result::Result<Self::T>;
+    ) -> kaizen::result::Result<Self::T>;
 
-    fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self::T>; 
-    // fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self::T>; 
-    fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> workflow_allocator::result::Result<Self::T>; 
+    fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<Self::T>; 
+    // fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<Self::T>; 
+    fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<Self::T>; 
     fn account(&self) -> &'refs solana_program::account_info::AccountInfo<'info>;
     fn pubkey(&self) -> &solana_program::pubkey::Pubkey;
 }
@@ -81,7 +81,7 @@ cfg_if! {
         use std::cell::UnsafeCell;
         use std::sync::MutexGuard;
         use owning_ref::OwningHandle;
-        use workflow_allocator::accounts::*;
+        use kaizen::accounts::*;
         
         pub type ContainerReferenceInner<'this,T> =
         OwningHandle<
@@ -217,7 +217,7 @@ cfg_if! {
                     panic!("container registry is already initialized");
                 }
         
-                for container_declaration in inventory::iter::<workflow_allocator::container::registry::ContainerDeclaration> {
+                for container_declaration in inventory::iter::<kaizen::container::registry::ContainerDeclaration> {
                     // log_trace!("[container] registering 0x{:08x} {}", 
                     //     container_declaration.container_type, 
                     //     container_declaration.name
@@ -266,7 +266,7 @@ cfg_if! {
                 use super::*;
                 use js_sys::Array;
                 use wasm_bindgen::prelude::*;
-                // use workflow_allocator::trace;
+                // use kaizen::trace;
         
                 #[wasm_bindgen]
                 pub fn load_container_registry(pkg: &JsValue) -> Result<()> {
@@ -291,7 +291,7 @@ cfg_if! {
                     }
         
                     if fn_names.len() == 0 {
-                        panic!("workflow_allocator::container::registry::with_containers(): no registered containers found!");
+                        panic!("kaizen::container::registry::with_containers(): no registered containers found!");
                     }
         
                     for fn_name in fn_names.iter() {

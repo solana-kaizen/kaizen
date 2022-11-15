@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, mem};
 use std::marker::PhantomData;
 use std::ops::{Index,IndexMut};
 use solana_program::account_info::AccountInfo;
-use workflow_allocator_macros::Meta;
+use kaizen_macros::Meta;
 use crate::container::segment::Segment;
 use crate::result::Result;
 use crate::error::*;

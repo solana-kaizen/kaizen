@@ -1,8 +1,8 @@
 // use async_trait::async_trait;
 // use workflow_core::workflow_async_trait;
-use workflow_allocator::prelude::*;
+use kaizen::prelude::*;
 // use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
-use workflow_allocator::result::Result;
+use kaizen::result::Result;
 
 
 

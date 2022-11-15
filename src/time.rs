@@ -1,7 +1,7 @@
 
 use cfg_if::cfg_if;
 use solana_program::clock::UnixTimestamp as SolanaUnixTimestamp;
-use workflow_allocator::result::Result;
+use kaizen::result::Result;
 use serde::*;
 use borsh::*;
 

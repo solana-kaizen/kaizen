@@ -1,9 +1,9 @@
 use cfg_if::cfg_if;
 use crate::container::Container;
 use crate::result::Result;
-use workflow_allocator::prelude::*;
-use workflow_allocator::error::ErrorCode;
-use workflow_allocator::container;
+use kaizen::prelude::*;
+use kaizen::error::ErrorCode;
+use kaizen::container;
 use super::meta::*;
 
 pub type PdaCollection<'info,'refs> = PdaCollectionInterface<'info, PdaCollectionSegmentInterface<'info,'refs>>;
@@ -283,7 +283,7 @@ cfg_if! {
 
             pub async fn load_container_at<'this,T>(&self, program_id: &Pubkey, idx: usize) 
             -> Result<Option<ContainerReference<'this,T>>> 
-            where T: workflow_allocator::container::Container<'this,'this>
+            where T: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
                 Ok(self.load_container_at_with_transport::<T>(program_id, idx, &transport).await?)
@@ -291,7 +291,7 @@ cfg_if! {
 
             pub async fn load_container_at_with_transport<'this,T>(&self, program_id: &Pubkey, idx: usize, transport: &Arc<Transport>) 
             -> Result<Option<ContainerReference<'this,T>>> 
-            where T: workflow_allocator::container::Container<'this,'this>
+            where T: kaizen::container::Container<'this,'this>
             {
                 let container_pubkey = self.get_pubkey_at(program_id, idx)?;
                 Ok(load_container_with_transport::<T>(&transport,&container_pubkey).await?)
@@ -299,7 +299,7 @@ cfg_if! {
 
             pub async fn load_container_range<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>) 
             -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
-            where T: workflow_allocator::container::Container<'this,'this>
+            where T: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
                 Ok(self.load_container_range_with_transport::<T>(program_id, range, &transport).await?)
@@ -307,7 +307,7 @@ cfg_if! {
 
             pub async fn load_container_range_with_transport<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>, transport: &Arc<Transport>) 
             -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
-            where T: workflow_allocator::container::Container<'this,'this>
+            where T: kaizen::container::Container<'this,'this>
             {
                 let mut futures = FuturesOrdered::new();
                 for idx in range {

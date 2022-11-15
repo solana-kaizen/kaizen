@@ -1,4 +1,4 @@
-use workflow_allocator::result::Result;
+use kaizen::result::Result;
 
 pub const PAYLOAD_HAS_IDENTITY_ACCOUNT : u16    = 0x0001;
 

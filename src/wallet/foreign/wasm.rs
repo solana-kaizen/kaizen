@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use solana_program::pubkey::Pubkey;
-use workflow_allocator::{result::Result, wasm as wasm_utils};
+use kaizen::{result::Result, wasm as wasm_utils};
 use workflow_wasm::utils;
 use js_sys;
 use wasm_bindgen_futures::JsFuture;
 use crate::prelude::log_trace;
 use crate::transport::Transport;
 use crate::error;
-use workflow_allocator::error::{js_error, parse_js_error};
+use kaizen::error::{js_error, parse_js_error};
 
 pub struct Wallet {
 

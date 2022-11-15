@@ -1,10 +1,10 @@
-use workflow_allocator::prelude::*;
+use kaizen::prelude::*;
 use std::cell::RefCell;
-use workflow_allocator::result::Result;
-use workflow_allocator::error::*;
+use kaizen::result::Result;
+use kaizen::error::*;
 use solana_program::pubkey::Pubkey;
-use workflow_allocator::container::Containers;
-use workflow_allocator::container::*;
+use kaizen::container::Containers;
+use kaizen::container::*;
 use borsh::*;
 use serde::*;
 
