@@ -20,7 +20,7 @@ mod tests {
             .with_sequence(0u64);
 
         let builder = InstructionBuilder::new_with_config_for_testing(&config)
-            .with_account_templates_with_seeds(&[(AddressDomain::Authority,"proxy")])
+            .with_account_templates_with_seeds(&[(AddressDomain::Authority,b"proxy")])
             .with_account_templates(1)
             .seal()?;
 
