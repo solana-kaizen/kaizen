@@ -14,6 +14,8 @@ This in-turn allows create of a single data processing layer that is able to pro
 
 The framework is then backed by native and in-browser async Rust transport layers that can fetch account data and access it client-side via functions interfacing with [AccountInfo](https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html).
 
+Example available here: <https://github.com/workflow-rs/workflow-allocator-example>
+
 ## Features
 
 * Unified async Rust Web3 transport interface (uses native Rust Solana implementation when building native and Web3.js implementation when running under WASM32 browser environment)

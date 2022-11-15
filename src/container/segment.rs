@@ -530,12 +530,16 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
                 panic!("account data len is less than total segment data len");
             }
 
+            //log_trace!("CHECK-A next_idx, {next_idx} segments:{segments}, total_segment_data_len:{total_segment_data_len}" );
+
             let new_account_data_len = total_segment_data_len + delta;
             let migration_data_len = if next_idx == segments {
                 0
             } else {
                 total_segment_data_len - IndexUnit::as_usize(index[next_idx].offset) // as usize
             };
+
+            //log_trace!("CHECK-B migration_data_len: {migration_data_len} total:{total_segment_data_len}");
             // log_trace!("ALLOC B - account_data_len: {}, new_account_data_len: {}", account_data_len, new_account_data_len);
             // log_trace!("{:#?}", self.account);
             // let headers = accounts::account_info_headers(self.account)?;
@@ -561,14 +565,14 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
                     dest
                 );
 
-                for k in next_idx..segments {
-                    index[k].offset += IndexUnit::from_usize(delta);
-                }
-
                 if zero_init {
                     // TODO: cleanup, set to 0
                     data[src..src+delta].fill(88);
                 }
+            }
+
+            for k in next_idx..segments {
+                index[k].offset += IndexUnit::from_usize(delta);
             }
 
         } else if new_len < segment_data_len {
