@@ -15,18 +15,14 @@ pub fn solana() -> std::result::Result<JsValue,JsValue> {
     Ok(js_sys::Reflect::get(&global()?, &"solana".into())?)
 }
 
-fn mods() -> std::result::Result<JsValue,JsValue> {
-    Ok(modules()?)
-}
-
 pub fn wallet_ready_state() -> std::result::Result<JsValue,JsValue> {
-    Ok(js_sys::Reflect::get(&mods()?, &"WalletReadyState".into())?)
+    Ok(js_sys::Reflect::get(&modules()?, &"WalletReadyState".into())?)
 }
 
 pub fn adapters() -> std::result::Result<Vec<JsValue>, JsValue> {
     let mut list = Vec::new();
     let names = vec!["PhantomWalletAdapter", "SolflareWalletAdapter"];
-    let mods = mods()?;
+    let mods = modules()?;
     for name in names{
         match js_sys::Reflect::get(&mods, &name.into()){
             Ok(adapter_ctr)=>{

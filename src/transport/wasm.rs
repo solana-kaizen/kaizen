@@ -18,7 +18,7 @@ use crate::error;
 use workflow_log::*;
 use async_trait::async_trait;
 use std::sync::{Mutex, Arc};
-use kaizen::cache::Cache;
+use kaizen::{cache::Cache, wasm::{global, workflow, solana}};
 use std::convert::From;
 use crate::transport::{Transaction, TransportConfig};
 use crate::transport::lookup::{LookupHandler,RequestType};
@@ -90,11 +90,11 @@ impl Transport {
 
 
     pub fn workflow() -> std::result::Result<JsValue,JsValue> {
-        Ok(js_sys::Reflect::get(&js_sys::global(), &"$workflow".into())?)
+        Ok(workflow()?)
     }
 
     pub fn solana() -> std::result::Result<JsValue,JsValue> {
-        Ok(js_sys::Reflect::get(&Self::workflow()?, &"solana".into())?)
+        Ok(solana()?)
     }
 
     pub fn mode(&self) -> TransportMode {
