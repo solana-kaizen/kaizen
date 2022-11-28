@@ -124,12 +124,15 @@ impl Store for FileStore {
             cache.store(&reference)?;
         }
 
-        let data = AccountDataStore::from(&*reference.account_data.lock()?).try_to_vec()?;
+        let data = AccountDataStore::from(&*reference.account_data.lock()?);
+        let data_vec = data.try_to_vec()?;
+        //log_error!("AccountDataStore: {:?}\nVec: {:02x?}", data, data_vec);
+        //log_trace!("storing: {}",reference.key);
 
-        log_trace!("storing: {}",reference.key);
-        trace_hex(&data);
+        data.log_trace()?;
+        //trace_hex(&data_vec);
 
-        fs::write(&self.data_folder.join(reference.key.to_string()),data).await?;
+        fs::write(&self.data_folder.join(reference.key.to_string()), data_vec).await?;
         Ok(())
     }
     async fn purge(&self, pubkey : &Pubkey) -> Result<()> {

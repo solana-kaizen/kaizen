@@ -8,7 +8,7 @@ use crate::accounts::AccountData;
 use crate::emulator::Simulator;
 use crate::emulator::client::EmulatorRpcClient;
 use crate::emulator::interface::EmulatorInterface;
-use workflow_wasm::utils;
+use workflow_wasm::{utils, init::global};
 use crate::transport::queue::TransactionQueue;
 use js_sys::*;
 use wasm_bindgen_futures::JsFuture;
@@ -18,7 +18,7 @@ use crate::error;
 use workflow_log::*;
 use async_trait::async_trait;
 use std::sync::{Mutex, Arc};
-use kaizen::cache::Cache;
+use kaizen::{cache::Cache, wasm::{workflow, solana}};
 use std::convert::From;
 use crate::transport::{Transaction, TransportConfig};
 use crate::transport::lookup::{LookupHandler,RequestType};
@@ -90,11 +90,11 @@ impl Transport {
 
 
     pub fn workflow() -> std::result::Result<JsValue,JsValue> {
-        Ok(js_sys::Reflect::get(&js_sys::global(), &"$workflow".into())?)
+        Ok(workflow()?)
     }
 
     pub fn solana() -> std::result::Result<JsValue,JsValue> {
-        Ok(js_sys::Reflect::get(&Self::workflow()?, &"solana".into())?)
+        Ok(solana()?)
     }
 
     pub fn mode(&self) -> TransportMode {
@@ -110,12 +110,12 @@ impl Transport {
     }
 
     pub fn with_wallet(&self, wallet: JsValue) -> std::result::Result<JsValue, JsValue> {
-        js_sys::Reflect::set(&Self::workflow()?, &"wallet".into(), &wallet)?;
+        js_sys::Reflect::set(&global()?, &"wallet".into(), &wallet)?;
         Ok(JsValue::from(true))
     }
 
     pub fn wallet_adapter(&self) -> std::result::Result<JsValue, JsValue> {
-        let wallet = js_sys::Reflect::get(&Self::workflow()?, &"wallet".into())?;
+        let wallet = js_sys::Reflect::get(&global()?, &"wallet".into())?;
         if wallet == JsValue::UNDEFINED{
             log_trace!("wallet adapter is missing");
             return Err(error!("WalletAdapterIsMissing, use `transport.with_wallet(walletAdapter);`").into());

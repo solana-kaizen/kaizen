@@ -340,6 +340,73 @@ mod client {
         pub executable: bool,
     }
 
+    impl ColoLogTrace for AccountDataStore{
+        fn log_data(&self)->Vec<u8>{
+            if let Ok(data) = self.try_to_vec(){
+                return data;
+            }
+
+            Vec::new()
+        }
+
+        fn log_index_and_type<'a>(&self)->Option<Vec<(color_log::Index, DataType<'a>)>>{
+            let header_size = 77;//1 + 32 + 32 + 8 + 4;
+            let container_type_size = 4;//4 bytes
+            let store_meta_size = std::mem::size_of::<SegmentStoreMeta>();
+
+            
+            let mut index_and_type = vec![
+                (0, DataType::ContainerType(1)),//container type : 1
+                (1, DataType::Pubkey),//key : 32
+                (33, DataType::Pubkey2),//owner pubkey : 32
+                (65, DataType::Custom(8, "4")),//lamports : 8
+                (73, DataType::Custom(4, "6")),//data length : 4
+                (77, DataType::ContainerType(container_type_size)),//container type : 4
+                (81, DataType::Custom(4, "168")),//store magic : 4
+                (85, DataType::Custom(4, "169")),//store version : 4
+                (87, DataType::Custom(2, "161")),//store payload_len : 2
+                (89, DataType::Custom(2, "cyan")),//store index_unit_size : 2
+                (93, DataType::Custom(4, "blue")),//store segments count : 4
+            ];
+
+            let data_offset = 4;//77;//1+32+32+8+4;
+            let mut account_data: AccountData = self.into();
+            let account_info = account_data.into_account_info();
+            if let Ok(store) = SegmentStore::try_load(&account_info, data_offset){
+                let len = store.len();
+                //let meta = store.get_meta();
+                let mut index_offset = header_size + container_type_size + store_meta_size;
+                let mut odd = false;
+                for seg_index in 0..len{
+                    let info = store.get_index_info_at(seg_index);
+                    let offset = info.offset;
+                    let size = info.size;
+                    //log_trace!("index_offset:{index_offset}, Index{{offset:{offset}, size:{size}}}");
+                    index_and_type.push((index_offset, DataType::Custom(2, "0xcc")));
+                    index_and_type.push((index_offset + 2, DataType::Custom(2, "0xdc")));
+                    index_offset += 4;
+
+                    if seg_index > 0{
+                        if odd {
+                            odd = false;
+                            index_and_type.push((header_size + offset, DataType::Custom(size, "red")));
+                        }else{
+                            odd = true;
+                            index_and_type.push((header_size + offset, DataType::Custom(size, "green")));
+                        }
+                    }
+                }
+
+            }else{
+                //should we return None to make complete hex view as colorless?
+            }
+
+
+            return Some(index_and_type)
+        }
+
+    }
+
     impl From<&AccountData> for AccountDataStore {
         fn from(account_data: &AccountData) -> Self {
             Self {
