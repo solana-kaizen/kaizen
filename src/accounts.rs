@@ -349,29 +349,30 @@ mod client {
             Vec::new()
         }
 
-        fn log_index_and_type<'a>(&self)->Option<Vec<(color_log::Index, DataType<'a>)>>{
+        fn log_index_length_color<'a>(&self)->Option<Vec<(color_log::Index, color_log::Length, color_log::Color)>>{
             let header_size = 77;//1 + 32 + 32 + 8 + 4;
             let container_type_size = 4;//4 bytes
             let store_meta_size = std::mem::size_of::<SegmentStoreMeta>();
 
             
-            let mut index_and_type = vec![
-                (0, DataType::ContainerType(1)),//container type : 1
-                (1, DataType::Pubkey),//key : 32
-                (33, DataType::Pubkey2),//owner pubkey : 32
-                (65, DataType::Custom(8, "4")),//lamports : 8
-                (73, DataType::Custom(4, "6")),//data length : 4
-                (77, DataType::ContainerType(container_type_size)),//container type : 4
-                (81, DataType::Custom(4, "168")),//store magic : 4
-                (85, DataType::Custom(4, "169")),//store version : 4
-                (87, DataType::Custom(2, "161")),//store payload_len : 2
-                (89, DataType::Custom(2, "cyan")),//store index_unit_size : 2
-                (93, DataType::Custom(4, "blue")),//store segments count : 4
+            let mut index_length_color = vec![
+                (0, 1, "8"),//container type : 1
+                (1, 32, "2"),//key : 32
+                (33, 32, "3"),//owner pubkey : 32
+                (65, 8, "4"),//lamports : 8
+                (73, 4, "6"),//data length : 4
+                (77, container_type_size, "8"),//container type : 4
+                (81, 4, "168"),//store magic : 4
+                (85, 4, "169"),//store version : 4
+                (87, 2, "161"),//store payload_len : 2
+                (89, 2, "cyan"),//store index_unit_size : 2
+                (93, 4, "blue"),//store segments count : 4
             ];
 
             let data_offset = 4;//77;//1+32+32+8+4;
             let mut account_data: AccountData = self.into();
             let account_info = account_data.into_account_info();
+
             if let Ok(store) = SegmentStore::try_load(&account_info, data_offset){
                 let len = store.len();
                 //let meta = store.get_meta();
@@ -382,17 +383,17 @@ mod client {
                     let offset = info.offset;
                     let size = info.size;
                     //log_trace!("index_offset:{index_offset}, Index{{offset:{offset}, size:{size}}}");
-                    index_and_type.push((index_offset, DataType::Custom(2, "0xcc")));
-                    index_and_type.push((index_offset + 2, DataType::Custom(2, "0xdc")));
+                    index_length_color.push((index_offset, 2, "0xcc"));
+                    index_length_color.push((index_offset + 2, 2, "0xdc"));
                     index_offset += 4;
 
                     if seg_index > 0{
                         if odd {
                             odd = false;
-                            index_and_type.push((header_size + offset, DataType::Custom(size, "red")));
+                            index_length_color.push((header_size + offset, size, "red"));
                         }else{
                             odd = true;
-                            index_and_type.push((header_size + offset, DataType::Custom(size, "green")));
+                            index_length_color.push((header_size + offset, size, "green"));
                         }
                     }
                 }
@@ -402,7 +403,7 @@ mod client {
             }
 
 
-            return Some(index_and_type)
+            return Some(index_length_color)
         }
 
     }
