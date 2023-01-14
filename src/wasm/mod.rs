@@ -1,5 +1,4 @@
 use wasm_bindgen::prelude::*;
-pub use workflow_wasm::logs::*;
 use workflow_wasm::init::init_workflow;
 pub use workflow_wasm::init::{global, workflow, modules};
 
