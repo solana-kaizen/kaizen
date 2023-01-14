@@ -2,45 +2,48 @@ use crate::accounts::AccountDataStore;
 use crate::accounts::AccountDescriptor;
 
 use super::*;
+use async_std::fs;
 use async_std::path::Path;
 use async_std::path::PathBuf;
-use std::sync::Arc;
-use async_std::fs;
 use async_trait::async_trait;
 use borsh::*;
-use workflow_log::log_error;
 use kaizen::accounts::AccountData;
-use kaizen::result::Result;
 use kaizen::cache::Cache;
+use kaizen::result::Result;
+use std::sync::Arc;
+use workflow_log::log_error;
 use workflow_log::*;
 
 #[derive(Clone)]
 pub struct FileStore {
-    data_folder : PathBuf,
-    cache : Option<Arc<Cache>>
+    data_folder: PathBuf,
+    cache: Option<Arc<Cache>>,
 }
 
 impl FileStore {
-
     pub fn default_data_folder() -> PathBuf {
         let home_dir: PathBuf = home::home_dir().unwrap().into();
         Path::new(&home_dir).join("workflow").join("accounts")
     }
 
     pub fn try_new() -> Result<FileStore> {
-        Self::try_new_with_folder_and_cache(None,None)
+        Self::try_new_with_folder_and_cache(None, None)
     }
-    pub fn try_new_with_cache(cache : Arc<Cache>) -> Result<FileStore> {
-        Self::try_new_with_folder_and_cache(None,Some(cache))
+    pub fn try_new_with_cache(cache: Arc<Cache>) -> Result<FileStore> {
+        Self::try_new_with_folder_and_cache(None, Some(cache))
     }
-    pub fn try_new_with_folder_and_cache(data_folder : Option<PathBuf>, cache : Option<Arc<Cache>>) -> Result<FileStore> {
+    pub fn try_new_with_folder_and_cache(
+        data_folder: Option<PathBuf>,
+        cache: Option<Arc<Cache>>,
+    ) -> Result<FileStore> {
         let data_folder = match data_folder {
             Some(data_folder) => data_folder,
-            None => {
-                Self::default_data_folder()
-            }
+            None => Self::default_data_folder(),
         };
-        log_trace!("init FileStore at {}",data_folder.clone().into_os_string().into_string()?);
+        log_trace!(
+            "init FileStore at {}",
+            data_folder.clone().into_os_string().into_string()?
+        );
         std::fs::create_dir_all(&data_folder)?;
 
         Ok(FileStore { data_folder, cache })
@@ -49,9 +52,7 @@ impl FileStore {
 
 #[async_trait]
 impl Store for FileStore {
-
-    async fn list(&self) -> Result<AccountDescriptorList> { 
-    
+    async fn list(&self) -> Result<AccountDescriptorList> {
         let mut entries = std::fs::read_dir(&self.data_folder)?
             .map(|res| res.map(|e| e.path()))
             .collect::<std::result::Result<Vec<_>, std::io::Error>>()?;
@@ -69,15 +70,13 @@ impl Store for FileStore {
             let descriptor: AccountDescriptor = account_data.into();
             account_descriptors.push(descriptor);
         }
-        
-        Ok(AccountDescriptorList::new(account_descriptors)) 
+
+        Ok(AccountDescriptorList::new(account_descriptors))
     }
 
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-
         if let Some(cache) = &self.cache {
             if let Ok(Some(reference)) = cache.lookup(pubkey) {
-
                 // {
                 //     log_trace!("~~~ lookup ");
                 //     let account_data = &reference.account_data.read().await;
@@ -111,8 +110,7 @@ impl Store for FileStore {
             Ok(None)
         }
     }
-    async fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
-
+    async fn store(&self, reference: &Arc<AccountDataReference>) -> Result<()> {
         // {
         //     log_trace!("~~~ store {}",reference.key);
         //     let account_data = &reference.account_data.read().await;
@@ -135,7 +133,7 @@ impl Store for FileStore {
         fs::write(&self.data_folder.join(reference.key.to_string()), data_vec).await?;
         Ok(())
     }
-    async fn purge(&self, pubkey : &Pubkey) -> Result<()> {
+    async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
         if let Some(cache) = &self.cache {
             cache.purge(Some(pubkey))?;
         }
@@ -144,7 +142,11 @@ impl Store for FileStore {
         match fs::remove_file(&filename).await {
             Ok(_) => Ok(()),
             Err(e) => {
-                log_error!("unable to remove file '{}': {}", filename.into_os_string().into_string()?, e);
+                log_error!(
+                    "unable to remove file '{}': {}",
+                    filename.into_os_string().into_string()?,
+                    e
+                );
                 Ok(())
             }
         }

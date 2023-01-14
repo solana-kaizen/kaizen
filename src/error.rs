@@ -18,22 +18,21 @@ cfg_if! {
     }
 }
 
+use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{Deserialize, Serialize};
 use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
 use solana_program::pubkey::ParsePubkeyError;
+use solana_program::pubkey::Pubkey;
 use solana_program::pubkey::PubkeyError;
+use std::cell::{BorrowError, BorrowMutError};
 use std::convert::From;
-use std::cell::{BorrowError,BorrowMutError};
+use std::io::Error as IoError;
 use std::time::SystemTimeError;
 use workflow_log::log_trace;
-use std::io::Error as IoError;
-use borsh::{BorshSerialize,BorshDeserialize};
-use serde::{Serialize,Deserialize};
 
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum ErrorCode {
-
     NotImplemented,
     ErrorMessage,
     RootAccess,
@@ -158,10 +157,8 @@ pub enum ErrorCode {
     TransactionAlreadyCompleted,
 
     ModuleErrorCodeStart = 0xefff,
-    ProgramErrorCodeStart = 0xffff
+    ProgramErrorCodeStart = 0xffff,
 }
-
-
 
 #[derive(Debug)]
 pub enum Variant {
@@ -178,14 +175,12 @@ pub enum Variant {
     #[cfg(not(target_os = "solana"))]
     RpcError(Arc<workflow_rpc::asynchronous::client::error::Error>),
     #[cfg(not(target_os = "solana"))]
-    JsValue(String)
+    JsValue(String),
 }
 
 impl Clone for Variant {
     fn clone(&self) -> Self {
-
         match self {
-
             Variant::ProgramError(e) => Variant::ProgramError(e.clone()),
             Variant::ErrorCode(e) => Variant::ErrorCode(e.clone()),
             Variant::BorrowError(_e) => Variant::ErrorCode(ErrorCode::BorrowError),
@@ -200,7 +195,6 @@ impl Clone for Variant {
             Variant::RpcError(e) => Variant::RpcError(e.clone()),
             #[cfg(not(target_os = "solana"))]
             Variant::JsValue(e) => Variant::JsValue(e.clone()),
-        
         }
     }
 }
@@ -210,38 +204,35 @@ impl Variant {
         match self {
             Variant::ErrorCode(code) => {
                 format!("code: {:?}", code)
-            },
+            }
             Variant::ProgramError(program_error) => {
                 format!("program error: {:?}", program_error)
-
-            },
+            }
 
             #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::OsString(os_str) => {
                 format!("OsString error: {:?}", os_str)
-            },
+            }
             Variant::IoError(error) => {
                 format!("I/O error: {:?}", error)
-            },
+            }
             Variant::BorrowError(error) => {
                 format!("borrow error: {:?}", error)
-
-            },
+            }
             Variant::BorrowMutError(error) => {
-                format!("borrow mut error: {:?}",error)
-            },
+                format!("borrow mut error: {:?}", error)
+            }
             // #[cfg(target_arch = "wasm32")]
             #[cfg(not(target_os = "solana"))]
             Variant::JsValue(js_value) => {
-                format!("{:?}",js_value)
+                format!("{:?}", js_value)
             }
             #[cfg(not(target_os = "solana"))]
             Variant::RpcError(err) => {
-                format!("{:?}",err)
+                format!("{:?}", err)
             }
             #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::ClientError(client_error) => {
-                
                 match client_error.kind() {
                     ClientErrorKind::RpcError(rpc_request::RpcError::RpcResponseError {
                         data:
@@ -257,40 +248,42 @@ impl Variant {
                             ),
                         ..
                     }) => {
-
-                        let mut lines : Vec<String> = Vec::new(); 
+                        let mut lines: Vec<String> = Vec::new();
                         match err {
                             Some(err) => {
                                 lines.push(format!("+ error: {:?}", err));
-                            },
-                            None => { }
+                            }
+                            None => {}
                         };
                         match accounts {
                             Some(accounts) => {
                                 for n in 0..accounts.len() {
                                     lines.push(format!("| account: {:?}", accounts[n]));
                                 }
-                            },
-                            None => { }
-                        };                            
+                            }
+                            None => {}
+                        };
                         match logs {
                             Some(logs) => {
                                 lines.push("+".to_string());
                                 // lines.push("|".to_string());
-                                lines.extend(logs.iter().map(|l|{format!("| {}", l.replace("Program log: ", ""))}));
+                                lines.extend(
+                                    logs.iter()
+                                        .map(|l| format!("| {}", l.replace("Program log: ", ""))),
+                                );
                                 lines.push("+".to_string());
-                            },
-                            None => { }
+                            }
+                            None => {}
                         };
                         match units_consumed {
                             Some(units_consumed) => {
                                 lines.push(format!("| units consumed: {}", units_consumed));
-                            },
-                            None => { }
+                            }
+                            None => {}
                         };
 
                         format!("{}", lines.join("\n"))
-                    },
+                    }
                     _ => {
                         format!("{:#?}", client_error)
                     }
@@ -300,101 +293,92 @@ impl Variant {
     }
 }
 
-
 // #[derive(Debug)]
 #[derive(Clone)]
 pub struct Error {
     pub message: Option<String>,
     pub source: Option<Source>,
     pub account: Option<Pubkey>,
-    pub variant : Option<Variant>,
+    pub variant: Option<Variant>,
 }
 
 impl Error {
     pub fn format(&self) -> String {
         let message = self.message.clone().unwrap_or("no message".into());
-        
+
         let account = match self.account {
             None => "n/a".into(),
-            Some(key) => { key.to_string() }
+            Some(key) => key.to_string(),
         };
 
         let source = match &self.source {
             None => format!("no source"),
-            Some(source) => format!("{}:{}", source.filename,source.line),
+            Some(source) => format!("{}:{}", source.filename, source.line),
         };
 
         match &self.variant {
-            Some(variant) => {
-                match variant {
-                    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
-                    Variant::ClientError(_) => {
-                        format!("\n+---\n{}\n+---\n", variant.info())
-                    },
-                    _ => {
-                        format!("\n+---\n|   error: {}\n|  source: {}\n| variant: {}\n| account: {}\n+---\n", 
+            Some(variant) => match variant {
+                #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
+                Variant::ClientError(_) => {
+                    format!("\n+---\n{}\n+---\n", variant.info())
+                }
+                _ => {
+                    format!("\n+---\n|   error: {}\n|  source: {}\n| variant: {}\n| account: {}\n+---\n", 
                             message,
                             source,
                             variant.info(),
                             account
                         )
-                    }
                 }
             },
             None => {
-                format!("\n+---\n|   error: {}\n|  source: {}\n| account: {}\n+---\n", 
-                    message,
-                    source,
-                    account
+                format!(
+                    "\n+---\n|   error: {}\n|  source: {}\n| account: {}\n+---\n",
+                    message, source, account
                 )
             }
         }
-
     }
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f,"{}",self.format())
+        write!(f, "{}", self.format())
     }
 }
 
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f,"{}",self.format())
+        write!(f, "{}", self.format())
     }
 }
-
-
 
 impl Error {
     pub fn new() -> Error {
         Error {
-            message : None,
-            source : None,
-            account : None,
-            variant : None,
+            message: None,
+            source: None,
+            account: None,
+            variant: None,
         }
     }
 
     pub fn message(&self) -> String {
         match self.message {
             Some(ref message) => message.clone(),
-            None => {
-                match &self.variant {
-                    Some(variant) => variant.info(),
-                    None => format!("no message")
-                }
-            }
+            None => match &self.variant {
+                Some(variant) => variant.info(),
+                None => format!("no message"),
+            },
         }
     }
 
-    pub fn with_variant(mut self, variant : Variant) -> Self {
+    pub fn with_variant(mut self, variant: Variant) -> Self {
         self.variant = Some(variant);
         self
     }
-    
-    pub fn with_code(mut self, code : ErrorCode) -> Self {
+
+    pub fn with_code(mut self, code: ErrorCode) -> Self {
         #[cfg(target_os = "solana")]
         solana_program::msg!("*** ERROR: {:?} ***", code);
 
@@ -402,7 +386,7 @@ impl Error {
         self
     }
 
-    pub fn with_program_code(mut self, code : u32) -> Self {
+    pub fn with_program_code(mut self, code: u32) -> Self {
         self.variant = Some(Variant::ProgramError(ProgramError::Custom(code)));
         self
     }
@@ -422,49 +406,43 @@ impl Error {
         self
     }
 
-    pub fn with_account(mut self, key : &Pubkey) -> Self {
+    pub fn with_account(mut self, key: &Pubkey) -> Self {
         self.account = Some(key.clone());
         self
     }
-
 }
 
-
-
 #[cfg(target_arch = "wasm32")]
-pub fn parse_js_error(e: wasm_bindgen::JsValue, msg:Option<&str>)->Error{
-    let mut err = match workflow_wasm::utils::try_get_string(&e, "message"){
-        Ok(msg) => {
-            Error::new().with_message(&msg)
-        }
-        Err(e)=>{
-            if let Some(msg) = msg{
+pub fn parse_js_error(e: wasm_bindgen::JsValue, msg: Option<&str>) -> Error {
+    let mut err = match workflow_wasm::utils::try_get_string(&e, "message") {
+        Ok(msg) => Error::new().with_message(&msg),
+        Err(e) => {
+            if let Some(msg) = msg {
                 Error::new().with_message(&format!("{}, Error:{:?}", msg, e))
-            }else{
+            } else {
                 Error::new().with_message(&format!("Error:{:?}", e))
             }
         }
     };
-    match js_sys::Reflect::get(&e, &wasm_bindgen::JsValue::from("error")){
-        Ok(error_obj)=>{
-            match js_sys::Reflect::get(&error_obj, &wasm_bindgen::JsValue::from("code")){
+    match js_sys::Reflect::get(&e, &wasm_bindgen::JsValue::from("error")) {
+        Ok(error_obj) => {
+            match js_sys::Reflect::get(&error_obj, &wasm_bindgen::JsValue::from("code")) {
                 Ok(code) => {
                     err = err.with_variant(Variant::JsValue(format!("{:?}", code)));
                 }
-                Err(_e)=>{
+                Err(_e) => {
                     //skip code search error
                     //log_trace!("error code not found: {:?}, error:{:?}", _e, e);
                 }
             }
-        },
-        Err(_e)=>{
+        }
+        Err(_e) => {
             //skip code search error
         }
     }
-    
+
     err
 }
-
 
 #[cfg(not(target_os = "solana"))]
 impl From<Error> for RpcResponseError {
@@ -489,45 +467,38 @@ impl From<&str> for Error {
     }
 }
 
-
 impl From<ParsePubkeyError> for Error {
     fn from(error: ParsePubkeyError) -> Error {
         let code = match error {
-            ParsePubkeyError::WrongSize => { ErrorCode::ParsePubkeyWrongSize },
-            ParsePubkeyError::Invalid => { ErrorCode::ParsePubkeyInvalid },
+            ParsePubkeyError::WrongSize => ErrorCode::ParsePubkeyWrongSize,
+            ParsePubkeyError::Invalid => ErrorCode::ParsePubkeyInvalid,
         };
 
-        Error::new()
-            .with_code(code)
+        Error::new().with_code(code)
     }
 }
-
 
 impl From<PubkeyError> for Error {
     fn from(error: PubkeyError) -> Error {
         let code = match error {
-            PubkeyError::MaxSeedLengthExceeded => { ErrorCode::MaxSeedLengthExceeded },
-            PubkeyError::InvalidSeeds => { ErrorCode::InvalidSeeds },
-            PubkeyError::IllegalOwner => { ErrorCode::IllegalOwner },
+            PubkeyError::MaxSeedLengthExceeded => ErrorCode::MaxSeedLengthExceeded,
+            PubkeyError::InvalidSeeds => ErrorCode::InvalidSeeds,
+            PubkeyError::IllegalOwner => ErrorCode::IllegalOwner,
         };
 
-        Error::new()
-            .with_code(code)
+        Error::new().with_code(code)
     }
 }
 
-
 impl From<ErrorCode> for Error {
     fn from(error: ErrorCode) -> Error {
-        Error::new()
-            .with_code(error)
+        Error::new().with_code(error)
     }
 }
 
 impl From<ProgramError> for Error {
     fn from(error: ProgramError) -> Error {
-        Error::new()
-            .with_program_error(error)
+        Error::new().with_program_error(error)
     }
 }
 
@@ -542,37 +513,32 @@ impl<T> From<PoisonError<T>> for Error {
 
 impl From<BorrowError> for Error {
     fn from(error: BorrowError) -> Error {
-        Error::new()
-            .with_variant(Variant::BorrowError(error))
+        Error::new().with_variant(Variant::BorrowError(error))
     }
 }
 
 impl From<SystemTimeError> for Error {
     fn from(_error: SystemTimeError) -> Error {
-        Error::new()
-            .with_code(ErrorCode::SystemTimeError)
+        Error::new().with_code(ErrorCode::SystemTimeError)
     }
 }
 
 impl From<IoError> for Error {
     fn from(error: IoError) -> Error {
-        Error::new()
-            .with_variant(Variant::IoError(error))
+        Error::new().with_variant(Variant::IoError(error))
     }
 }
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
 impl From<OsString> for Error {
     fn from(os_str: OsString) -> Error {
-        Error::new()
-            .with_variant(Variant::OsString(os_str))
+        Error::new().with_variant(Variant::OsString(os_str))
     }
 }
 
 impl From<BorrowMutError> for Error {
     fn from(error: BorrowMutError) -> Error {
-        Error::new()
-            .with_variant(Variant::BorrowMutError(error))
+        Error::new().with_variant(Variant::BorrowMutError(error))
     }
 }
 
@@ -587,9 +553,7 @@ impl From<Error> for wasm_bindgen::JsValue {
     fn from(error: Error) -> wasm_bindgen::JsValue {
         match error.variant {
             Some(Variant::JsValue(js_value)) => wasm_bindgen::JsValue::from_str(&js_value),
-            _ => {
-                wasm_bindgen::JsValue::from(format!("{:?}", error))
-            }
+            _ => wasm_bindgen::JsValue::from(format!("{:?}", error)),
         }
     }
 }
@@ -597,16 +561,14 @@ impl From<Error> for wasm_bindgen::JsValue {
 #[cfg(not(target_os = "solana"))]
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(error: wasm_bindgen::JsValue) -> Error {
-        Error::new()
-            .with_variant(Variant::JsValue(format!("{:?}", error)))
+        Error::new().with_variant(Variant::JsValue(format!("{:?}", error)))
     }
 }
 
 #[cfg(not(target_os = "solana"))]
 impl From<workflow_rpc::asynchronous::client::error::Error> for Error {
     fn from(error: workflow_rpc::asynchronous::client::error::Error) -> Error {
-        Error::new()
-            .with_variant(Variant::RpcError(Arc::new(error)))
+        Error::new().with_variant(Variant::RpcError(Arc::new(error)))
     }
 }
 
@@ -631,57 +593,41 @@ impl<T> From<async_std::channel::SendError<T>> for Error {
 #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
 impl From<ClientError> for Error {
     fn from(error: ClientError) -> Error {
-        Error::new()
-            .with_variant(Variant::ClientError(Arc::new(error)))
+        Error::new().with_variant(Variant::ClientError(Arc::new(error)))
     }
 }
 
-
 impl From<Error> for ProgramError {
-    fn from(e:Error) -> ProgramError {
+    fn from(e: Error) -> ProgramError {
         #[cfg(not(target_os = "solana"))]
         log_trace!("Converting Error to ProgramError\n{}", e);
         match e.variant {
-            None => {
-                ProgramError::Custom(0)
-            },
-            Some(variant) => {
-                match variant {
-                    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
-                    Variant::OsString(os_str) => {
-                        log_trace!("OsString error: {:?}",os_str);
-                        ProgramError::Custom(ErrorCode::OsString as u32)
-                    },
-                    Variant::IoError(error) => {
-                        log_trace!("I/O error: {}",error);
-                        ProgramError::Custom(ErrorCode::IoError as u32)
-                    },
-                    Variant::BorrowError(_error) => {
-                        ProgramError::Custom(ErrorCode::BorrowError as u32)
-                    },
-                    Variant::BorrowMutError(_error) => {
-                        ProgramError::Custom(ErrorCode::BorrowMutError as u32)
-                    },
-                    Variant::ErrorCode(error) => {
-                        ProgramError::Custom(error as u32)
-                    },
-                    Variant::ProgramError(error) => {
-                        error
-                    },
-                    #[cfg(not(target_os = "solana"))]
-                    Variant::JsValue(_error) => {
-                        ProgramError::Custom(0)
-                    },
-                    #[cfg(not(target_os = "solana"))]
-                    Variant::RpcError(_error) => {
-                        ProgramError::Custom(ErrorCode::RpcError as u32)
-                    },
-                    #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
-                    Variant::ClientError(_error) => {
-                        panic!("client error in program is not allowed");
-                    }
+            None => ProgramError::Custom(0),
+            Some(variant) => match variant {
+                #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
+                Variant::OsString(os_str) => {
+                    log_trace!("OsString error: {:?}", os_str);
+                    ProgramError::Custom(ErrorCode::OsString as u32)
                 }
-            }
+                Variant::IoError(error) => {
+                    log_trace!("I/O error: {}", error);
+                    ProgramError::Custom(ErrorCode::IoError as u32)
+                }
+                Variant::BorrowError(_error) => ProgramError::Custom(ErrorCode::BorrowError as u32),
+                Variant::BorrowMutError(_error) => {
+                    ProgramError::Custom(ErrorCode::BorrowMutError as u32)
+                }
+                Variant::ErrorCode(error) => ProgramError::Custom(error as u32),
+                Variant::ProgramError(error) => error,
+                #[cfg(not(target_os = "solana"))]
+                Variant::JsValue(_error) => ProgramError::Custom(0),
+                #[cfg(not(target_os = "solana"))]
+                Variant::RpcError(_error) => ProgramError::Custom(ErrorCode::RpcError as u32),
+                #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
+                Variant::ClientError(_error) => {
+                    panic!("client error in program is not allowed");
+                }
+            },
         }
     }
 }
@@ -692,13 +638,12 @@ pub struct Source {
     pub line: u32,
 }
 
-
 #[macro_export]
 macro_rules! error {
-        ($($t:tt)*) => ( 
+        ($($t:tt)*) => (
             kaizen::error::Error::new()
                 .with_source(file!(),line!())
-                .with_message(&format_args!($($t)*).to_string()) 
+                .with_message(&format_args!($($t)*).to_string())
         )
 }
 pub use error;
@@ -706,40 +651,39 @@ pub use error;
 #[cfg(target_arch = "wasm32")]
 #[macro_export]
 macro_rules! js_error {
-    ($e:expr, $msg:literal) => ( 
-        parse_js_error($e, Some($msg))
-            .with_source(file!(),line!())
-    )
+    ($e:expr, $msg:literal) => {
+        parse_js_error($e, Some($msg)).with_source(file!(), line!())
+    };
 }
 #[cfg(target_arch = "wasm32")]
 pub use js_error;
 
 #[macro_export]
 macro_rules! error_code {
-    ($code:expr) => (
+    ($code:expr) => {
         kaizen::error::Error::new()
-            .with_source(file!(),line!())
+            .with_source(file!(), line!())
             .with_code($code)
-    )
+    };
 }
 pub use error_code;
 
 #[macro_export]
 macro_rules! program_error_code {
-    ($code:expr) => ( 
+    ($code:expr) => {
         kaizen::error::Error::new()
-            .with_source(file!(),line!())
+            .with_source(file!(), line!())
             .with_program_code($code as u32)
-    )
+    };
 }
 pub use program_error_code;
 
 #[macro_export]
 macro_rules! program_error {
-    ($err:expr) => ( 
+    ($err:expr) => {
         kaizen::error::Error::new()
-            .with_source(file!(),line!())
+            .with_source(file!(), line!())
             .with_program_error($err)
-    )
+    };
 }
 pub use program_error;

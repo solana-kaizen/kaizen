@@ -38,68 +38,59 @@ pub fn generate_random_pubkey() -> Pubkey {
 
 #[inline(always)]
 pub fn fill_buffer_u8(buffer: &mut [u8], v: u8) {
-    for ptr in buffer.iter_mut() { *ptr = v }
+    for ptr in buffer.iter_mut() {
+        *ptr = v
+    }
 }
 
 #[inline(always)]
 pub fn fill_account_buffer_u8(account: &AccountInfo, range: std::ops::Range<usize>, v: u8) {
     let mut buffer = account.data.borrow_mut();
-    fill_buffer_u8(&mut buffer[range],v)
+    fill_buffer_u8(&mut buffer[range], v)
 }
 
-
-pub fn account_buffer_as_struct_ref<'refs,'info, T>(
+pub fn account_buffer_as_struct_ref<'refs, 'info, T>(
     account: &'refs AccountInfo<'info>,
     byte_offset: usize,
 ) -> &'info T {
     let data = account.data.borrow();
-    unsafe {
-        std::mem::transmute::<_,&T>(
-            data.as_ptr().offset(byte_offset as isize),
-        )
-    }
+    unsafe { std::mem::transmute::<_, &T>(data.as_ptr().offset(byte_offset as isize)) }
 }
 
-pub fn account_buffer_as_struct_mut<'refs,'info, T>(
+pub fn account_buffer_as_struct_mut<'refs, 'info, T>(
     account: &'refs AccountInfo<'info>,
     byte_offset: usize,
 ) -> &'info mut T {
     let data = account.data.borrow();
-    unsafe {
-        std::mem::transmute::<_,&mut T>(
-            data.as_ptr().offset(byte_offset as isize),
-        )
-    }
+    unsafe { std::mem::transmute::<_, &mut T>(data.as_ptr().offset(byte_offset as isize)) }
 }
 
 pub fn account_buffer_as_slice<'refs, 'info, T>(
     // account: &'refs AccountInfo<'info>,
     account: &'refs AccountInfo<'info>,
     byte_offset: usize,
-    elements: usize
+    elements: usize,
 ) -> &'info [T] {
     let data = account.data.borrow();
     unsafe {
         std::slice::from_raw_parts::<T>(
-            std::mem::transmute::<_,*const T>(
-                data.as_ptr().offset(byte_offset as isize),
-            ),
-        elements)
+            std::mem::transmute::<_, *const T>(data.as_ptr().offset(byte_offset as isize)),
+            elements,
+        )
     }
 }
 
-pub fn account_buffer_as_slice_mut<'info, T> (
+pub fn account_buffer_as_slice_mut<'info, T>(
     account: &AccountInfo<'info>,
     byte_offset: usize,
-    elements: usize
+    elements: usize,
 ) -> &'info mut [T] {
     let mut data = account.data.borrow_mut();
     unsafe {
         std::slice::from_raw_parts_mut::<T>(
-            std::mem::transmute::<_,*mut T>(
-                data.as_mut_ptr().offset(byte_offset as isize),
-            ),
-        elements)
+            std::mem::transmute::<_, *mut T>(data.as_mut_ptr().offset(byte_offset as isize)),
+            elements,
+        )
     }
 }
 
@@ -122,7 +113,6 @@ macro_rules! impl_from_u64 {
 
 impl_from_u64!(u8 u16 u32 u64 usize);
 
-
 pub trait FromUsize {
     fn from_usize(v: usize) -> Self;
     fn as_usize(v: Self) -> usize;
@@ -141,11 +131,10 @@ macro_rules! impl_from_usize {
                     v as usize
                 }
 
-                // fn 
+                // fn
             }
         )*
     }
 }
 
 impl_from_usize!(u8 u16 u32 u64 usize);
-

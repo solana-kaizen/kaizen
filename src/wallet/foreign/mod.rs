@@ -1,8 +1,8 @@
 use async_trait::async_trait;
-use solana_program::pubkey::Pubkey;
-use downcast::{downcast_sync,AnySync};
-use kaizen::result::Result;
 use cfg_if::cfg_if;
+use downcast::{downcast_sync, AnySync};
+use kaizen::result::Result;
+use solana_program::pubkey::Pubkey;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -16,15 +16,14 @@ cfg_if! {
 
 #[derive(Debug)]
 pub struct Adapter {
-    pub name : String,
-    pub icon : String,
-    pub index : usize,
-    pub detected: bool
+    pub name: String,
+    pub icon: String,
+    pub index: usize,
+    pub detected: bool,
 }
 
-
 #[async_trait(?Send)]
-pub trait WalletInterface : AnySync {
+pub trait WalletInterface: AnySync {
     fn is_connected(&self) -> bool;
     fn pubkey(&self) -> Result<Pubkey>;
     async fn get_adapter_list(&self) -> Result<Option<Vec<Adapter>>>;
@@ -35,10 +34,9 @@ pub trait WalletInterface : AnySync {
 
     // #[cfg(not(target_arch = "wasm32"))]
     // async fn sign(&self, instruction: &Instruction) -> Result<Transaction>;
-    
+
     // #[cfg(target_arch = "wasm32")]
     // async fn sign(&self, instruction: &Instruction) -> Result<JsValue>;
-
 }
 
 downcast_sync!(dyn WalletInterface);

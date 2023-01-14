@@ -1,17 +1,20 @@
-use kaizen::prelude::*;
-use std::sync::{atomic::{AtomicU64, Ordering}, Arc};
 use kaizen::identity::program::Identity;
+use kaizen::prelude::*;
 use kaizen::result::Result;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 #[derive(Debug, Clone)]
 pub struct Sequencer {
-    sequence : Arc<AtomicU64>
+    sequence: Arc<AtomicU64>,
 }
 
 impl Sequencer {
     pub fn new() -> Sequencer {
         Sequencer {
-            sequence : Arc::new(AtomicU64::new(0))
+            sequence: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -19,7 +22,7 @@ impl Sequencer {
         let identity = reference.try_into_container::<Identity>()?;
         let seq = identity.meta.borrow().get_pda_sequence();
         Ok(Sequencer {
-            sequence : Arc::new(AtomicU64::new(seq))
+            sequence: Arc::new(AtomicU64::new(seq)),
         })
     }
 
@@ -34,14 +37,13 @@ impl Sequencer {
         self.sequence.fetch_add(1, Ordering::SeqCst)
     }
 
-    pub fn advance(&self, n : usize) {
+    pub fn advance(&self, n: usize) {
         self.sequence.fetch_add(n as u64, Ordering::SeqCst);
     }
 
     pub fn get(&self) -> u64 {
         self.sequence.load(Ordering::SeqCst)
     }
-
 }
 
 impl Default for Sequencer {

@@ -1,8 +1,8 @@
-use cfg_if::cfg_if;
-use std::sync::Arc;
-use solana_program::pubkey::Pubkey;
 use crate::accounts::AccountDataReference;
 use crate::result::Result;
+use cfg_if::cfg_if;
+use solana_program::pubkey::Pubkey;
+use std::sync::Arc;
 use workflow_log::log_trace;
 
 #[cfg(target_arch = "wasm32")]
@@ -16,8 +16,8 @@ cfg_if! {
     }
 }
 
-const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 64u64; // 64 megabytes
-// const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
+const DEFAULT_CAPACITY: u64 = 1024u64 * 1024u64 * 64u64; // 64 megabytes
+                                                         // const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -30,17 +30,19 @@ cfg_if! {
         }
     }
 }
-    
-impl Cache {
 
+impl Cache {
     pub fn new_with_capacity(capacity: u64) -> Cache {
-        log_trace!("init account data cache with {} MiB capacity", capacity/1024/1024);
+        log_trace!(
+            "init account data cache with {} MiB capacity",
+            capacity / 1024 / 1024
+        );
         let cache_impl = MokaCache::builder()
-        .weigher(|_key, reference: &Arc<AccountDataReference>| -> u32 {
-            reference.data_len as u32
-        })
-        .max_capacity(capacity)
-        .build();
+            .weigher(|_key, reference: &Arc<AccountDataReference>| -> u32 {
+                reference.data_len as u32
+            })
+            .max_capacity(capacity)
+            .build();
 
         cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -62,7 +64,7 @@ impl Cache {
             pub fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
                 Ok(self.cache_impl.lock()?.get(pubkey).cloned())
             }
-            
+
             #[inline(always)]
             pub fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
                 Ok(self.cache_impl.lock()?.insert(*reference.key,reference.clone()))
@@ -77,12 +79,12 @@ impl Cache {
             }
 
         } else {
-            
+
             #[inline(always)]
             pub fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
                 Ok(self.cache_impl.get(pubkey))
             }
-            
+
             #[inline(always)]
             pub fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
                 Ok(self.cache_impl.insert(*reference.key,reference.clone()))
@@ -98,5 +100,4 @@ impl Cache {
 
         }
     }
-
 }

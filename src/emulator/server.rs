@@ -1,20 +1,20 @@
-use std::sync::Arc;
+use crate::accounts::AccountDataStore;
 use async_trait::async_trait;
-use borsh::{BorshSerialize,BorshDeserialize};
-use solana_program::instruction::Instruction;
-use solana_program::pubkey::Pubkey;
-use workflow_rpc::asynchronous::server::RpcHandler;
-use workflow_rpc::asynchronous::server::RpcResponseError;
-use workflow_rpc::asynchronous::result::RpcResult;
+use borsh::{BorshDeserialize, BorshSerialize};
+use kaizen::cache::Cache;
 use kaizen::emulator::interface::EmulatorInterface;
 use kaizen::emulator::rpc::*;
-use kaizen::store::FileStore;
-use kaizen::cache::Cache;
 use kaizen::result::Result;
-use crate::accounts::AccountDataStore;
+use kaizen::store::FileStore;
+use solana_program::instruction::Instruction;
+use solana_program::pubkey::Pubkey;
+use std::sync::Arc;
+use workflow_rpc::asynchronous::result::RpcResult;
+use workflow_rpc::asynchronous::server::RpcHandler;
+use workflow_rpc::asynchronous::server::RpcResponseError;
 
-use super::Emulator;
 use super::interface::EmulatorConfig;
+use super::Emulator;
 use workflow_log::*;
 
 use thiserror::Error;
@@ -30,10 +30,10 @@ impl From<Error> for RpcResponseError {
     }
 }
 
-const DEFAULT_CAPACITY : u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
+const DEFAULT_CAPACITY: u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
 
 pub struct Server {
-    pub emulator : Arc<Emulator>,
+    pub emulator: Arc<Emulator>,
 }
 
 impl Server {
@@ -43,9 +43,7 @@ impl Server {
         let store = Arc::new(FileStore::try_new_with_cache(cache)?);
         let emulator = Arc::new(Emulator::new(store.clone()));
 
-        let server = Server {
-            emulator
-        };
+        let server = Server { emulator };
 
         Ok(server)
     }
@@ -57,46 +55,48 @@ impl Server {
 
 #[async_trait]
 // impl RpcHandlerBorsh<EmulatorOps> for Server
-impl RpcHandler<EmulatorOps> for Server
-{
-    async fn handle_request(self : Arc<Self>, op : EmulatorOps, data : &[u8]) -> RpcResult {
+impl RpcHandler<EmulatorOps> for Server {
+    async fn handle_request(self: Arc<Self>, op: EmulatorOps, data: &[u8]) -> RpcResult {
         match op {
             EmulatorOps::Lookup => {
                 let req = LookupReq::try_from_slice(data)?;
                 let reference = self.emulator.clone().lookup(&req.pubkey).await?;
                 let resp = match reference {
                     Some(reference) => {
-                        let account_data_store = AccountDataStore::from(&*reference.account_data.lock()?);
-                        LookupResp { account_data_store : Some(account_data_store) }
+                        let account_data_store =
+                            AccountDataStore::from(&*reference.account_data.lock()?);
+                        LookupResp {
+                            account_data_store: Some(account_data_store),
+                        }
+                    }
+                    None => LookupResp {
+                        account_data_store: None,
                     },
-                    None => {
-                        LookupResp { account_data_store : None }
-                    } 
                 };
                 Ok(resp.try_to_vec()?)
-            },
+            }
             EmulatorOps::Execute => {
-
                 let req = ExecuteReq::try_from_slice(data)?;
-                let (authority,instruction) : (Pubkey,Instruction) = req.into();
-                let resp = self.emulator.execute(&authority,&instruction).await?;
+                let (authority, instruction): (Pubkey, Instruction) = req.into();
+                let resp = self.emulator.execute(&authority, &instruction).await?;
                 Ok(resp.try_to_vec()?)
-            },
+            }
             EmulatorOps::Fund => {
                 let req = FundReq::try_from_slice(data)?;
-                self.emulator.fund(&req.key,&req.owner,req.lamports).await?;
+                self.emulator
+                    .fund(&req.key, &req.owner, req.lamports)
+                    .await?;
                 log_trace!("fundinng done...");
                 Ok(().try_to_vec()?)
-            },
+            }
             EmulatorOps::List => {
                 let resp = self.emulator.list().await?;
                 Ok(resp.try_to_vec()?)
-            },
+            }
             EmulatorOps::Configure => {
                 let _config = EmulatorConfig::try_from_slice(data)?;
                 Ok(().try_to_vec()?)
-            },
+            }
         }
     }
 }
-

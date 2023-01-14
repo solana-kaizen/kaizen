@@ -7,16 +7,16 @@ pub enum LamportAllocation {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum AllocationPayer<'info,'data> {
+pub enum AllocationPayer<'info, 'data> {
     Authority,
     Identity,
-    Account(&'data AccountInfo<'info>)
+    Account(&'data AccountInfo<'info>),
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum IsSigner {
     Signer,
-    NotSigner
+    NotSigner,
 }
 
 impl Into<bool> for IsSigner {
@@ -47,7 +47,7 @@ impl Into<bool> for Access {
 pub enum SeedSuffix {
     Blank,
     Sequence,
-    Custom(Vec<u8>)
+    Custom(Vec<u8>),
 }
 
 pub type SeedBump = u8;
@@ -60,32 +60,35 @@ mod client {
 
     use super::*;
     use std::cell::UnsafeCell;
-    use std::sync::atomic::{AtomicBool, 
-        // Ordering
-    };
-    use std::sync::{ Arc, Mutex, MutexGuard, 
-        // RwLock, RwLockReadGuard 
+    use std::sync::atomic::AtomicBool;
+    use std::sync::{
+        Arc,
+        Mutex,
+        MutexGuard,
+        // RwLock, RwLockReadGuard
     };
     // use async_std::sync::RwLock;
     use borsh::{BorshDeserialize, BorshSerialize};
     use owning_ref::OwningHandle;
     use serde::{Deserialize, Serialize};
     //use std::time::Instant;
+    use kaizen::container::*;
+    use kaizen::result::Result;
     use kaizen::time::Instant;
-    use solana_program::account_info::IntoAccountInfo;
     use solana_program::account_info;
+    use solana_program::account_info::IntoAccountInfo;
     use solana_program::clock::Epoch;
     use solana_program::pubkey::Pubkey;
     use solana_program::rent::Rent;
     use workflow_log::*;
-    use kaizen::container::*;
-    use kaizen::result::Result;
-    
+
     const ACCOUNT_DATA_OFFSET: usize = 8;
     const ACCOUNT_DATA_PADDING: usize = 1024;
     pub static ACCOUNT_DATA_TEMPLATE_SIZE: usize = 1024 * 512; //1024 * 1; // 1mb
-    
-    #[derive(Copy, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Eq)]
+
+    #[derive(
+        Copy, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Eq,
+    )]
     #[repr(u32)]
     pub enum AccountType {
         Container = 0,
@@ -97,27 +100,28 @@ mod client {
         MetalplexNFT,
     }
 
-
     #[derive(Debug)]
     pub struct AccountDataReference {
-        pub key : Arc<Pubkey>,
-        pub timestamp : Arc<Mutex<Instant>>,
-        pub container_type : u32,
-        pub data_type : AccountType,
-        pub data_len : usize,
-        pub lock : AtomicBool,
-        pub account_data : Arc<Mutex<AccountData>>
+        pub key: Arc<Pubkey>,
+        pub timestamp: Arc<Mutex<Instant>>,
+        pub container_type: u32,
+        pub data_type: AccountType,
+        pub data_len: usize,
+        pub lock: AtomicBool,
+        pub account_data: Arc<Mutex<AccountData>>,
     }
 
     impl AccountDataReference {
-        pub fn new(account_data : AccountData) -> Self {
+        pub fn new(account_data: AccountData) -> Self {
             let key = Arc::new(account_data.key.clone());
             let timestamp = Arc::new(Mutex::new(Instant::now().unwrap()));
             let data_len = account_data.data.len() - ACCOUNT_DATA_OFFSET;
             let data_type = account_data.data_type;
             let container_type = if data_type == AccountType::Container {
                 account_data.container_type().unwrap_or(0)
-            } else { 0 };
+            } else {
+                0
+            };
 
             AccountDataReference {
                 key,
@@ -125,8 +129,8 @@ mod client {
                 container_type,
                 data_type,
                 data_len,
-                lock : AtomicBool::new(false),
-                account_data : Arc::new(Mutex::new(account_data))
+                lock: AtomicBool::new(false),
+                account_data: Arc::new(Mutex::new(account_data)),
             }
         }
 
@@ -137,11 +141,11 @@ mod client {
         pub fn container_type(&self) -> u32 {
             self.container_type
         }
-        
+
         pub fn lamports(&self) -> Result<u64> {
             Ok(self.account_data.lock()?.lamports)
         }
-        
+
         pub fn set_lamports(&self, lamports: u64) -> Result<()> {
             self.account_data.lock().unwrap().lamports = lamports;
             Ok(())
@@ -158,31 +162,41 @@ mod client {
         pub fn replicate(&self) -> Result<Arc<AccountDataReference>> {
             let account_data = self.clone_for_storage()?;
             let replica = AccountDataReference {
-                key : self.key.clone(),
-                timestamp : self.timestamp.clone(),
-                container_type : self.container_type,
-                data_type : self.data_type,
-                data_len : self.data_len,
-                lock : AtomicBool::new(false),
-                account_data : Arc::new(Mutex::new(account_data))
+                key: self.key.clone(),
+                timestamp: self.timestamp.clone(),
+                container_type: self.container_type,
+                data_type: self.data_type,
+                data_len: self.data_len,
+                lock: AtomicBool::new(false),
+                account_data: Arc::new(Mutex::new(account_data)),
             };
             Ok(Arc::new(replica))
         }
 
-        pub fn try_into_container<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
-        where T: kaizen::container::Container<'this,'this>
+        pub fn try_into_container<'this, T>(
+            self: &Arc<Self>,
+        ) -> Result<ContainerReference<'this, T>>
+        where
+            T: kaizen::container::Container<'this, 'this>,
         {
             self.try_into_container_replica::<T>(true)
         }
 
-        pub fn try_into_container_cache<'this,T> (self : &Arc<Self>) -> Result<ContainerReference<'this, T>> 
-        where T: kaizen::container::Container<'this,'this>
+        pub fn try_into_container_cache<'this, T>(
+            self: &Arc<Self>,
+        ) -> Result<ContainerReference<'this, T>>
+        where
+            T: kaizen::container::Container<'this, 'this>,
         {
             self.try_into_container_replica::<T>(false)
         }
 
-        pub fn try_into_container_replica<'this,T> (self : &Arc<Self>, replicate : bool) -> Result<ContainerReference<'this, T>> 
-        where T: kaizen::container::Container<'this,'this>
+        pub fn try_into_container_replica<'this, T>(
+            self: &Arc<Self>,
+            replicate: bool,
+        ) -> Result<ContainerReference<'this, T>>
+        where
+            T: kaizen::container::Container<'this, 'this>,
         {
             let target = if replicate {
                 self.replicate()?
@@ -190,74 +204,108 @@ mod client {
                 self.clone()
             };
 
-            let account_data_ref_account_data_lock = 
-                OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>::new_with_fn(target, |reference| {
-                    Box::new( unsafe { 
+            let account_data_ref_account_data_lock =
+                OwningHandle::<
+                    Arc<AccountDataReference>,
+                    Box<UnsafeCell<MutexGuard<'this, AccountData>>>,
+                >::new_with_fn(target, |reference| {
+                    Box::new(unsafe {
                         let reference = reference.as_ref().unwrap();
                         UnsafeCell::new(reference.account_data.lock().unwrap())
                     })
                 });
 
-            let account_data_guard = 
+            let account_data_guard =
                 OwningHandle::<
-                    OwningHandle::<
+                    OwningHandle<
                         Arc<AccountDataReference>,
-                        Box<UnsafeCell<MutexGuard<'this,AccountData>>>>
-                
-                ,Box<UnsafeCell<&mut AccountData>>>::new_with_fn(account_data_ref_account_data_lock, |cell| {
-                    Box::new( unsafe { 
+                        Box<UnsafeCell<MutexGuard<'this, AccountData>>>,
+                    >,
+                    Box<UnsafeCell<&mut AccountData>>,
+                >::new_with_fn(account_data_ref_account_data_lock, |cell| {
+                    Box::new(unsafe {
                         let cell = cell.as_ref().unwrap();
                         let guard = cell.get().as_mut().unwrap();
                         UnsafeCell::new(&mut *guard)
                     })
                 });
-        
-            let account_info = 
-                OwningHandle::<
-                    OwningHandle::<
-                            OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>
-                    ,Box<UnsafeCell<&mut AccountData>>>
-                ,Box<AccountInfo>>::new_with_fn(account_data_guard, |x| {
-                    Box::new( unsafe { 
-                        let cell = x.as_ref().unwrap();
-                        let account_data = (*cell).get().as_mut().unwrap();
-                        account_data.into_account_info() 
-                    })
-                });
-        
-            let container_result = 
-            OwningHandle::<
-                OwningHandle::<
-                    OwningHandle::<
-                        OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>,
-                        Box<UnsafeCell<&'this mut AccountData>>>,
-                    Box<AccountInfo<'this>>>,
-                Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>
+
+            let account_info = OwningHandle::<
+                OwningHandle<
+                    OwningHandle<
+                        Arc<AccountDataReference>,
+                        Box<UnsafeCell<MutexGuard<'this, AccountData>>>,
+                    >,
+                    Box<UnsafeCell<&mut AccountData>>,
+                >,
+                Box<AccountInfo>,
+            >::new_with_fn(account_data_guard, |x| {
+                Box::new(unsafe {
+                    let cell = x.as_ref().unwrap();
+                    let account_data = (*cell).get().as_mut().unwrap();
+                    account_data.into_account_info()
+                })
+            });
+
+            let container_result = OwningHandle::<
+                OwningHandle<
+                    OwningHandle<
+                        OwningHandle<
+                            Arc<AccountDataReference>,
+                            Box<UnsafeCell<MutexGuard<'this, AccountData>>>,
+                        >,
+                        Box<UnsafeCell<&'this mut AccountData>>,
+                    >,
+                    Box<AccountInfo<'this>>,
+                >,
+                Box<UnsafeCell<Option<Result<<T as Container<'this, 'this>>::T>>>>,
             >::new_with_fn(account_info, |x| {
-                Box::new( unsafe { 
-                    let account_info : &'this AccountInfo<'this> = x.as_ref().unwrap();
+                Box::new(unsafe {
+                    let account_info: &'this AccountInfo<'this> = x.as_ref().unwrap();
                     let t = T::try_load(account_info);
                     UnsafeCell::new(Some(t))
                 })
             });
 
-            if unsafe { container_result.get().as_ref().unwrap().as_ref().unwrap().is_err() } {
-                let err = unsafe { container_result.get().as_mut().unwrap().take().unwrap().err().unwrap() };
+            if unsafe {
+                container_result
+                    .get()
+                    .as_ref()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .is_err()
+            } {
+                let err = unsafe {
+                    container_result
+                        .get()
+                        .as_mut()
+                        .unwrap()
+                        .take()
+                        .unwrap()
+                        .err()
+                        .unwrap()
+                };
                 return Err(err);
             }
 
-            let container = 
-            OwningHandle::<
-                OwningHandle::<
-                    OwningHandle::<
-                        OwningHandle::<
-                            OwningHandle::<Arc<AccountDataReference>,Box<UnsafeCell<MutexGuard<'this, AccountData>>>>,
-                            Box<UnsafeCell<&'this mut AccountData>>>,
-                        Box<AccountInfo<'this>>>,
-                    Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>>,
-                Box<<T as Container<'this,'this>>::T>
+            let container = OwningHandle::<
+                OwningHandle<
+                    OwningHandle<
+                        OwningHandle<
+                            OwningHandle<
+                                Arc<AccountDataReference>,
+                                Box<UnsafeCell<MutexGuard<'this, AccountData>>>,
+                            >,
+                            Box<UnsafeCell<&'this mut AccountData>>,
+                        >,
+                        Box<AccountInfo<'this>>,
+                    >,
+                    Box<UnsafeCell<Option<Result<<T as Container<'this, 'this>>::T>>>>,
+                >,
+                Box<<T as Container<'this, 'this>>::T>,
             >::new_with_fn(container_result, |x| {
-                Box::new( unsafe {
+                Box::new(unsafe {
                     let cell = x.as_ref().unwrap();
                     let option = cell.get().as_mut().unwrap();
                     let result = option.take().unwrap();
@@ -266,30 +314,29 @@ mod client {
             });
 
             Ok(ContainerReference::new(container))
-
         }
-        
-        // pub fn try_load_container_clone<'this,T> (self : &Arc<Self>) -> Result<AccountDataContainer<'this,T>> 
+
+        // pub fn try_load_container_clone<'this,T> (self : &Arc<Self>) -> Result<AccountDataContainer<'this,T>>
         // where T: kaizen::container::Container<'this,'this>
         // {
         //     let account_data = self.clone_for_storage()?;
 
         //     let cell = UnsafeCell::new(account_data);
-        //     let account_info = 
+        //     let account_info =
         //         OwningHandle::<Box<UnsafeCell<AccountData>>,Box<AccountInfo>>::new_with_fn(Box::new(cell), |x| {
-        //             Box::new( unsafe { 
+        //             Box::new( unsafe {
         //                 let r = x.as_ref().unwrap();
         //                 let m = r.get().as_mut().unwrap();
-        //                 m.into_account_info() 
+        //                 m.into_account_info()
         //             })
         //         });
-        
-        //     let container_result = 
+
+        //     let container_result =
         //     OwningHandle::<
         //         OwningHandle::<Box<UnsafeCell<AccountData>>,Box<AccountInfo<'this>>>,
         //         Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>
         //     >::new_with_fn(account_info, |x| {
-        //         Box::new( unsafe { 
+        //         Box::new( unsafe {
         //             let account_info : &'this AccountInfo<'this> = x.as_ref().unwrap();
         //             let t = T::try_load(account_info);
         //             UnsafeCell::new(Some(t))
@@ -301,7 +348,7 @@ mod client {
         //         return Err(err);
         //     }
 
-        //     let container = 
+        //     let container =
         //     OwningHandle::<
         //         OwningHandle::<
         //             OwningHandle::<
@@ -317,10 +364,9 @@ mod client {
         //             result.ok().unwrap()
         //         })
         //     });
-        
+
         //     Ok(container)
         // }
-        
     }
 
     impl From<&AccountDataStore> for AccountDataReference {
@@ -331,7 +377,7 @@ mod client {
 
     #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub struct AccountDataStore {
-        pub data_type : AccountType,
+        pub data_type: AccountType,
         pub key: Pubkey,
         pub owner: Pubkey,
         pub lamports: u64,
@@ -340,45 +386,46 @@ mod client {
         pub executable: bool,
     }
 
-    impl ColoLogTrace for AccountDataStore{
-        fn log_data(&self)->Vec<u8>{
-            if let Ok(data) = self.try_to_vec(){
+    impl ColoLogTrace for AccountDataStore {
+        fn log_data(&self) -> Vec<u8> {
+            if let Ok(data) = self.try_to_vec() {
                 return data;
             }
 
             Vec::new()
         }
 
-        fn log_index_length_color<'a>(&self)->Option<Vec<(color_log::Index, color_log::Length, color_log::Color)>>{
-            let header_size = 77;//1 + 32 + 32 + 8 + 4;
-            let container_type_size = 4;//4 bytes
+        fn log_index_length_color<'a>(
+            &self,
+        ) -> Option<Vec<(color_log::Index, color_log::Length, color_log::Color)>> {
+            let header_size = 77; //1 + 32 + 32 + 8 + 4;
+            let container_type_size = 4; //4 bytes
             let store_meta_size = std::mem::size_of::<SegmentStoreMeta>();
 
-            
             let mut index_length_color = vec![
-                (0, 1, "8"),//container type : 1
-                (1, 32, "2"),//key : 32
-                (33, 32, "3"),//owner pubkey : 32
-                (65, 8, "4"),//lamports : 8
-                (73, 4, "6"),//data length : 4
-                (77, container_type_size, "8"),//container type : 4
-                (81, 4, "168"),//store magic : 4
-                (85, 4, "169"),//store version : 4
-                (87, 2, "161"),//store payload_len : 2
-                (89, 2, "cyan"),//store index_unit_size : 2
-                (93, 4, "blue"),//store segments count : 4
+                (0, 1, "8"),                    //container type : 1
+                (1, 32, "2"),                   //key : 32
+                (33, 32, "3"),                  //owner pubkey : 32
+                (65, 8, "4"),                   //lamports : 8
+                (73, 4, "6"),                   //data length : 4
+                (77, container_type_size, "8"), //container type : 4
+                (81, 4, "168"),                 //store magic : 4
+                (85, 4, "169"),                 //store version : 4
+                (87, 2, "161"),                 //store payload_len : 2
+                (89, 2, "cyan"),                //store index_unit_size : 2
+                (93, 4, "blue"),                //store segments count : 4
             ];
 
-            let data_offset = 4;//77;//1+32+32+8+4;
+            let data_offset = 4; //77;//1+32+32+8+4;
             let mut account_data: AccountData = self.into();
             let account_info = account_data.into_account_info();
 
-            if let Ok(store) = SegmentStore::try_load(&account_info, data_offset){
+            if let Ok(store) = SegmentStore::try_load(&account_info, data_offset) {
                 let len = store.len();
                 //let meta = store.get_meta();
                 let mut index_offset = header_size + container_type_size + store_meta_size;
                 let mut odd = false;
-                for seg_index in 0..len{
+                for seg_index in 0..len {
                     let info = store.get_index_info_at(seg_index);
                     let offset = info.offset;
                     let size = info.size;
@@ -387,25 +434,22 @@ mod client {
                     index_length_color.push((index_offset + 2, 2, "0xdc"));
                     index_offset += 4;
 
-                    if seg_index > 0{
+                    if seg_index > 0 {
                         if odd {
                             odd = false;
                             index_length_color.push((header_size + offset, size, "red"));
-                        }else{
+                        } else {
                             odd = true;
                             index_length_color.push((header_size + offset, size, "green"));
                         }
                     }
                 }
-
-            }else{
+            } else {
                 //should we return None to make complete hex view as colorless?
             }
 
-
-            return Some(index_length_color)
+            return Some(index_length_color);
         }
-
     }
 
     impl From<&AccountData> for AccountDataStore {
@@ -424,30 +468,26 @@ mod client {
 
     impl From<&AccountDataStore> for AccountData {
         fn from(account_data_store: &AccountDataStore) -> Self {
-
             let data_len = account_data_store.data.len();
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
-            AccountData::init_data_len(&mut data,data_len);
+            AccountData::init_data_len(&mut data, data_len);
             data[ACCOUNT_DATA_OFFSET..].copy_from_slice(&account_data_store.data);
             AccountData {
                 data_type: account_data_store.data_type,
-                key : account_data_store.key,
-                owner : account_data_store.owner,
+                key: account_data_store.key,
+                owner: account_data_store.owner,
                 data,
-                lamports:  account_data_store.lamports,
+                lamports: account_data_store.lamports,
                 rent_epoch: account_data_store.rent_epoch,
                 executable: account_data_store.executable,
                 is_signer: false,
                 is_writable: false,
             }
-
-
         }
     }
 
-    
     #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub struct AccountDescriptor {
         pub key: Pubkey,
@@ -463,16 +503,16 @@ mod client {
 
     // impl Into<AccountDescriptor> for AccountData {
     //     fn into(self) -> AccountDescriptor {
-        impl Into<AccountDescriptor> for AccountData {
-            fn into(self) -> AccountDescriptor {
-                (&self).into()
-            }
+    impl Into<AccountDescriptor> for AccountData {
+        fn into(self) -> AccountDescriptor {
+            (&self).into()
         }
+    }
 
-        impl Into<AccountDescriptor> for &AccountData {
+    impl Into<AccountDescriptor> for &AccountData {
         fn into(self) -> AccountDescriptor {
             AccountDescriptor {
-                key : self.key,
+                key: self.key,
                 owner: self.owner,
                 lamports: self.lamports,
                 data_len: self.data_len() as u64,
@@ -480,58 +520,74 @@ mod client {
                 executable: self.executable,
                 is_signer: self.is_signer,
                 is_writable: self.is_writable,
-                container_type : self.container_type(),
+                container_type: self.container_type(),
             }
         }
     }
 
     impl AccountDescriptor {
-        
         pub fn info(&self) -> String {
             let rent = Rent::default();
-            let sol = format!("{:>20.10}",crate::utils::lamports_to_sol(self.lamports));
+            let sol = format!("{:>20.10}", crate::utils::lamports_to_sol(self.lamports));
             let minimum_balance = rent.minimum_balance(self.data_len as usize);
             let (sol, status) = if self.lamports == minimum_balance {
                 (style(sol).green(), style("").green())
             } else if self.lamports < minimum_balance {
-                (
-                    style(sol).red(),
-                    style("~").red(),
-                )
+                (style(sol).red(), style("~").red())
             } else {
                 (style(sol).yellow(), style("").yellow())
             };
 
             let (container_type, container_type_name) = match self.container_type {
-                Some(container_type) => {
-                    match kaizen::container::registry::lookup(container_type) {
-                        Ok(Some(declaration)) => {
-                            let container_type = format!("0x{:08x}", container_type);
-                            (container_type, declaration.name)
-                        }
-                        _ => ("n/a".to_string(), "n/a"),
+                Some(container_type) => match kaizen::container::registry::lookup(container_type) {
+                    Ok(Some(declaration)) => {
+                        let container_type = format!("0x{:08x}", container_type);
+                        (container_type, declaration.name)
                     }
-                }
-                None => {
-                    match self.key.to_string().as_str() {
-                        "11111111111111111111111111111111" => ("-".to_string(), "□ System Program"),
-                        "Config1111111111111111111111111111111111111" => ("-".to_string(), "□ Config"),
-                        "Stake11111111111111111111111111111111111111" => ("-".to_string(), "□ Stake"),
-                        "Vote111111111111111111111111111111111111111" => ("-".to_string(), "□ Vote"),
-                        "BPFLoaderUpgradeab1e11111111111111111111111" => ("-".to_string(), "□ BPFLoaderUpgradeable"),
-                        "Ed25519SigVerify111111111111111111111111111" => ("-".to_string(), "□ Ed25519SigVerify"),
-                        "KeccakSecp256k11111111111111111111111111111" => ("-".to_string(), "□ KeccakSecp256k"),
-                        "SysvarC1ock11111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Clock"),
-                        "SysvarEpochSchedu1e111111111111111111111111" => ("-".to_string(), "□ Sysvar Epoch Schedule"),
-                        "SysvarFees111111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Fees"),
-                        "Sysvar1nstructions1111111111111111111111111" => ("-".to_string(), "□ Sysvar Instructions"),
-                        "SysvarRecentB1ockHashes11111111111111111111" => ("-".to_string(), "□ Sysvar Recent Block Hashes"),
-                        "SysvarRent111111111111111111111111111111111" => ("-".to_string(), "□ Sysvar Rent"),
-                        "SysvarS1otHashes111111111111111111111111111" => ("-".to_string(), "□ Sysvar Slot Hashes"),
-                        "SysvarS1otHistory11111111111111111111111111" => ("-".to_string(), "□ Sysvar Slot History"),
-                        "SysvarStakeHistory1111111111111111111111111" => ("-".to_string(), "□ Sysvar Stake History"),
-                        _ => ("-".to_string(), "-")
+                    _ => ("n/a".to_string(), "n/a"),
+                },
+                None => match self.key.to_string().as_str() {
+                    "11111111111111111111111111111111" => ("-".to_string(), "□ System Program"),
+                    "Config1111111111111111111111111111111111111" => ("-".to_string(), "□ Config"),
+                    "Stake11111111111111111111111111111111111111" => ("-".to_string(), "□ Stake"),
+                    "Vote111111111111111111111111111111111111111" => ("-".to_string(), "□ Vote"),
+                    "BPFLoaderUpgradeab1e11111111111111111111111" => {
+                        ("-".to_string(), "□ BPFLoaderUpgradeable")
                     }
+                    "Ed25519SigVerify111111111111111111111111111" => {
+                        ("-".to_string(), "□ Ed25519SigVerify")
+                    }
+                    "KeccakSecp256k11111111111111111111111111111" => {
+                        ("-".to_string(), "□ KeccakSecp256k")
+                    }
+                    "SysvarC1ock11111111111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Clock")
+                    }
+                    "SysvarEpochSchedu1e111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Epoch Schedule")
+                    }
+                    "SysvarFees111111111111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Fees")
+                    }
+                    "Sysvar1nstructions1111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Instructions")
+                    }
+                    "SysvarRecentB1ockHashes11111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Recent Block Hashes")
+                    }
+                    "SysvarRent111111111111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Rent")
+                    }
+                    "SysvarS1otHashes111111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Slot Hashes")
+                    }
+                    "SysvarS1otHistory11111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Slot History")
+                    }
+                    "SysvarStakeHistory1111111111111111111111111" => {
+                        ("-".to_string(), "□ Sysvar Stake History")
+                    }
+                    _ => ("-".to_string(), "-"),
                 },
             };
 
@@ -558,14 +614,12 @@ mod client {
 
     #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub struct AccountDescriptorList {
-        pub list : Vec<AccountDescriptor>
+        pub list: Vec<AccountDescriptor>,
     }
 
     impl AccountDescriptorList {
-        pub fn new(list : Vec<AccountDescriptor>) -> AccountDescriptorList {
-            AccountDescriptorList {
-                list
-            }
+        pub fn new(list: Vec<AccountDescriptor>) -> AccountDescriptorList {
+            AccountDescriptorList { list }
         }
 
         pub fn to_log(&self) {
@@ -601,7 +655,6 @@ mod client {
     }
 
     impl AccountData {
-
         pub fn into_account_info<'info>(&'info mut self) -> AccountInfo<'info> {
             AccountInfo::new(
                 &self.key,
@@ -611,20 +664,19 @@ mod client {
                 &mut self.data[ACCOUNT_DATA_OFFSET..],
                 &self.owner,
                 self.executable,
-                self.rent_epoch
+                self.rent_epoch,
             )
         }
 
         pub fn container_type(&self) -> Option<u32> {
-            if self.data_len() < 4 { //|| self.space < 4 {
+            if self.data_len() < 4 {
+                //|| self.space < 4 {
                 None
             } else {
                 let header = unsafe {
                     std::mem::transmute::<_, &mut ContainerHeader>(
                         // &self.data[SIMULATOR_ACCOUNT_DATA_OFFSET]//.as_ptr()
-                        self.data
-                            .as_ptr()
-                            .offset(ACCOUNT_DATA_OFFSET as isize),
+                        self.data.as_ptr().offset(ACCOUNT_DATA_OFFSET as isize),
                     )
                 };
                 Some(header.container_type)
@@ -650,9 +702,9 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
-            AccountData::init_data_len(&mut data,data_len);
+            AccountData::init_data_len(&mut data, data_len);
             AccountData {
-                data_type : AccountType::Container,
+                data_type: AccountType::Container,
                 key,
                 owner,
                 data,
@@ -665,10 +717,10 @@ mod client {
         }
 
         pub fn new_static_with_args(
-            key: Pubkey, 
+            key: Pubkey,
             owner: Pubkey,
-            lamports : u64,
-            src_data : &[u8],
+            lamports: u64,
+            src_data: &[u8],
             rent_epoch: u64,
             // data_len: usize
         ) -> AccountData {
@@ -676,11 +728,11 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
-            AccountData::init_data_len(&mut data,data_len);
+            AccountData::init_data_len(&mut data, data_len);
             data[ACCOUNT_DATA_OFFSET..].copy_from_slice(&src_data);
 
             AccountData {
-                data_type : AccountType::Container,
+                data_type: AccountType::Container,
                 key,
                 owner,
                 data,
@@ -693,7 +745,6 @@ mod client {
         }
 
         pub fn clone_for_program(&self) -> AccountData {
-
             // log_trace!("clong_for_program: **********************");
             // trace_hex(&self.data);
             // log_trace!("clong_for_program: **********************");
@@ -705,11 +756,10 @@ mod client {
 
             AccountData::init_data_len(&mut data, data_len);
             // *size_ptr = space as u64;
-            data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len].copy_from_slice(
-                &self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len],
-            );
+            data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len]
+                .copy_from_slice(&self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len]);
             AccountData {
-                data_type : AccountType::Container,
+                data_type: AccountType::Container,
                 key: self.key,
                 owner: self.owner,
                 data,
@@ -729,11 +779,10 @@ mod client {
 
             AccountData::init_data_len(&mut data, data_len);
             // *size_ptr = space as u64;
-            data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len].copy_from_slice(
-                &self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len],
-            );
+            data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len]
+                .copy_from_slice(&self.data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len]);
             AccountData {
-                data_type : AccountType::Container,
+                data_type: AccountType::Container,
                 key: self.key,
                 owner: self.owner,
                 data,
@@ -748,10 +797,14 @@ mod client {
         // pub fn new_template_for_program(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {
         pub fn new_template_for_program(key: Pubkey, owner: Pubkey) -> AccountData {
             // Self::new_allocated_for_program(key,owner,data_len)
-            Self::new_allocated_for_program(key,owner,ACCOUNT_DATA_TEMPLATE_SIZE)
+            Self::new_allocated_for_program(key, owner, ACCOUNT_DATA_TEMPLATE_SIZE)
         }
 
-        pub fn new_allocated_for_program(key: Pubkey, owner: Pubkey, data_len: usize) -> AccountData {
+        pub fn new_allocated_for_program(
+            key: Pubkey,
+            owner: Pubkey,
+            data_len: usize,
+        ) -> AccountData {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
@@ -759,7 +812,7 @@ mod client {
             AccountData::init_data_len(&mut data, data_len);
             // *size_ptr = space as u64;
             AccountData {
-                data_type : AccountType::Container,
+                data_type: AccountType::Container,
                 key,
                 owner,
                 data,
@@ -771,9 +824,7 @@ mod client {
             }
         }
 
-        pub fn clone_from_account_info<'info>(
-            account_info: &AccountInfo<'info>,
-        ) -> AccountData {
+        pub fn clone_from_account_info<'info>(account_info: &AccountInfo<'info>) -> AccountData {
             let lamports: u64 = **account_info.lamports.borrow();
             let src = account_info.data.borrow();
             let space = src.len();
@@ -789,7 +840,7 @@ mod client {
             *size_ptr = space as u64;
 
             AccountData {
-                data_type : AccountType::Container,
+                data_type: AccountType::Container,
                 key: account_info.key.clone(),
                 owner: account_info.owner.clone(),
                 rent_epoch: account_info.rent_epoch,
@@ -802,18 +853,18 @@ mod client {
         }
 
         pub fn get_available_data_len(&self) -> usize {
-        // pub fn data_len(&self) -> usize {
+            // pub fn data_len(&self) -> usize {
             self.data.len() - ACCOUNT_DATA_OFFSET
         }
 
         pub fn data(&self) -> &[u8] {
             &self.data[ACCOUNT_DATA_OFFSET..]
         }
-        
+
         pub fn data_mut(&mut self) -> &mut [u8] {
             &mut self.data[ACCOUNT_DATA_OFFSET..]
         }
-        
+
         cfg_if::cfg_if! {
             if #[cfg(target_pointer_width = "64")] {
 
@@ -838,7 +889,7 @@ mod client {
                     let data_len_ptr: &mut u32 = unsafe { std::mem::transmute(&mut data[0]) };
                     *data_len_ptr = data_len as u32;
                 }
-                
+
             }
         }
     }
@@ -881,4 +932,3 @@ mod client {
 
 #[cfg(not(target_os = "solana"))]
 pub use client::*;
-

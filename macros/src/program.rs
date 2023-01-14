@@ -1,26 +1,24 @@
-
-use std::convert::Into;
-use proc_macro::{TokenStream};
-use proc_macro2::{Span, Ident};
+use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span};
 use quote::quote;
+use std::convert::Into;
 use syn::{
-    Result, parse_macro_input, ExprArray, PathArguments, ExprLit,
-    punctuated::Punctuated, Expr, Token, 
-    parse::{Parse, ParseStream}, PathSegment, Error, Lit,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
+    Error, Expr, ExprArray, ExprLit, Lit, PathArguments, PathSegment, Result, Token,
 };
-
 
 #[derive(Debug)]
 struct Program {
-    program_id_string : String,
-    program_name : ExprLit,
-    program_id : ExprLit,
-    primitive_handlers : ExprArray
+    program_id_string: String,
+    program_name: ExprLit,
+    program_id: ExprLit,
+    primitive_handlers: ExprArray,
 }
 
 impl Parse for Program {
     fn parse(input: ParseStream) -> Result<Self> {
-
         let parsed = Punctuated::<Expr, Token![,]>::parse_terminated(input).unwrap();
         if parsed.len() != 3 {
             return Err(Error::new_spanned(
@@ -36,7 +34,7 @@ impl Parse for Program {
             _ => {
                 return Err(Error::new_spanned(
                     program_name_expr,
-                    format!("the first argument should be the program_name)")
+                    format!("the first argument should be the program_name)"),
                 ));
             }
         };
@@ -47,23 +45,20 @@ impl Parse for Program {
             _ => {
                 return Err(Error::new_spanned(
                     program_id_expr,
-                    format!("the second argument should be the program_id)")
+                    format!("the second argument should be the program_id)"),
                 ));
             }
         };
 
         let program_id_string = match &program_id.lit {
-            Lit::Str(lit) => {
-                lit.value().to_string()
-            },
+            Lit::Str(lit) => lit.value().to_string(),
             _ => {
                 return Err(Error::new_spanned(
                     program_id_expr,
-                    format!("handlers should contain path to struct")
+                    format!("handlers should contain path to struct"),
                 ));
             }
         };
-
 
         let primitive_handlers_ = iter.next().clone().unwrap().clone();
         let mut primitive_handlers = match primitive_handlers_ {
@@ -71,7 +66,7 @@ impl Parse for Program {
             _ => {
                 return Err(Error::new_spanned(
                     primitive_handlers_,
-                    format!("the third argument must be an array of static functions")
+                    format!("the third argument must be an array of static functions"),
                 ));
             }
         };
@@ -80,19 +75,21 @@ impl Parse for Program {
             match ph {
                 Expr::Path(path) => {
                     let ident = Ident::new("program", Span::call_site());
-                    let path_segment = PathSegment { ident, arguments : PathArguments::None };
+                    let path_segment = PathSegment {
+                        ident,
+                        arguments: PathArguments::None,
+                    };
                     path.path.segments.push_punct(Token![::](Span::call_site()));
                     path.path.segments.push_value(path_segment);
-                },
+                }
                 _ => {
                     return Err(Error::new_spanned(
                         ph,
-                        format!("handlers should contain path to struct")
+                        format!("handlers should contain path to struct"),
                     ));
                 }
             }
         }
-
 
         let handlers = Program {
             program_id_string,
@@ -104,10 +101,8 @@ impl Parse for Program {
     }
 }
 
-
 // #[proc_macro]
 pub fn declare_program(input: TokenStream) -> TokenStream {
-
     let program = parse_macro_input!(input as Program);
     let primitive_handlers = program.primitive_handlers;
     let len = primitive_handlers.elems.len();
@@ -115,11 +110,11 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
     let program_name = program.program_name;
     let program_id_string = program.program_id_string;
     let entrypoint_declaration_register_ = Ident::new(
-        &format!("entrypoint_declaration_register_{}",program_id_string), 
-        Span::call_site()
+        &format!("entrypoint_declaration_register_{}", program_id_string),
+        Span::call_site(),
     );
 
-    let output = quote!{
+    let output = quote! {
         pub static PROGRAM_HANDLERS : [kaizen::context::HandlerFn;#len] = #primitive_handlers;
 
         solana_program::declare_id!(#program_id);

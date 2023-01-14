@@ -1,9 +1,8 @@
-
+use borsh::*;
 use cfg_if::cfg_if;
-use solana_program::clock::UnixTimestamp as SolanaUnixTimestamp;
 use kaizen::result::Result;
 use serde::*;
-use borsh::*;
+use solana_program::clock::UnixTimestamp as SolanaUnixTimestamp;
 
 cfg_if! {
     if #[cfg(target_os = "solana")] {
@@ -18,7 +17,9 @@ cfg_if! {
 
 /// Instant-like struct compatible with Native, Wasm32, BPF platforms.
 /// This structure keeps internal time in seconds and supports Borsh serialization.
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(
+    BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy,
+)]
 #[repr(transparent)]
 pub struct Instant(pub u64);
 
@@ -26,7 +27,6 @@ impl Instant {
     // pub const ZERO: Instant = Instant(0);
 
     pub fn now() -> Result<Instant> {
-
         cfg_if! {
             if #[cfg(target_os = "solana")] {
                 let unix_timestamp = Clock::get()?.unix_timestamp;
@@ -40,7 +40,7 @@ impl Instant {
         Ok(Instant(unix_timestamp as u64))
     }
 
-    pub fn elapsed_since(&self, timestamp : &Instant) -> Duration {
+    pub fn elapsed_since(&self, timestamp: &Instant) -> Duration {
         Duration(timestamp.0 - self.0)
     }
 

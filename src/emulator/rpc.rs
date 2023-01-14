@@ -1,11 +1,13 @@
-use serde::{Deserialize, Serialize};
-use borsh::{BorshSerialize,BorshDeserialize};
-use solana_program::pubkey::Pubkey;
-use solana_program::instruction;
-use workflow_core::u32_try_from;
 use crate::accounts::AccountDataStore;
+use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{Deserialize, Serialize};
+use solana_program::instruction;
+use solana_program::pubkey::Pubkey;
+use workflow_core::u32_try_from;
 
-#[derive(Debug, Default, PartialEq, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, PartialEq, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+)]
 pub struct AccountMeta {
     pub pubkey: Pubkey,
     pub is_signer: bool,
@@ -40,47 +42,49 @@ pub struct ExecuteReq {
     pub authority: Pubkey,
 }
 
-
-impl From<(&Pubkey,instruction::Instruction)> for ExecuteReq {
-    fn from((authority,instruction) : (&Pubkey,instruction::Instruction)) -> Self {
-        
+impl From<(&Pubkey, instruction::Instruction)> for ExecuteReq {
+    fn from((authority, instruction): (&Pubkey, instruction::Instruction)) -> Self {
         Self {
             program_id: instruction.program_id.clone(),
-            accounts: instruction.accounts.iter().map(|account| account.into()).collect(),
+            accounts: instruction
+                .accounts
+                .iter()
+                .map(|account| account.into())
+                .collect(),
             instruction_data: instruction.data.clone(),
             authority: authority.clone(),
         }
     }
 }
 
-impl Into<(Pubkey,instruction::Instruction)> for ExecuteReq {
-    fn into(self) -> (Pubkey,instruction::Instruction) {
+impl Into<(Pubkey, instruction::Instruction)> for ExecuteReq {
+    fn into(self) -> (Pubkey, instruction::Instruction) {
         (
             self.authority,
             instruction::Instruction {
-                program_id : self.program_id.clone(),
-                accounts : self.accounts.iter().map(|account| account.into()).collect(),
-                data : self.instruction_data.clone(),
-            }
+                program_id: self.program_id.clone(),
+                accounts: self.accounts.iter().map(|account| account.into()).collect(),
+                data: self.instruction_data.clone(),
+            },
         )
     }
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct LookupReq {
-    pub pubkey : Pubkey,
+    pub pubkey: Pubkey,
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct LookupResp {
-    pub account_data_store : Option<AccountDataStore>
+    pub account_data_store: Option<AccountDataStore>,
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct FundReq {
-    pub key : Pubkey,
-    pub owner : Pubkey,
-    pub lamports : u64,
+    pub key: Pubkey,
+    pub owner: Pubkey,
+    pub lamports: u64,
 }
 
 u32_try_from! {
@@ -100,4 +104,3 @@ impl Into<u32> for EmulatorOps {
         self as u32
     }
 }
-

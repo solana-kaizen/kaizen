@@ -1,22 +1,21 @@
-use kaizen::prelude::*;
-use kaizen::error::ErrorCode;
-use kaizen::result::Result;
 use kaizen::container::*;
 use kaizen::context::*;
+use kaizen::error::ErrorCode;
+use kaizen::prelude::*;
+use kaizen::result::Result;
 
 #[derive(Meta)]
 pub struct ProxyMeta {
-    container_type : u32,
-    reference : Pubkey,
+    container_type: u32,
+    reference: Pubkey,
 }
 
-pub struct Proxy<'info,'refs> {
-    account : &'refs AccountInfo<'info>,
-    meta : &'info mut ProxyMeta,
+pub struct Proxy<'info, 'refs> {
+    account: &'refs AccountInfo<'info>,
+    meta: &'info mut ProxyMeta,
 }
 
-impl<'info,'refs> Proxy<'info,'refs> {
-
+impl<'info, 'refs> Proxy<'info, 'refs> {
     pub fn account(&self) -> &'refs AccountInfo<'info> {
         self.account
     }
@@ -29,61 +28,44 @@ impl<'info,'refs> Proxy<'info,'refs> {
         std::mem::size_of::<ProxyMeta>()
     }
 
-    pub fn try_create(
-        account: &'refs AccountInfo<'info>,
-        reference: &Pubkey,
-    ) -> Result<Self> {
+    pub fn try_create(account: &'refs AccountInfo<'info>, reference: &Pubkey) -> Result<Self> {
         let data = account.data.borrow_mut();
-        let meta = unsafe { std::mem::transmute::<_,&mut ProxyMeta>(data.as_ptr()) };
+        let meta = unsafe { std::mem::transmute::<_, &mut ProxyMeta>(data.as_ptr()) };
         meta.set_container_type(Containers::Proxy as u32);
         meta.set_reference(*reference);
 
-        let proxy = Proxy {
-            account,
-            meta
-        };
+        let proxy = Proxy { account, meta };
 
         Ok(proxy)
     }
 
-    pub fn try_load(
-        account: &'refs AccountInfo<'info>,
-    ) -> Result<Self> {
+    pub fn try_load(account: &'refs AccountInfo<'info>) -> Result<Self> {
         let data = account.data.borrow_mut();
-        let meta = unsafe { std::mem::transmute::<_,&mut ProxyMeta>(data.as_ptr()) };
+        let meta = unsafe { std::mem::transmute::<_, &mut ProxyMeta>(data.as_ptr()) };
 
-        if meta.get_container_type()!= Containers::Proxy as u32 {
+        if meta.get_container_type() != Containers::Proxy as u32 {
             return Err(error_code!(ErrorCode::InvalidProxyContainerType));
         }
-        
-        let proxy = Proxy {
-            account,
-            meta
-        };
+
+        let proxy = Proxy { account, meta };
 
         Ok(proxy)
     }
 
-    // pub fn try_load_reference<T>(&self,ctx: &ContextReference<'info,'refs,'_,'_>) 
+    // pub fn try_load_reference<T>(&self,ctx: &ContextReference<'info,'refs,'_,'_>)
     // -> Result<<T as Container<'info,'refs>>::T>
     // where T : Container<'info,'refs>
     // {
 
-
-
     // }
-    
 }
 
-
-
-
-impl<'info,'refs> Container<'info,'refs> for Proxy<'info,'refs> {
+impl<'info, 'refs> Container<'info, 'refs> for Proxy<'info, 'refs> {
     type T = Self;
     // type T = #struct_name #struct_params;
 
-   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//    pub 
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //    pub
 
     fn container_type() -> u32 {
         Containers::Proxy as u32
@@ -102,27 +84,24 @@ impl<'info,'refs> Container<'info,'refs> for Proxy<'info,'refs> {
     }
 
     fn try_allocate(
-        _ctx: &ContextReference<'info,'refs,'_,'_>,
-        _allocation_args : &AccountAllocationArgs<'info,'refs,'_>,
-        _reserve_data_len : usize
-    ) -> kaizen::result::Result<Proxy<'info,'refs>> {
+        _ctx: &ContextReference<'info, 'refs, '_, '_>,
+        _allocation_args: &AccountAllocationArgs<'info, 'refs, '_>,
+        _reserve_data_len: usize,
+    ) -> kaizen::result::Result<Proxy<'info, 'refs>> {
         // #struct_name :: #struct_params :: try_allocate(ctx, allocation_args, reserve_data_len)
 
         // let account_info = ctx.try_create_pda(Proxy::data_len(),allocation_args)?;
 
-
-
         unimplemented!()
     }
 
-    fn try_create(_account : &'refs AccountInfo<'info>) -> Result<Proxy<'info,'refs>> {
+    fn try_create(_account: &'refs AccountInfo<'info>) -> Result<Proxy<'info, 'refs>> {
         unimplemented!()
         //#struct_name :: #struct_params :: try_create(account)
     }
-    
-    fn try_load(account : &'refs AccountInfo<'info>) -> Result<Proxy<'info,'refs>> {
+
+    fn try_load(account: &'refs AccountInfo<'info>) -> Result<Proxy<'info, 'refs>> {
         Self::try_load(account)
     }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 }

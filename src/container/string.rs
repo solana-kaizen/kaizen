@@ -1,31 +1,28 @@
-use std::rc::Rc;
-use crate::result::Result;
 use crate::container::segment::Segment;
+use crate::result::Result;
+use std::rc::Rc;
 use std::string::*;
 // use kaizen::prelude::*;
 
-pub struct Utf8String<'info,'refs> {
-    pub segment : Rc<Segment<'info,'refs>>,
+pub struct Utf8String<'info, 'refs> {
+    pub segment: Rc<Segment<'info, 'refs>>,
 }
 
-impl<'info,'refs> Utf8String<'info,'refs> {
-
-    pub fn data_len_min() -> usize { 0 }
+impl<'info, 'refs> Utf8String<'info, 'refs> {
+    pub fn data_len_min() -> usize {
+        0
+    }
 
     pub fn try_create_from_segment(
-        segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<Utf8String<'info,'refs>> {
-        Ok(Utf8String {
-            segment,
-        })
+        segment: Rc<Segment<'info, 'refs>>,
+    ) -> Result<Utf8String<'info, 'refs>> {
+        Ok(Utf8String { segment })
     }
 
     pub fn try_load_from_segment(
-        segment : Rc<Segment<'info, 'refs>>
-    ) -> Result<Utf8String<'info,'refs>> {
-        Ok(Utf8String {
-            segment,
-        })
+        segment: Rc<Segment<'info, 'refs>>,
+    ) -> Result<Utf8String<'info, 'refs>> {
+        Ok(Utf8String { segment })
     }
 
     #[inline]
@@ -41,14 +38,11 @@ impl<'info,'refs> Utf8String<'info,'refs> {
         self.segment.as_slice_mut().copy_from_slice(&bytes);
         Ok(())
     }
-
 }
 
-impl<'info,'refs> ToString for Utf8String<'info,'refs> {
+impl<'info, 'refs> ToString for Utf8String<'info, 'refs> {
     fn to_string(&self) -> String {
         let bytes = self.segment.as_slice::<u8>();
-        unsafe {
-            String::from_utf8_unchecked(bytes.to_vec()).to_string()
-        }
+        unsafe { String::from_utf8_unchecked(bytes.to_vec()).to_string() }
     }
 }

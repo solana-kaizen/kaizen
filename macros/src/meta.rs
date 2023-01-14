@@ -1,15 +1,9 @@
-use std::convert::Into;
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parse_macro_input,
-    Expr, 
-    Error,
-    DeriveInput,
-};
+use std::convert::Into;
+use syn::{parse_macro_input, DeriveInput, Error, Expr};
 
 pub fn derive_meta(input: TokenStream) -> TokenStream {
-
     let ast = parse_macro_input!(input as DeriveInput);
     let struct_name = &ast.ident;
 
@@ -22,28 +16,20 @@ pub fn derive_meta(input: TokenStream) -> TokenStream {
     } else {
         return Error::new_spanned(
             struct_name,
-            format!("#[derive(Module)] supports only struct declarations")
+            format!("#[derive(Module)] supports only struct declarations"),
         )
         .to_compile_error()
         .into();
     };
 
-    let struct_name_string = quote!{ #struct_name}.to_string();//.to_lowercase();
-    let path = syn::parse_str::<Expr>(&struct_name_string).expect("Unable to parse strut name as expression");
-    
-    meta_impl(
-        path,
-        fields,
-    ).into()
+    let struct_name_string = quote! { #struct_name}.to_string(); //.to_lowercase();
+    let path = syn::parse_str::<Expr>(&struct_name_string)
+        .expect("Unable to parse strut name as expression");
 
+    meta_impl(path, fields).into()
 }
 
-fn meta_impl(
-    meta_struct : Expr,
-    fields : &syn::FieldsNamed,
-) -> TokenStream {
-
-
+fn meta_impl(meta_struct: Expr, fields: &syn::FieldsNamed) -> TokenStream {
     let mut field_names = Vec::new();
     let mut get_field_names = Vec::new();
     let mut set_field_names = Vec::new();
@@ -61,7 +47,7 @@ fn meta_impl(
         field_types.push(field.ty.clone());
     }
 
-    (quote!{
+    (quote! {
 
         impl #meta_struct {
 
@@ -71,7 +57,7 @@ fn meta_impl(
                     let unaligned = std::ptr::addr_of!(self.#field_names);
                     unsafe { std::ptr::read_unaligned(unaligned) }
                 }
-                
+
                 #[inline(always)]
                 pub fn #set_field_names(&mut self, v : #field_types) {
                     let unaligned = std::ptr::addr_of_mut!(self.#field_names);
@@ -82,5 +68,6 @@ fn meta_impl(
 
         }
 
-    }).into()
+    })
+    .into()
 }

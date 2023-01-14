@@ -1,30 +1,28 @@
-use std::convert::Into;
-use proc_macro::{TokenStream};
+use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
+use std::convert::Into;
 use syn::{
-    Result, parse_macro_input, ExprArray, PathArguments,
-    punctuated::Punctuated, Expr, Token, 
-    parse::{Parse, ParseStream}, Error,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
+    Error, Expr, ExprArray, PathArguments, Result, Token,
 };
-
 
 #[derive(Debug)]
 struct Primitive {
-    handler_struct_decl : String,
-    handler_lifetimes : Option<String>,
-    handler_methods : ExprArray
+    handler_struct_decl: String,
+    handler_lifetimes: Option<String>,
+    handler_methods: ExprArray,
 }
 
 impl Parse for Primitive {
     fn parse(input: ParseStream) -> Result<Self> {
-
         let parsed = Punctuated::<Expr, Token![,]>::parse_terminated(input).unwrap();
         if parsed.len() != 2 {
             return Err(Error::new_spanned(
                 parsed,
-                format!("usage: declare_handlers!(<struct>,[<method>, ..])")
+                format!("usage: declare_handlers!(<struct>,[<method>, ..])"),
             ));
-
         }
 
         let handler_struct_expr = parsed.first().unwrap().clone();
@@ -34,7 +32,7 @@ impl Parse for Primitive {
                 return Err(Error::new_spanned(
                     handler_struct_expr,
                     // format!("unsupported segment attribute: {}, supported attributes are {}", name, SEGMENT_ATTRIBUTES.join(", "))
-                    format!("first argument should be a struct name (and an optional lifetime)")
+                    format!("first argument should be a struct name (and an optional lifetime)"),
                 ));
             }
         };
@@ -47,8 +45,8 @@ impl Parse for Primitive {
                 let lifetimes = ts.to_string();
                 target.arguments = PathArguments::None;
                 Some(lifetimes)
-            },
-            _ => None
+            }
+            _ => None,
         };
 
         let mut ts = proc_macro2::TokenStream::new();
@@ -61,7 +59,7 @@ impl Parse for Primitive {
             _ => {
                 return Err(Error::new_spanned(
                     handler_methods_,
-                    format!("second argument must be an array of static functions")
+                    format!("second argument must be an array of static functions"),
                 ));
             }
         };
@@ -69,28 +67,30 @@ impl Parse for Primitive {
         let handlers = Primitive {
             handler_struct_decl,
             handler_lifetimes,
-            handler_methods
+            handler_methods,
         };
         Ok(handlers)
     }
 }
 
-
 // #[proc_macro]
 pub fn declare_interface(input: TokenStream) -> TokenStream {
-
     let primitive = parse_macro_input!(input as Primitive);
     let handler_struct_name = primitive.handler_struct_decl.to_string();
     let handler_methods = primitive.handler_methods;
     let len = handler_methods.elems.len();
     let impl_str = match &primitive.handler_lifetimes {
-        Some(lifetimes) => format!("impl<{}> {}<{}>",lifetimes, primitive.handler_struct_decl, lifetimes),
+        Some(lifetimes) => format!(
+            "impl<{}> {}<{}>",
+            lifetimes, primitive.handler_struct_decl, lifetimes
+        ),
         None => format!("impl {}", primitive.handler_struct_decl),
     };
     let impl_ts: proc_macro2::TokenStream = impl_str.parse().unwrap();
-    let handler_struct_path: proc_macro2::TokenStream = primitive.handler_struct_decl.parse().unwrap();
+    let handler_struct_path: proc_macro2::TokenStream =
+        primitive.handler_struct_decl.parse().unwrap();
 
-    let output = quote!{
+    let output = quote! {
 
         #impl_ts {
 

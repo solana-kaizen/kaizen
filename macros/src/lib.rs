@@ -1,12 +1,11 @@
 #[allow(non_snake_case)]
-
 extern crate proc_macro;
 
-mod meta;
-mod container;
-mod program;
-mod interface;
 mod client;
+mod container;
+mod interface;
+mod meta;
+mod program;
 
 use proc_macro::TokenStream;
 
@@ -39,4 +38,3 @@ pub fn container(attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn meta(input: TokenStream) -> TokenStream {
     meta::derive_meta(input)
 }
-

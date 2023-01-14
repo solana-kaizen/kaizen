@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
 use ahash::HashMap;
 use solana_program::pubkey::Pubkey;
-use workflow_log::log_error;
-use workflow_core::channel::{Sender,Receiver,unbounded};
+use std::sync::{Arc, Mutex};
+use workflow_core::channel::{unbounded, Receiver, Sender};
 use workflow_core::id::Id;
+use workflow_log::log_error;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Event {
@@ -17,14 +17,13 @@ pub enum Event {
 
 #[derive(Clone)]
 pub struct Reflector {
-    pub channels : Arc<Mutex<HashMap<Id,Sender<Event>>>>,
+    pub channels: Arc<Mutex<HashMap<Id, Sender<Event>>>>,
 }
 
 impl Reflector {
-
     pub fn new() -> Reflector {
         Reflector {
-            channels : Arc::new(Mutex::new(HashMap::default())),
+            channels: Arc::new(Mutex::new(HashMap::default())),
         }
     }
 
@@ -39,17 +38,19 @@ impl Reflector {
         self.channels.lock().unwrap().remove(&id);
     }
 
-
-    pub fn reflect(&self, event : Event) {
+    pub fn reflect(&self, event: Event) {
         let channels = self.channels.lock().unwrap();
         for (_, sender) in channels.iter() {
             match sender.try_send(event.clone()) {
-                Ok(_) => { },
+                Ok(_) => {}
                 Err(err) => {
-                    log_error!("Transport Reflector: error reflecting event {:?}: {:?}", event, err);
+                    log_error!(
+                        "Transport Reflector: error reflecting event {:?}: {:?}",
+                        event,
+                        err
+                    );
                 }
             }
         }
     }
-
 }

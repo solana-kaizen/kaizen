@@ -1,54 +1,57 @@
-use cfg_if::cfg_if;
-use solana_program::pubkey::Pubkey;
-use kaizen_macros::{Meta, container};
-use kaizen::error::ErrorCode;
-use kaizen::container::Containers;
-use kaizen::container::Container;
-use kaizen::result::Result;
-use kaizen::prelude::*;
 use super::meta::*;
+use cfg_if::cfg_if;
+use kaizen::container::Container;
+use kaizen::container::Containers;
+use kaizen::error::ErrorCode;
+use kaizen::prelude::*;
+use kaizen::result::Result;
+use kaizen_macros::{container, Meta};
+use solana_program::pubkey::Pubkey;
 
-pub type PubkeyCollection<'info,'refs> = PubkeyCollectionInterface<'info,'refs, PubkeyCollectionSegmentInterface<'info,'refs>>;
-pub type PubkeyCollectionReference<'info,'refs> = PubkeyCollectionInterface<'info,'refs, PubkeyCollectionMetaInterface<'info>>;
+pub type PubkeyCollection<'info, 'refs> =
+    PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionSegmentInterface<'info, 'refs>>;
+pub type PubkeyCollectionReference<'info, 'refs> =
+    PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionMetaInterface<'info>>;
 
-pub struct PubkeyCollectionInterface<'info,'refs, M> 
-where M : PubkeyCollectionMetaTrait 
+pub struct PubkeyCollectionInterface<'info, 'refs, M>
+where
+    M: PubkeyCollectionMetaTrait,
 {
-    meta : M,
-    pub container : Option<PubkeyCollectionStore<'info,'refs>>,
+    meta: M,
+    pub container: Option<PubkeyCollectionStore<'info, 'refs>>,
 }
 
-
-impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
-where M : PubkeyCollectionMetaTrait
+impl<'info, 'refs, M> PubkeyCollectionInterface<'info, 'refs, M>
+where
+    M: PubkeyCollectionMetaTrait,
 {
-    pub fn try_new(
-        meta:M,
-    )->Result<Self> {
-        Ok(Self { meta, container : None })
+    pub fn try_new(meta: M) -> Result<Self> {
+        Ok(Self {
+            meta,
+            container: None,
+        })
     }
 
-    pub fn data_len_min() -> usize { M::min_data_len() }
+    pub fn data_len_min() -> usize {
+        M::min_data_len()
+    }
 
-    pub fn try_create<'i,'r>(
+    pub fn try_create<'i, 'r>(
         &mut self,
-        ctx: &ContextReference<'i,'r,'_,'_>,
-        allocation_args: &AccountAllocationArgs<'i,'r,'_>,
-        data_type : Option<u32>,
-        container_type : Option<u32>
+        ctx: &ContextReference<'i, 'r, '_, '_>,
+        allocation_args: &AccountAllocationArgs<'i, 'r, '_>,
+        data_type: Option<u32>,
+        container_type: Option<u32>,
     ) -> Result<()> {
         // let collection_store = PubkeyCollectionStore::try_allocate(ctx, allocation_args, 0)?;
         let collection_store = PubkeyCollectionStore::try_allocate(ctx, allocation_args, 0)?;
-        self.meta.try_create(collection_store.pubkey(), data_type, container_type)?;
+        self.meta
+            .try_create(collection_store.pubkey(), data_type, container_type)?;
         collection_store.try_init(container_type)?;
         Ok(())
     }
 
-    pub fn try_load(
-        &mut self,
-        ctx: &ContextReference<'info,'refs,'_,'_>,
-    ) -> Result<()> {
-
+    pub fn try_load(&mut self, ctx: &ContextReference<'info, 'refs, '_, '_>) -> Result<()> {
         if let Some(account_info) = ctx.locate_index_account(self.meta.pubkey()) {
             let container = PubkeyCollectionStore::try_load(account_info)?;
             self.container = Some(container);
@@ -58,60 +61,59 @@ where M : PubkeyCollectionMetaTrait
         }
     }
 
-    pub fn try_create_with_meta<'ctx,'r>(
-        ctx: &ContextReference<'ctx,'r,'_,'_>,
-        allocation_args: &AccountAllocationArgs<'ctx,'r,'_>,
-        data : &'info mut PubkeyCollectionMeta,
-        data_type : Option<u32>,
-        container_type : Option<u32>,
-
-    ) -> Result<PubkeyCollectionInterface<'info,'refs, PubkeyCollectionMetaInterface<'info>>> {
-
-
-        let mut collection = PubkeyCollectionInterface::<'info,'refs,PubkeyCollectionMetaInterface<'info>>::try_from_meta(data)?;
+    pub fn try_create_with_meta<'ctx, 'r>(
+        ctx: &ContextReference<'ctx, 'r, '_, '_>,
+        allocation_args: &AccountAllocationArgs<'ctx, 'r, '_>,
+        data: &'info mut PubkeyCollectionMeta,
+        data_type: Option<u32>,
+        container_type: Option<u32>,
+    ) -> Result<PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionMetaInterface<'info>>> {
+        let mut collection = PubkeyCollectionInterface::<
+            'info,
+            'refs,
+            PubkeyCollectionMetaInterface<'info>,
+        >::try_from_meta(data)?;
         collection.try_create(ctx, allocation_args, data_type, container_type)?;
         Ok(collection)
-
     }
 
     pub fn try_load_from_meta(
-        ctx: &ContextReference<'info,'refs,'_,'_>,
-        data : &'info mut PubkeyCollectionMeta,
-    ) -> Result<PubkeyCollectionInterface<'info,'refs, PubkeyCollectionMetaInterface<'info>>> {
-
-        let mut collection = PubkeyCollectionInterface::<'info,'refs,PubkeyCollectionMetaInterface<'info>>::try_from_meta(data)?;
+        ctx: &ContextReference<'info, 'refs, '_, '_>,
+        data: &'info mut PubkeyCollectionMeta,
+    ) -> Result<PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionMetaInterface<'info>>> {
+        let mut collection = PubkeyCollectionInterface::<
+            'info,
+            'refs,
+            PubkeyCollectionMetaInterface<'info>,
+        >::try_from_meta(data)?;
         collection.try_load(ctx)?;
         Ok(collection)
-
     }
 
-    pub fn try_from_meta<'ctx,'r>(
-        data : &'info mut PubkeyCollectionMeta,
-    ) -> Result<PubkeyCollectionInterface<'info,'refs, PubkeyCollectionMetaInterface<'info>>> {
-
+    pub fn try_from_meta<'ctx, 'r>(
+        data: &'info mut PubkeyCollectionMeta,
+    ) -> Result<PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionMetaInterface<'info>>> {
         let meta = PubkeyCollectionMetaInterface::new(data);
-        PubkeyCollectionInterface::<PubkeyCollectionMetaInterface>::try_new(
-            meta,
-        )
+        PubkeyCollectionInterface::<PubkeyCollectionMetaInterface>::try_new(meta)
     }
 
     pub fn try_create_from_segment(
-        segment : Rc<Segment<'info, 'refs>>,
-    ) -> Result<PubkeyCollectionInterface<'info,'refs, PubkeyCollectionSegmentInterface<'info, 'refs>>> {
+        segment: Rc<Segment<'info, 'refs>>,
+    ) -> Result<
+        PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionSegmentInterface<'info, 'refs>>,
+    > {
         PubkeyCollectionInterface::<PubkeyCollectionSegmentInterface>::try_new(
-            PubkeyCollectionSegmentInterface::new(
-                segment
-            ),
+            PubkeyCollectionSegmentInterface::new(segment),
         )
     }
 
     pub fn try_load_from_segment(
-            segment : Rc<Segment<'info, 'refs>>,
-    ) -> Result<PubkeyCollectionInterface<'info,'refs, PubkeyCollectionSegmentInterface<'info, 'refs>>> {
+        segment: Rc<Segment<'info, 'refs>>,
+    ) -> Result<
+        PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionSegmentInterface<'info, 'refs>>,
+    > {
         PubkeyCollectionInterface::<PubkeyCollectionSegmentInterface>::try_new(
-            PubkeyCollectionSegmentInterface::new(
-                segment,
-            ),
+            PubkeyCollectionSegmentInterface::new(segment),
         )
     }
 
@@ -119,18 +121,15 @@ where M : PubkeyCollectionMetaTrait
         self.meta.get_len() as usize
     }
 
-    pub fn try_insert_container<'i,'r, C : Container<'i,'r>>(&mut self, target: &C) -> Result<()> {
+    pub fn try_insert_container<'i, 'r, C: Container<'i, 'r>>(&mut self, target: &C) -> Result<()> {
         self.try_insert_pubkey(target.pubkey())?;
         Ok(())
     }
 
-    pub fn try_insert_pubkey(
-        &mut self,
-        key: &Pubkey
-    ) -> Result<()> {
+    pub fn try_insert_pubkey(&mut self, key: &Pubkey) -> Result<()> {
         if let Some(container) = &self.container {
             let seq = self.meta.advance_sequence();
-            container.try_insert(seq,key)?;
+            container.try_insert(seq, key)?;
             let len = self.meta.get_len();
             self.meta.set_len(len + 1);
             // self.sync_rent(ctx, rent_collector)
@@ -140,10 +139,7 @@ where M : PubkeyCollectionMetaTrait
         }
     }
 
-    pub fn try_remove(
-        &mut self,
-        record: &PubkeySequence
-    ) -> Result<()> {
+    pub fn try_remove(&mut self, record: &PubkeySequence) -> Result<()> {
         {
             if self.container.is_none() {
                 return Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded));
@@ -179,37 +175,34 @@ where M : PubkeyCollectionMetaTrait
 
     pub fn sync_rent(
         &self,
-        ctx: &ContextReference<'info,'refs,'_,'_>,
-        rent_collector : &kaizen::rent::RentCollector<'info,'refs>,
+        ctx: &ContextReference<'info, 'refs, '_, '_>,
+        rent_collector: &kaizen::rent::RentCollector<'info, 'refs>,
     ) -> kaizen::result::Result<()> {
         // TODO: @alpha - transfer out excess rent
         if let Some(container) = &self.container {
-            ctx.sync_rent(container.account(),rent_collector)?;
+            ctx.sync_rent(container.account(), rent_collector)?;
             Ok(())
         } else {
             Err(error_code!(ErrorCode::PubkeyCollectionNotLoaded))
         }
     }
-
-
 }
 
 #[derive(Meta, Copy, Clone)]
 #[repr(packed)]
 pub struct PubkeyCollectionStoreMeta {
-    pub version : u32,
-    pub container_type : u32,
+    pub version: u32,
+    pub container_type: u32,
 }
 
 #[container(Containers::OrderedCollection)]
-pub struct PubkeyCollectionStore<'info, 'refs>{
-    pub meta : RefCell<&'info mut PubkeyCollectionStoreMeta>,
-    pub records : Array<'info, 'refs, PubkeyMeta>,
+pub struct PubkeyCollectionStore<'info, 'refs> {
+    pub meta: RefCell<&'info mut PubkeyCollectionStoreMeta>,
+    pub records: Array<'info, 'refs, PubkeyMeta>,
 }
 
 impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
-
-    pub fn try_init(&self, container_type : Option<u32>) -> Result<()> {
+    pub fn try_init(&self, container_type: Option<u32>) -> Result<()> {
         let mut meta = self.meta.borrow_mut();
         meta.set_version(1);
         meta.set_container_type(container_type.unwrap_or(0u32));
@@ -230,16 +223,16 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
     //     Ok(())
     // }
 
-    pub fn try_remove(&self, sequence : &PubkeySequence) -> Result<()> {
+    pub fn try_remove(&self, sequence: &PubkeySequence) -> Result<()> {
         let records: &[PubkeySequence] = self.records.as_struct_slice();
         match records.binary_search(sequence) {
             Ok(idx) => {
-                unsafe { self.records.try_remove_at(idx,true)?; }
+                unsafe {
+                    self.records.try_remove_at(idx, true)?;
+                }
                 Ok(())
-            },
-            Err(_idx) => {
-                Err(error_code!(ErrorCode::PubkeyCollectionRecordNotFound))
             }
+            Err(_idx) => Err(error_code!(ErrorCode::PubkeyCollectionRecordNotFound)),
         }
     }
 
@@ -252,8 +245,6 @@ impl<'info, 'refs> PubkeyCollectionStore<'info, 'refs> {
     }
 }
 
-
-
 // ~~~
 
 cfg_if! {
@@ -263,7 +254,7 @@ cfg_if! {
         use solana_program::instruction::AccountMeta;
         use kaizen::container::{AccountAggregatorInterface,AsyncAccountAggregatorInterface};
 
-        impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
+        impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M>
         where M : PubkeyCollectionMetaTrait
         {
 
@@ -287,7 +278,7 @@ cfg_if! {
             pub async fn get_pubkey_range(&self, range: std::ops::Range<usize>) -> Result<Vec<Pubkey>> {
                 let container = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await?;
                 let mut pubkeys = Vec::new();
-                
+
                 for idx in range {
                     if idx >= self.len() {
                         log_trace!("idx: {} self.len(): {} self.records.len(): {}",idx,self.len(),container.as_ref().unwrap().records.len());
@@ -347,7 +338,7 @@ cfg_if! {
             }
 
             pub async fn load_container_range<'this,C>(&self, range: std::ops::Range<usize>)
-            -> Result<Vec<Option<ContainerReference<'this,C>>>> 
+            -> Result<Vec<Option<ContainerReference<'this,C>>>>
             where C: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
@@ -412,7 +403,7 @@ cfg_if! {
             }
 
             // pub async fn load_container_range_strict<'this,C>(&self, range: std::ops::Range<usize>)
-            // -> Result<Vec<ContainerReference<'this,C>>> 
+            // -> Result<Vec<ContainerReference<'this,C>>>
             // where C: kaizen::container::Container<'this,'this>
             // {
             //     let transport = Transport::global()?;
@@ -445,7 +436,7 @@ cfg_if! {
             }
 
             pub async fn find_container<'this,C>(&self)
-            -> Result<Option<ContainerReference<'this,C>>> 
+            -> Result<Option<ContainerReference<'this,C>>>
             where C: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
@@ -512,9 +503,9 @@ cfg_if! {
             //     Ok(containers)
             // }
 
-        }        
+        }
 
-        // impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M> 
+        // impl<'info,'refs, M> PubkeyCollectionInterface<'info,'refs, M>
         // where M : PubkeyCollectionMetaTrait
         // {
         //     pub fn aggregator(&self) -> Result<PubkeyCollectionAsyncAccountAggregator> {
@@ -528,7 +519,7 @@ cfg_if! {
         //     }
         // }
 
-        impl<'info,'refs,M> AccountAggregatorInterface for PubkeyCollectionInterface<'info,'refs,M> 
+        impl<'info,'refs,M> AccountAggregatorInterface for PubkeyCollectionInterface<'info,'refs,M>
         where M : PubkeyCollectionMetaTrait {
             type Aggregator = PubkeyCollectionAsyncAccountAggregator;
 
@@ -551,8 +542,8 @@ cfg_if! {
         }
 
         #[workflow_async_trait]
-        impl AsyncAccountAggregatorInterface for PubkeyCollectionAsyncAccountAggregator//PubkeyCollectionInterface<'info,'refs,M> 
-        // impl<'info,'refs,M> AccountAggregator for GenericAccountAggregator//PubkeyCollectionInterface<'info,'refs,M> 
+        impl AsyncAccountAggregatorInterface for PubkeyCollectionAsyncAccountAggregator//PubkeyCollectionInterface<'info,'refs,M>
+        // impl<'info,'refs,M> AccountAggregator for GenericAccountAggregator//PubkeyCollectionInterface<'info,'refs,M>
         // where T : Copy + Eq + PartialEq + Ord + 'info
         // where M : PubkeyCollectionMetaTrait
         {
@@ -585,7 +576,7 @@ cfg_if! {
 
                 Ok(metas)
             }
-        
+
         }
     }
 }

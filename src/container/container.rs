@@ -1,26 +1,30 @@
 use cfg_if::cfg_if;
 // use wasm_bindgen::prelude::*;
 // use kaizen::*;
+use kaizen::error::ErrorCode;
 use kaizen::prelude::*;
 use kaizen::result::Result;
-use kaizen::error::ErrorCode;
 // use solana_program::account_info::AccountInfo;
 // use kaizen_macros::Meta;
 
-pub trait Container<'info,'refs> {
+pub trait Container<'info, 'refs> {
     type T;
 
     fn container_type() -> u32;
     fn initial_data_len() -> usize;
     fn try_allocate(
-        ctx: &kaizen::context::ContextReference<'info,'refs,'_,'_>,
-        allocation_args : &kaizen::context::AccountAllocationArgs<'info,'refs,'_>,
-        reserve_data_len : usize
+        ctx: &kaizen::context::ContextReference<'info, 'refs, '_, '_>,
+        allocation_args: &kaizen::context::AccountAllocationArgs<'info, 'refs, '_>,
+        reserve_data_len: usize,
     ) -> kaizen::result::Result<Self::T>;
 
-    fn try_create(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<Self::T>; 
-    // fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<Self::T>; 
-    fn try_load(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<Self::T>; 
+    fn try_create(
+        account: &'refs solana_program::account_info::AccountInfo<'info>,
+    ) -> kaizen::result::Result<Self::T>;
+    // fn try_create_with_layout(account : &'refs solana_program::account_info::AccountInfo<'info>) -> kaizen::result::Result<Self::T>;
+    fn try_load(
+        account: &'refs solana_program::account_info::AccountInfo<'info>,
+    ) -> kaizen::result::Result<Self::T>;
     fn account(&self) -> &'refs solana_program::account_info::AccountInfo<'info>;
     fn pubkey(&self) -> &solana_program::pubkey::Pubkey;
 }
@@ -28,18 +32,16 @@ pub trait Container<'info,'refs> {
 #[derive(Meta)]
 #[repr(packed)]
 pub struct ContainerHeader {
-    pub container_type : u32,
+    pub container_type: u32,
 }
 
 #[inline]
 pub fn try_get_container_type(account: &AccountInfo) -> Result<u32> {
     let data = account.data.try_borrow_mut()?;
     if data.len() < std::mem::size_of::<ContainerHeader>() {
-        return Err(ErrorCode::UnknownContainerType.into())
+        return Err(ErrorCode::UnknownContainerType.into());
     }
-    let header = unsafe { std::mem::transmute::<_,&ContainerHeader>(
-        data.as_ptr()
-    )};
+    let header = unsafe { std::mem::transmute::<_, &ContainerHeader>(data.as_ptr()) };
 
     Ok(header.container_type)
 }
@@ -51,7 +53,6 @@ pub enum Ranges {
     Distributors = 0xf00e0000,
     Indexes = 0xf00f0000,
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(u32)]
@@ -82,7 +83,7 @@ cfg_if! {
         use std::sync::MutexGuard;
         use owning_ref::OwningHandle;
         use kaizen::accounts::*;
-        
+
         pub type ContainerReferenceInner<'this,T> =
         OwningHandle<
             OwningHandle<
@@ -90,13 +91,13 @@ cfg_if! {
                     OwningHandle::<
                         OwningHandle::<
                             Arc<AccountDataReference>,
-                            Box<UnsafeCell<MutexGuard<'this, AccountData>>>>, 
+                            Box<UnsafeCell<MutexGuard<'this, AccountData>>>>,
                         Box<UnsafeCell<&'this mut AccountData>>>,
-                    Box<AccountInfo<'this>>>, 
+                    Box<AccountInfo<'this>>>,
                 Box<UnsafeCell<Option<Result<<T as Container<'this,'this>>::T>>>>>,
             Box<<T as Container<'this,'this>>::T>
         >;
-        
+
         pub struct ContainerReference<'inner,T>
         where T: Container<'inner,'inner>,
         {
@@ -107,12 +108,12 @@ cfg_if! {
 
         unsafe impl<'inner,T> Send for ContainerReference<'inner,T>
         where T: Container<'inner,'inner> {}
-        
+
         unsafe impl<'inner,T> Sync for ContainerReference<'inner,T>
         where T: Container<'inner,'inner> {}
 
         // ~~~
-        
+
         impl<'inner,T> ContainerReference<'inner,T>
         where T: Container<'inner,'inner>,
         {
@@ -133,7 +134,7 @@ cfg_if! {
             }
         }
 
-        // pub type AccountDataContainer<'this,T> = 
+        // pub type AccountDataContainer<'this,T> =
         //     OwningHandle<
         //         OwningHandle<
         //             OwningHandle<
@@ -149,9 +150,9 @@ cfg_if! {
             use std::{sync::{RwLock, Arc}};
             use ahash::AHashMap;
             use derivative::Derivative;
-        
+
             pub type ContainerDebugFn = fn(account_info: &AccountInfo<'_>) -> Result<()>;
-        
+
             #[derive(Derivative)]
             #[derivative(Clone, Debug)]
             // #[derive]
@@ -161,9 +162,9 @@ cfg_if! {
                 // #[derivative(Debug="ignore")]
                 // pub debug_fn : Arc<&'static ContainerDebugFn>,
             }
-            
+
             impl ContainerDeclaration {
-                pub const fn new(container_type_id: u32, name: &'static str, 
+                pub const fn new(container_type_id: u32, name: &'static str,
                     // debug_fn: &'static ContainerDebugFn
                 ) -> Self {
                     ContainerDeclaration {
@@ -173,21 +174,21 @@ cfg_if! {
                     }
                 }
             }
-        
+
             impl std::fmt::Display for ContainerDeclaration {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                     write!(f, "0x{:08x} {}", self.container_type_id,self.name)
-                }    
+                }
             }
-        
-        
+
+
             #[cfg(not(target_arch = "wasm32"))]
             inventory::collect!(ContainerDeclaration);
-        
+
             // pub type ContainerTypeRegistry = BTreeMap<u32,ContainerDeclaration>;
             pub type ContainerTypeRegistry = Arc<RwLock<AHashMap<u32,ContainerDeclaration>>>;
             static mut CONTAINER_TYPE_REGISTRY : Option<ContainerTypeRegistry> = None;
-        
+
             pub fn global() -> ContainerTypeRegistry {
                 let registry = unsafe { (&CONTAINER_TYPE_REGISTRY).as_ref()};
                 match registry {
@@ -199,13 +200,13 @@ cfg_if! {
                     }
                 }
             }
-        
+
             pub fn lookup(container_type_id: u32) -> Result<Option<ContainerDeclaration>> {
                 // let registry = global();
                 // let registry = registry.read()?;
                 Ok(global().read()?.get(&container_type_id).cloned())
             }
-        
+
             #[cfg(not(target_arch = "wasm32"))]
             pub fn init() -> Result<()> {
                 // println!("initializing container registry...");
@@ -216,30 +217,30 @@ cfg_if! {
                     // println!("existing container registry: {:?}", map);
                     panic!("container registry is already initialized");
                 }
-        
+
                 for container_declaration in inventory::iter::<kaizen::container::registry::ContainerDeclaration> {
-                    // log_trace!("[container] registering 0x{:08x} {}", 
-                    //     container_declaration.container_type, 
+                    // log_trace!("[container] registering 0x{:08x} {}",
+                    //     container_declaration.container_type,
                     //     container_declaration.name
                     // );
                     if let Some(previous_declaration) = map.insert(container_declaration.container_type_id, container_declaration.clone()) {
-                        panic!("duplicate container type registration for type {}:\n{:#?}\n~vs~\n{:#?}", 
+                        panic!("duplicate container type registration for type {}:\n{:#?}\n~vs~\n{:#?}",
                             container_declaration.container_type_id,
                             container_declaration,
                             previous_declaration
                         );
                     }
                 }
-        
+
                 Ok(())
             }
-        
+
             pub fn register_container_declaration(container_declaration: ContainerDeclaration) ->Result<()> {
-                // log_trace!("[container] registering 0x{:08x} {}", 
-                //     container_declaration.container_type, 
+                // log_trace!("[container] registering 0x{:08x} {}",
+                //     container_declaration.container_type,
                 //     container_declaration.name
                 // );
-        
+
                 let registry = global();
                 let mut map = registry.write()?;
                 // let mut map = global().write()?;
@@ -248,7 +249,7 @@ cfg_if! {
                 }
                 Ok(())
             }
-        
+
             // #[wasm_bindgen]
             pub fn list_containers() -> Result<()> {
                 let registry = global();
@@ -258,27 +259,27 @@ cfg_if! {
                 }
                 Ok(())
             }
-        
-        
+
+
             #[cfg(target_arch = "wasm32")]
             pub mod wasm {
-        
+
                 use super::*;
                 use js_sys::Array;
                 use wasm_bindgen::prelude::*;
                 // use kaizen::trace;
-        
+
                 #[wasm_bindgen]
                 pub fn load_container_registry(pkg: &JsValue) -> Result<()> {
-        
+
                     // let registry = unsafe { (&CONTAINER_TYPE_REGISTRY).as_ref()};
                     // if registry.is_none() {
                     //     let registry : ContainerTypeRegistry = BTreeMap::new();
-                    //     unsafe { CONTAINER_TYPE_REGISTRY = Some(registry); }                    
-                    // }    
-        
-                    
-        
+                    //     unsafe { CONTAINER_TYPE_REGISTRY = Some(registry); }
+                    // }
+
+
+
                     let mut fn_names = Vec::new();
                     let keys = js_sys::Reflect::own_keys(&pkg)?;
                     let keys_vec = keys.to_vec();
@@ -289,21 +290,21 @@ cfg_if! {
                             fn_names.push(keys_vec[idx].clone());
                         }
                     }
-        
+
                     if fn_names.len() == 0 {
                         panic!("kaizen::container::registry::with_containers(): no registered containers found!");
                     }
-        
+
                     for fn_name in fn_names.iter() {
                         let fn_jsv = js_sys::Reflect::get(&pkg,fn_name)?;
                         let args = Array::new();
                         let _ret_jsv = js_sys::Reflect::apply(&fn_jsv.into(),&pkg,&args.into())?;
                     }
-        
+
                     // let epfns = keys.filter(|v,idx,arr| {
                     //     true
                     // });
-        
+
                     // let transport = self.inner_mut().ok_or(
                     //     JsValue::from("workflow::Transport - failed to acquire write lock")
                     // )?;//borrow();
@@ -318,11 +319,11 @@ cfg_if! {
                     Ok(())
                     // Ok(JsValue::from(true)) //JsValue::from(self.clone()))
                 }
-        
+
             }
-        
-        
+
+
         }
 
-    }    
-}    
+    }
+}

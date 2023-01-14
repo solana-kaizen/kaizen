@@ -1,30 +1,25 @@
 // use std::sync::Arc;
-use std::path::Path;
 use async_trait::async_trait;
-use solana_program::pubkey::Pubkey;
-use solana_sdk::signature::{Keypair, read_keypair_file};
-use solana_sdk::signer::Signer;
 use kaizen::result::Result;
-
+use solana_program::pubkey::Pubkey;
+use solana_sdk::signature::{read_keypair_file, Keypair};
+use solana_sdk::signer::Signer;
+use std::path::Path;
 
 pub struct Wallet {
-    keypair : Keypair,
+    keypair: Keypair,
 }
 
 impl Wallet {
-
     pub fn try_new() -> Result<Wallet> {
-        let home = home::home_dir()
-            .expect("Wallet: unable to get home directory");
+        let home = home::home_dir().expect("Wallet: unable to get home directory");
         let home = Path::new(&home);
         let payer_kp_path = home.join(".config/solana/id.json");
-    
+
         let keypair = read_keypair_file(payer_kp_path)
             .expect("Couldn't read authority keypair from '~/.config/solana/id.json'");
-        
-        let wallet = Self {
-            keypair
-        };
+
+        let wallet = Self { keypair };
 
         Ok(wallet)
     }
@@ -36,11 +31,10 @@ impl Wallet {
 
 #[async_trait(?Send)]
 impl super::WalletInterface for Wallet {
-
     fn is_connected(&self) -> bool {
         true
     }
-    
+
     fn pubkey(&self) -> Result<Pubkey> {
         Ok(self.keypair.pubkey())
     }
@@ -54,5 +48,4 @@ impl super::WalletInterface for Wallet {
     }
 
     // async fn get_balance(&self) -> Result<u64>;
-
 }

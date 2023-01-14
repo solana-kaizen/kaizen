@@ -1,12 +1,12 @@
-use std::sync::Mutex;
 use ahash::HashSet;
-use serde::{ Serialize, Deserialize };
-use solana_sdk::signature::Signature;
-use workflow_core::id::Id;
-use workflow_core::channel::*;
+use kaizen::error::Error;
 use kaizen::prelude::*;
 use kaizen::result::Result;
-use kaizen::error::Error;
+use serde::{Deserialize, Serialize};
+use solana_sdk::signature::Signature;
+use std::sync::Mutex;
+use workflow_core::channel::*;
+use workflow_core::id::Id;
 
 pub type TransactionResult = Result<()>;
 
@@ -15,60 +15,60 @@ pub enum TransactionStatus {
     Pending,
     Success,
     Timeout,
-    Error(String)
+    Error(String),
 }
 
-impl ToString for TransactionStatus{
+impl ToString for TransactionStatus {
     fn to_string(&self) -> String {
-        match self{
-            TransactionStatus::Pending=>"Pending".to_string(),
-            TransactionStatus::Success=>"Success".to_string(),
-            TransactionStatus::Timeout=>"Timeout".to_string(),
-            TransactionStatus::Error(e)=>format!("Error: {}", e)
+        match self {
+            TransactionStatus::Pending => "Pending".to_string(),
+            TransactionStatus::Success => "Success".to_string(),
+            TransactionStatus::Timeout => "Timeout".to_string(),
+            TransactionStatus::Error(e) => format!("Error: {}", e),
         }
     }
 }
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionMeta {
     /// Optional transaction signature during processing
-    pub signature : Option<Signature>,
+    pub signature: Option<Signature>,
     /// Accounts affected by this transaction
-    pub accounts : Vec<Pubkey>,
+    pub accounts: Vec<Pubkey>,
 }
 
 impl TransactionMeta {
     pub fn new_without_accounts() -> TransactionMeta {
         TransactionMeta {
             signature: None,
-            accounts : Vec::new(),
+            accounts: Vec::new(),
         }
     }
 
     pub fn new_with_accounts(accounts: Vec<Pubkey>) -> TransactionMeta {
         TransactionMeta {
             signature: None,
-            accounts : accounts.to_vec()
+            accounts: accounts.to_vec(),
         }
     }
 }
 
-pub type TxCallback = Arc<dyn Fn(Arc<TransactionChain>, Arc<Transaction>)->Result<()> + core::marker::Send + Sync>;
+pub type TxCallback =
+    Arc<dyn Fn(Arc<TransactionChain>, Arc<Transaction>) -> Result<()> + core::marker::Send + Sync>;
 
 #[derive(Clone)]
 pub struct Transaction {
-    pub name : String,
-    pub id : Id,
-    pub instruction : Option<Instruction>,
-    pub status : Arc<Mutex<TransactionStatus>>,
-    pub meta : Arc<Mutex<TransactionMeta>>,
-    pub receiver : Receiver<TransactionResult>,
-    pub sender : Sender<TransactionResult>,
+    pub name: String,
+    pub id: Id,
+    pub instruction: Option<Instruction>,
+    pub status: Arc<Mutex<TransactionStatus>>,
+    pub meta: Arc<Mutex<TransactionMeta>>,
+    pub receiver: Receiver<TransactionResult>,
+    pub sender: Sender<TransactionResult>,
     pub callback: Option<Arc<Mutex<TxCallback>>>,
 }
 
-impl std::fmt::Debug for Transaction{
+impl std::fmt::Debug for Transaction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Transaction")
             .field("name", &self.name)
@@ -83,16 +83,19 @@ impl std::fmt::Debug for Transaction{
 }
 
 impl Transaction {
-
-    pub fn new_with_callback(name: &str, meta:Option<TransactionMeta>, callback: TxCallback) -> Transaction {
+    pub fn new_with_callback(
+        name: &str,
+        meta: Option<TransactionMeta>,
+        callback: TxCallback,
+    ) -> Transaction {
         let meta = meta.unwrap_or(TransactionMeta::new_without_accounts());
-        let (sender,receiver) = unbounded::<TransactionResult>();
+        let (sender, receiver) = unbounded::<TransactionResult>();
         Transaction {
-            name : name.to_string(),
-            callback:Some(Arc::new(Mutex::new(callback))),
-            id : Id::new(),
-            status : Arc::new(Mutex::new(TransactionStatus::Pending)),
-            meta : Arc::new(Mutex::new(meta)),
+            name: name.to_string(),
+            callback: Some(Arc::new(Mutex::new(callback))),
+            id: Id::new(),
+            status: Arc::new(Mutex::new(TransactionStatus::Pending)),
+            meta: Arc::new(Mutex::new(meta)),
             instruction: None,
             sender,
             receiver,
@@ -101,31 +104,34 @@ impl Transaction {
 
     pub fn new_without_accounts(name: &str, instruction: Instruction) -> Transaction {
         let meta = TransactionMeta::new_without_accounts();
-        let (sender,receiver) = unbounded::<TransactionResult>();
+        let (sender, receiver) = unbounded::<TransactionResult>();
         Transaction {
-            name : name.to_string(),
+            name: name.to_string(),
             callback: None,
-            id : Id::new(),
-            status : Arc::new(Mutex::new(TransactionStatus::Pending)),
-            meta : Arc::new(Mutex::new(meta)),
+            id: Id::new(),
+            status: Arc::new(Mutex::new(TransactionStatus::Pending)),
+            meta: Arc::new(Mutex::new(meta)),
             instruction: Some(instruction),
             sender,
             receiver,
         }
     }
-    
-    pub fn new_with_accounts(name: &str, accounts: Vec<Pubkey>, instruction: Instruction) -> Transaction {
 
+    pub fn new_with_accounts(
+        name: &str,
+        accounts: Vec<Pubkey>,
+        instruction: Instruction,
+    ) -> Transaction {
         let meta = TransactionMeta::new_with_accounts(accounts);
 
-        let (sender,receiver) = unbounded::<TransactionResult>();
+        let (sender, receiver) = unbounded::<TransactionResult>();
 
         Transaction {
             name: name.to_string(),
             callback: None,
-            id : Id::new(),
-            status : Arc::new(Mutex::new(TransactionStatus::Pending)),
-            meta : Arc::new(Mutex::new(meta)),
+            id: Id::new(),
+            status: Arc::new(Mutex::new(TransactionStatus::Pending)),
+            meta: Arc::new(Mutex::new(meta)),
             instruction: Some(instruction),
             sender,
             receiver,
@@ -157,7 +163,7 @@ impl Transaction {
         Ok(())
     }
 
-    /// For *Create* operations it is assumed that the 
+    /// For *Create* operations it is assumed that the
     /// resulting account is always at position [0]
     pub fn target_account(&self) -> Result<Pubkey> {
         let meta = self.meta.lock()?;
@@ -169,44 +175,42 @@ impl Transaction {
     }
 
     /// Used for unit tests
-    pub async fn execute_and_load<'this,T> (&self) -> Result<Option<ContainerReference<'this,T>>> 
-    // pub async fn execute_and_load<'this,T> (&self) -> Result<Option<AccountDataContainer<'this,T>>> 
-    where T: kaizen::container::Container<'this,'this> 
+    pub async fn execute_and_load<'this, T>(&self) -> Result<Option<ContainerReference<'this, T>>>
+    // pub async fn execute_and_load<'this,T> (&self) -> Result<Option<AccountDataContainer<'this,T>>>
+    where
+        T: kaizen::container::Container<'this, 'this>,
     {
         let pubkey = self.target_account()?;
         let transport = Transport::global()?;
-        if let Some(instruction) = &self.instruction{
+        if let Some(instruction) = &self.instruction {
             transport.execute(instruction).await?;
             // load_container_clone_with_transport::<T>(&transport,&pubkey).await
             // log_trace!("... reloading container {}",pubkey);
-            reload_container_with_transport::<T>(&transport,&pubkey).await
-        }else{
+            reload_container_with_transport::<T>(&transport, &pubkey).await
+        } else {
             Ok(None)
         }
     }
-
 }
 
 pub struct TransactionList {
-    pub transactions: Vec<Transaction>
+    pub transactions: Vec<Transaction>,
 }
 
 impl TransactionList {
     pub fn new(transactions: Vec<Transaction>) -> TransactionList {
-        TransactionList {
-            transactions
-        }
+        TransactionList { transactions }
     }
 
-    pub fn target_account(&self)->Result<Pubkey>{
-        if self.transactions.len() == 0{
+    pub fn target_account(&self) -> Result<Pubkey> {
+        if self.transactions.len() == 0 {
             return Err("No transactions".into());
         }
         let pubkey = self.transactions[0].target_account()?;
         Ok(pubkey)
     }
 
-    pub fn push(&mut self, tx:Transaction){
+    pub fn push(&mut self, tx: Transaction) {
         self.transactions.push(tx);
     }
 
@@ -226,22 +230,21 @@ impl TransactionList {
         Ok(())
     }
 
-    pub async fn execute_and_load<'this, C>(&self) -> Result<Option<ContainerReference<'this,C>>>
-    where C: kaizen::container::Container<'this,'this> 
+    pub async fn execute_and_load<'this, C>(&self) -> Result<Option<ContainerReference<'this, C>>>
+    where
+        C: kaizen::container::Container<'this, 'this>,
     {
         let first_transaction = &self.transactions[0];
         let container = first_transaction.execute_and_load::<C>().await?;
 
         Ok(container)
     }
-
 }
-
 
 pub struct TransactionChainInner {
     pub pending: Vec<Arc<Transaction>>,
     pub complete: Vec<Arc<Transaction>>,
-    pub accounts: HashSet<Pubkey>
+    pub accounts: HashSet<Pubkey>,
 }
 
 impl TransactionChainInner {
@@ -249,24 +252,24 @@ impl TransactionChainInner {
         TransactionChainInner {
             pending: Vec::new(),
             complete: Vec::new(),
-            accounts: HashSet::default()
+            accounts: HashSet::default(),
         }
     }
 }
 
 pub struct TransactionChain {
-    pub id : Id,
-    pub inner : Arc<Mutex<TransactionChainInner>>,
+    pub id: Id,
+    pub inner: Arc<Mutex<TransactionChainInner>>,
 }
 
 impl TransactionChain {
     pub fn new() -> TransactionChain {
         TransactionChain {
-            id : Id::new(),
-            inner : Arc::new(Mutex::new(TransactionChainInner::new())),
+            id: Id::new(),
+            inner: Arc::new(Mutex::new(TransactionChainInner::new())),
         }
     }
-    pub fn extend_with(&self, transactions : &[Arc<Transaction>]) -> Result<()> {
+    pub fn extend_with(&self, transactions: &[Arc<Transaction>]) -> Result<()> {
         let mut inner = self.inner.lock()?;
         for transaction in transactions.iter() {
             inner.accounts.extend(&transaction.accounts()?);
@@ -283,7 +286,7 @@ impl TransactionChain {
         Ok(self.inner.lock()?.pending.is_empty())
     }
 
-    pub fn enqueue(&self, transaction : &Arc<Transaction>) -> Result<()> {
+    pub fn enqueue(&self, transaction: &Arc<Transaction>) -> Result<()> {
         let mut inner = self.inner.lock()?;
         inner.pending.push(transaction.clone());
         Ok(())
@@ -297,17 +300,20 @@ impl TransactionChain {
             Ok(Some(inner.pending.remove(0)))
         }
     }
-    
-    pub async fn requeue_with_error(&self, transaction : &Arc<Transaction>, _err : &Error) -> Result<()> {
+
+    pub async fn requeue_with_error(
+        &self,
+        transaction: &Arc<Transaction>,
+        _err: &Error,
+    ) -> Result<()> {
         let mut inner = self.inner.lock()?;
         inner.pending.insert(0, transaction.clone());
         Ok(())
     }
 
-    pub async fn set_as_complete(&self, transaction : &Arc<Transaction>) -> Result<()> {
+    pub async fn set_as_complete(&self, transaction: &Arc<Transaction>) -> Result<()> {
         let mut inner = self.inner.lock()?;
         inner.complete.push(transaction.clone());
         Ok(())
     }
-
 }

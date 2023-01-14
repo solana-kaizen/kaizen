@@ -1,24 +1,26 @@
+use kaizen::accounts::*;
+use kaizen::address::ProgramAddressData;
+use kaizen::error::*;
+use kaizen::realloc::account_info_realloc;
+use kaizen::result::Result;
 use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::slot_history::AccountInfo;
 use workflow_log::*;
-use kaizen::realloc::account_info_realloc;
-use kaizen::result::Result;
-use kaizen::error::*;
-use kaizen::address::ProgramAddressData;
-use kaizen::accounts::*;
 
-pub fn allocate_pda<'info,'pid>(
+pub fn allocate_pda<'info, 'pid>(
     payer: &AccountInfo<'info>,
     program_id: &'pid Pubkey,
     tpl_seeds: &[&[u8]],
     tpl_account_info: &AccountInfo<'info>,
     space: usize,
     lamports: u64,
-    validate_pda : bool,
+    validate_pda: bool,
 ) -> Result<()> {
-
     if space > ACCOUNT_DATA_TEMPLATE_SIZE {
-        panic!("create_pda() account size is too large (current limit is: {} bytes", ACCOUNT_DATA_TEMPLATE_SIZE);
+        panic!(
+            "create_pda() account size is too large (current limit is: {} bytes",
+            ACCOUNT_DATA_TEMPLATE_SIZE
+        );
     }
 
     // log_trace!("* * * program pda seed: {:?}", tpl_adderss_data.seed);
@@ -27,18 +29,15 @@ pub fn allocate_pda<'info,'pid>(
     // log_trace!("* * * program pda seeds:\n{}\n", seeds_hex);
 
     if validate_pda {
-        match Pubkey::create_program_address(
-            tpl_seeds,
-            &program_id
-        ) {
-            Ok(address)=>{
+        match Pubkey::create_program_address(tpl_seeds, &program_id) {
+            Ok(address) => {
                 if address != *tpl_account_info.key {
                     // log_trace!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);
                     return Err(error_code!(ErrorCode::PDAAddressMatch));
                 }
                 // log_trace!("| pda: PDA ADDRESS OK");
-            },
-            Err(_e)=>{
+            }
+            Err(_e) => {
                 // log_trace!("| pda: PDA ADDRESS MATCH failure");
                 return Err(error_code!(ErrorCode::PDAAddressCreate));
             }
@@ -48,13 +47,21 @@ pub fn allocate_pda<'info,'pid>(
     // log_trace!("| pda: account realloc - buffer: {} slice: {} target: {}",buffer_size,tpl_account_info.data_len(),space);
     account_info_realloc(tpl_account_info, space, true, true)?;
     // log_trace!("+ pda: simulator realloc done");
-    
+
     let mut ref_payer_lamports = payer.lamports.borrow_mut();
     let mut payer_lamports = **ref_payer_lamports;
 
-    log_trace!("allocate_pda() lamports - need: {} payer has: {}", lamports, payer_lamports);
+    log_trace!(
+        "allocate_pda() lamports - need: {} payer has: {}",
+        lamports,
+        payer_lamports
+    );
     if payer_lamports < lamports {
-        log_trace!("allocate_pda() insufficient lamports - need: {} payer has: {}", lamports, payer_lamports);
+        log_trace!(
+            "allocate_pda() insufficient lamports - need: {} payer has: {}",
+            lamports,
+            payer_lamports
+        );
         return Err(error_code!(ErrorCode::InsufficientAllocBalance));
     }
 
@@ -72,7 +79,7 @@ pub fn allocate_pda<'info,'pid>(
 pub fn allocate_multiple_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
     _payer: &'payer_refs AccountInfo<'payer_info>,
     _program_id: &'pid Pubkey,
-    _user_seed : &[u8],
+    _user_seed: &[u8],
     account_templates: &[(&ProgramAddressData, &'refs AccountInfo<'info>)],
     // account_templates: &[AccountInfoTemplate<'info, 'refs>],
     settings: &[(usize, u64)],
@@ -155,7 +162,7 @@ pub fn transfer_spl<'info>(
     to: &AccountInfo<'info>,
     authority: &AccountInfo<'info>,
     amount: u64,
-    _signers: &[&[&[u8]]]
+    _signers: &[&[&[u8]]],
 ) -> Result<()> {
     log_trace!(
         "\n--: transfer_tokens:\nprogram: {}\n\tfrom: {}\n\tto: {}\n\tauthority: {}\n\tamount: {}\n\n",
@@ -168,4 +175,3 @@ pub fn transfer_spl<'info>(
 
     Ok(())
 }
-

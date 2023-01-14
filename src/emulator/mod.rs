@@ -1,14 +1,14 @@
-mod stubs;
-mod emulator;
-mod simulator;
-pub mod mockdata;
-pub mod interface;
-pub mod rpc;
 pub mod client;
+mod emulator;
+pub mod interface;
+pub mod mockdata;
+pub mod rpc;
+mod simulator;
+mod stubs;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod server;
 
-pub use stubs::*;
-pub use simulator::Simulator;
 pub use emulator::Emulator;
+pub use simulator::Simulator;
+pub use stubs::*;

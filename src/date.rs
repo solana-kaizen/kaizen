@@ -1,15 +1,17 @@
-use serde::*;
 use borsh::*;
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+use serde::*;
+#[derive(
+    BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy,
+)]
 #[repr(transparent)]
 pub struct Date(pub u32);
 
-impl From<Date> for u32{
+impl From<Date> for u32 {
     fn from(date: Date) -> Self {
         date.0
     }
 }
-impl From<Date> for i32{
+impl From<Date> for i32 {
     fn from(date: Date) -> Self {
         date.0 as i32
     }
@@ -83,7 +85,7 @@ cfg_if! {
 
                 let d = NaiveDate::from_ymd(ymd[0] as i32, ymd[1], ymd[2]);
                 let t = NaiveTime::from_hms_milli(0,0,0,0);
-                
+
                 let ndt = NaiveDateTime::new(d, t);
                 Ok(DateTime::<Utc>::from_utc(ndt, Utc).into())
             }

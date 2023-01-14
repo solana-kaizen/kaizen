@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
-use solana_program::pubkey::Pubkey;
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::hash::{Hash, BuildHasher};
+use solana_program::pubkey::Pubkey;
+use std::collections::HashMap;
+use std::hash::{BuildHasher, Hash};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Clone)]
 pub struct PubkeyHasher {
@@ -11,11 +11,13 @@ pub struct PubkeyHasher {
 
 impl std::hash::Hasher for PubkeyHasher {
     fn write(&mut self, bytes: &[u8]) {
-        self.state = unsafe { 
-            std::mem::transmute::<[u8;8],u64>(bytes[0..8].try_into().expect("pubkey hasher transmute"))
+        self.state = unsafe {
+            std::mem::transmute::<[u8; 8], u64>(
+                bytes[0..8].try_into().expect("pubkey hasher transmute"),
+            )
         };
     }
-    
+
     fn finish(&self) -> u64 {
         self.state
     }
@@ -35,31 +37,29 @@ impl std::default::Default for PubkeyHasher {
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
-pub struct PubkeyHashMap<V, K = Pubkey, S = PubkeyHasher>(std::collections::HashMap<K,V,S>)
-where 
-K : BorshSerialize + BorshDeserialize + Hash + Eq + PartialEq + PartialOrd,
-V : BorshSerialize + BorshDeserialize,
-S : Default + BuildHasher
-
-;
-
-impl<V> PubkeyHashMap<V,Pubkey,PubkeyHasher> 
+pub struct PubkeyHashMap<V, K = Pubkey, S = PubkeyHasher>(std::collections::HashMap<K, V, S>)
 where
-    V : BorshSerialize + BorshDeserialize
+    K: BorshSerialize + BorshDeserialize + Hash + Eq + PartialEq + PartialOrd,
+    V: BorshSerialize + BorshDeserialize,
+    S: Default + BuildHasher;
+
+impl<V> PubkeyHashMap<V, Pubkey, PubkeyHasher>
+where
+    V: BorshSerialize + BorshDeserialize,
 {
     pub fn new() -> PubkeyHashMap<V> {
-        PubkeyHashMap(std::collections::HashMap::with_hasher(PubkeyHasher::default()))
+        PubkeyHashMap(std::collections::HashMap::with_hasher(
+            PubkeyHasher::default(),
+        ))
     }
 
     #[inline]
-    pub fn get(&self, k: &Pubkey) -> Option<&V>
-    {
+    pub fn get(&self, k: &Pubkey) -> Option<&V> {
         self.0.get(k)
     }
 
     #[inline]
-    pub fn get_mut(&mut self, k: &Pubkey) -> Option<&mut V>
-    {
+    pub fn get_mut(&mut self, k: &Pubkey) -> Option<&mut V> {
         self.0.get_mut(k)
     }
 
@@ -69,15 +69,14 @@ where
     }
 
     #[inline]
-    pub fn remove(&mut self, k: &Pubkey) -> Option<V>
-    {
+    pub fn remove(&mut self, k: &Pubkey) -> Option<V> {
         self.0.remove(k)
     }
-
 }
 
-impl<V> Deref for PubkeyHashMap<V> 
-where V : BorshSerialize + BorshDeserialize
+impl<V> Deref for PubkeyHashMap<V>
+where
+    V: BorshSerialize + BorshDeserialize,
 {
     type Target = HashMap<Pubkey, V, PubkeyHasher>;
     fn deref(&self) -> &Self::Target {
@@ -86,10 +85,10 @@ where V : BorshSerialize + BorshDeserialize
 }
 
 impl<V> DerefMut for PubkeyHashMap<V>
-where V : BorshSerialize + BorshDeserialize
+where
+    V: BorshSerialize + BorshDeserialize,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
-

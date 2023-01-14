@@ -1,7 +1,7 @@
-use std::sync::Mutex;
 use kaizen::prelude::*;
 use kaizen::result::Result;
 use kaizen::transport::TransportMode;
+use std::sync::Mutex;
 
 use crate::error;
 
@@ -13,10 +13,10 @@ pub enum IdentityState {
 }
 
 pub struct Inner {
-    authority_pubkey : Option<Pubkey>,
-    identity_pubkey : Option<Pubkey>,
-    identity_state : IdentityState,
-    transport_mode : Option<TransportMode>,
+    authority_pubkey: Option<Pubkey>,
+    identity_pubkey: Option<Pubkey>,
+    identity_state: IdentityState,
+    transport_mode: Option<TransportMode>,
 }
 
 impl Inner {
@@ -29,7 +29,11 @@ impl Inner {
         }
     }
 
-    pub fn new_with_args(transport_mode: &TransportMode, authority_pubkey: &Pubkey, identity_pubkey: &Pubkey) -> Self {
+    pub fn new_with_args(
+        transport_mode: &TransportMode,
+        authority_pubkey: &Pubkey,
+        identity_pubkey: &Pubkey,
+    ) -> Self {
         Self {
             authority_pubkey: Some(authority_pubkey.clone()),
             identity_pubkey: Some(identity_pubkey.clone()),
@@ -41,38 +45,40 @@ impl Inner {
 
 #[derive(Clone)]
 pub struct User {
-    inner : Arc<Mutex<Inner>>,
-    sequencer : Sequencer,
+    inner: Arc<Mutex<Inner>>,
+    sequencer: Sequencer,
 }
 
 impl User {
     pub fn new() -> Self {
         User {
-            inner : Arc::new(Mutex::new(Inner::new())),
-            sequencer : Sequencer::default(),
+            inner: Arc::new(Mutex::new(Inner::new())),
+            sequencer: Sequencer::default(),
         }
     }
 
-    pub fn new_with_args(transport_mode: &TransportMode, authority_pubkey: &Pubkey, identity_pubkey: &Pubkey, sequencer: &Sequencer) -> Self {
+    pub fn new_with_args(
+        transport_mode: &TransportMode,
+        authority_pubkey: &Pubkey,
+        identity_pubkey: &Pubkey,
+        sequencer: &Sequencer,
+    ) -> Self {
         User {
-            inner : Arc::new(Mutex::new(Inner::new_with_args(transport_mode, authority_pubkey,identity_pubkey))),
-            sequencer : sequencer.clone(),
+            inner: Arc::new(Mutex::new(Inner::new_with_args(
+                transport_mode,
+                authority_pubkey,
+                identity_pubkey,
+            ))),
+            sequencer: sequencer.clone(),
         }
     }
 
     pub fn transport_mode(&self) -> Option<TransportMode> {
-        self
-            .inner
-            .lock()
-            .unwrap()
-            .transport_mode
-            .as_ref()
-            .cloned()
+        self.inner.lock().unwrap().transport_mode.as_ref().cloned()
     }
 
     pub fn identity(&self) -> Pubkey {
-        self
-            .inner
+        self.inner
             .lock()
             .unwrap()
             .identity_pubkey
@@ -81,8 +87,7 @@ impl User {
     }
 
     pub fn authority(&self) -> Pubkey {
-        self
-            .inner
+        self.inner
             .lock()
             .unwrap()
             .authority_pubkey
@@ -94,15 +99,23 @@ impl User {
         self.sequencer.clone()
     }
 
-    pub fn builder_args(&self) -> Result<(Pubkey,Pubkey,Sequencer)> {
+    pub fn builder_args(&self) -> Result<(Pubkey, Pubkey, Sequencer)> {
         let sequencer = self.sequencer.clone();
         let inner = self.inner.lock().unwrap();
-        let authority = inner.authority_pubkey.ok_or(error!("User record is missing authority"))?;
-        let identity = inner.identity_pubkey.ok_or(error!("User record is missing identity"))?;
-        Ok((authority,identity,sequencer))
+        let authority = inner
+            .authority_pubkey
+            .ok_or(error!("User record is missing authority"))?;
+        let identity = inner
+            .identity_pubkey
+            .ok_or(error!("User record is missing identity"))?;
+        Ok((authority, identity, sequencer))
     }
 
-    pub async fn load_identity(&self, program_id : &Pubkey, authority: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
+    pub async fn load_identity(
+        &self,
+        program_id: &Pubkey,
+        authority: &Pubkey,
+    ) -> Result<Option<Arc<AccountDataReference>>> {
         match kaizen::identity::client::load_identity(program_id, authority).await? {
             Some(identity) => {
                 let transport_mode = Transport::global()?.mode();
@@ -113,7 +126,7 @@ impl User {
                 inner.authority_pubkey = Some(authority.clone());
                 inner.transport_mode = Some(transport_mode);
                 Ok(Some(identity))
-            },
+            }
             None => {
                 let mut inner = self.inner.lock()?;
                 inner.identity_state = IdentityState::Missing;
@@ -121,14 +134,13 @@ impl User {
                 Ok(None)
             }
         }
-
     }
 
     pub fn is_present(&self) -> Result<bool> {
         let inner = self.inner.lock()?;
         match inner.identity_state {
             IdentityState::Present => Ok(true),
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 
@@ -137,7 +149,7 @@ impl User {
         match inner.identity_state {
             IdentityState::Present => Ok(true),
             IdentityState::Missing => Ok(true),
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 
@@ -145,5 +157,4 @@ impl User {
         let inner = self.inner.lock()?;
         Ok(inner.identity_state.clone())
     }
-
 }

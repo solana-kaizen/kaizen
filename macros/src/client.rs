@@ -1,32 +1,29 @@
-
-use std::convert::Into;
 use proc_macro::TokenStream;
-use proc_macro2::{Span, Ident};
+use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
+use std::convert::Into;
 use syn::{
-    Result, Error,
-    parse_macro_input, 
-    PathArguments, 
-    punctuated::Punctuated, Expr, Token, 
-    parse::{Parse, ParseStream}, ExprPath, PathSegment,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
+    Error, Expr, ExprPath, PathArguments, PathSegment, Result, Token,
 };
 
 #[derive(Debug)]
 struct Execution {
-    target_primitive_path : ExprPath,
-    interface_dispatch_method : ExprPath,
-    client_struct_decl : TokenStream,
-    client_lifetimes : Option<String>,
+    target_primitive_path: ExprPath,
+    interface_dispatch_method: ExprPath,
+    client_struct_decl: TokenStream,
+    client_lifetimes: Option<String>,
 }
 
 impl Parse for Execution {
     fn parse(input: ParseStream) -> Result<Self> {
-
         let parsed = Punctuated::<Expr, Token![,]>::parse_terminated(input).unwrap();
         if parsed.len() != 2 {
             return Err(Error::new_spanned(
                 parsed.clone(),
-                format!("usage: declare_handlers!(<struct>,[<method>, ..])")
+                format!("usage: declare_handlers!(<struct>,[<method>, ..])"),
             ));
         }
 
@@ -36,7 +33,7 @@ impl Parse for Execution {
             _ => {
                 return Err(Error::new_spanned(
                     handler_struct_expr.clone(),
-                    format!("first argument should be a struct name (and an optional lifetime)")
+                    format!("first argument should be a struct name (and an optional lifetime)"),
                 ));
             }
         };
@@ -44,9 +41,18 @@ impl Parse for Execution {
         let mut interface_dispatch_method = target_primitive_path.clone();
 
         let ident = Ident::new("program", Span::call_site());
-        let path_segment = PathSegment { ident, arguments : PathArguments::None };
-        interface_dispatch_method.path.segments.push_punct(Token![::](Span::call_site()));
-        interface_dispatch_method.path.segments.push_value(path_segment);
+        let path_segment = PathSegment {
+            ident,
+            arguments: PathArguments::None,
+        };
+        interface_dispatch_method
+            .path
+            .segments
+            .push_punct(Token![::](Span::call_site()));
+        interface_dispatch_method
+            .path
+            .segments
+            .push_value(path_segment);
 
         let client_struct_expr = parsed.last().unwrap().clone();
         let mut client_struct = match client_struct_expr {
@@ -54,7 +60,7 @@ impl Parse for Execution {
             _ => {
                 return Err(Error::new_spanned(
                     client_struct_expr.clone(),
-                    format!("last argument should be a struct name (and an optional lifetime)")
+                    format!("last argument should be a struct name (and an optional lifetime)"),
                 ));
             }
         };
@@ -67,13 +73,13 @@ impl Parse for Execution {
                 let lifetimes = ts.to_string();
                 target.arguments = PathArguments::None;
                 Some(lifetimes)
-            },
-            _ => None
+            }
+            _ => None,
         };
 
         let mut ts = proc_macro2::TokenStream::new();
         client_struct.to_tokens(&mut ts);
-        let client_struct_decl:TokenStream = ts.into();
+        let client_struct_decl: TokenStream = ts.into();
 
         let execution = Execution {
             target_primitive_path,
@@ -87,7 +93,6 @@ impl Parse for Execution {
 
 // #[proc_macro]
 pub fn declare_client(input: TokenStream) -> TokenStream {
-
     let execution = parse_macro_input!(input as Execution);
 
     let target_primitive_path = execution.target_primitive_path;
@@ -95,18 +100,24 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
     let client_struct_name = execution.client_struct_decl.to_string();
 
     let impl_wasm_str = match &execution.client_lifetimes {
-        Some(lifetimes) => format!("impl<{}> {}<{}>",lifetimes, execution.client_struct_decl, lifetimes),
+        Some(lifetimes) => format!(
+            "impl<{}> {}<{}>",
+            lifetimes, execution.client_struct_decl, lifetimes
+        ),
         None => format!("impl {}", execution.client_struct_decl),
     };
     let impl_wasm_ts: proc_macro2::TokenStream = impl_wasm_str.parse().unwrap();
 
     let impl_client_str = match &execution.client_lifetimes {
-        Some(lifetimes) => format!("impl Client {}<{}>", execution.client_struct_decl, lifetimes),
+        Some(lifetimes) => format!(
+            "impl Client {}<{}>",
+            execution.client_struct_decl, lifetimes
+        ),
         None => format!("impl Client for {}", execution.client_struct_decl),
     };
     let impl_client_ts: proc_macro2::TokenStream = impl_client_str.parse().unwrap();
 
-    let out = quote!{
+    let out = quote! {
 
         #impl_client_ts {
             fn handler_id(handler_fn: HandlerFn) -> usize {
