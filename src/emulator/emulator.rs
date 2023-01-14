@@ -48,7 +48,7 @@ impl LogSink {
 }
 
 impl workflow_log::Sink for LogSink {
-    fn write(&self, _level:Level, args : &std::fmt::Arguments<'_>) -> bool {
+    fn write(&self, target: Option<&str>, _level:Level, args : &std::fmt::Arguments<'_>) -> bool {
         if let Some(logs) = self.logs.lock().unwrap().as_mut() {
             logs.push(args.to_string());
         }
