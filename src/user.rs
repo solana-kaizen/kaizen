@@ -19,6 +19,12 @@ pub struct Inner {
     transport_mode: Option<TransportMode>,
 }
 
+impl Default for Inner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Inner {
     pub fn new() -> Self {
         Self {
@@ -35,8 +41,8 @@ impl Inner {
         identity_pubkey: &Pubkey,
     ) -> Self {
         Self {
-            authority_pubkey: Some(authority_pubkey.clone()),
-            identity_pubkey: Some(identity_pubkey.clone()),
+            authority_pubkey: Some(*authority_pubkey),
+            identity_pubkey: Some(*identity_pubkey),
             identity_state: IdentityState::Present,
             transport_mode: Some(transport_mode.clone()),
         }
@@ -47,6 +53,12 @@ impl Inner {
 pub struct User {
     inner: Arc<Mutex<Inner>>,
     sequencer: Sequencer,
+}
+
+impl Default for User {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl User {
@@ -83,7 +95,6 @@ impl User {
             .unwrap()
             .identity_pubkey
             .expect("User::identity() missing identity pubkey")
-            .clone()
     }
 
     pub fn authority(&self) -> Pubkey {
@@ -92,7 +103,6 @@ impl User {
             .unwrap()
             .authority_pubkey
             .expect("User::authority() missing authority pubkey")
-            .clone()
     }
 
     pub fn sequencer(&self) -> Sequencer {
@@ -104,10 +114,10 @@ impl User {
         let inner = self.inner.lock().unwrap();
         let authority = inner
             .authority_pubkey
-            .ok_or(error!("User record is missing authority"))?;
+            .ok_or_else(|| error!("User record is missing authority"))?;
         let identity = inner
             .identity_pubkey
-            .ok_or(error!("User record is missing identity"))?;
+            .ok_or_else(|| error!("User record is missing identity"))?;
         Ok((authority, identity, sequencer))
     }
 
@@ -122,8 +132,8 @@ impl User {
                 self.sequencer.load_from_identity(&identity)?;
                 let mut inner = self.inner.lock()?;
                 inner.identity_state = IdentityState::Present;
-                inner.identity_pubkey = Some(identity.pubkey().clone());
-                inner.authority_pubkey = Some(authority.clone());
+                inner.identity_pubkey = Some(*identity.pubkey());
+                inner.authority_pubkey = Some(*authority);
                 inner.transport_mode = Some(transport_mode);
                 Ok(Some(identity))
             }

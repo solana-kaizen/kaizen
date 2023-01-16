@@ -167,33 +167,26 @@ impl<'info, 'refs, 'pid, 'instr> TryFrom<(&'pid Pubkey, &'refs [AccountInfo<'inf
         let handler_id = payload.handler_id as usize;
 
         let flags = payload.flags;
-        let has_identity = if flags & crate::payload::PAYLOAD_HAS_IDENTITY_ACCOUNT != 0 {
-            true
-        } else {
-            false
-        };
+        let has_identity = flags & crate::payload::PAYLOAD_HAS_IDENTITY_ACCOUNT != 0;
 
         let incoming_accounts_len = accounts.len();
         let payload_accounts_len = payload.total_accounts();
 
-        if has_identity {
-            if incoming_accounts_len < 2 {
-                log_trace!(
-                    "FATAL: Invalid number of context accounts - expecting: {} received: {}",
-                    payload_accounts_len + 2,
-                    incoming_accounts_len
-                );
-                return Err(ErrorCode::ContextAccounts.into());
-            }
-        } else {
-            if incoming_accounts_len < 1 {
-                log_trace!(
-                    "FATAL: Invalid number of context accounts - expecting: {} received: {}",
-                    payload_accounts_len + 1,
-                    incoming_accounts_len
-                );
-                return Err(ErrorCode::ContextAccounts.into());
-            }
+        if has_identity && incoming_accounts_len < 2 {
+            log_trace!(
+                "FATAL: Invalid number of context accounts - expecting: {} received: {}",
+                payload_accounts_len + 2,
+                incoming_accounts_len
+            );
+            return Err(ErrorCode::ContextAccounts.into());
+        }
+        else if incoming_accounts_len < 1 {
+            log_trace!(
+                "FATAL: Invalid number of context accounts - expecting: {} received: {}",
+                payload_accounts_len + 1,
+                incoming_accounts_len
+            );
+            return Err(ErrorCode::ContextAccounts.into());
         }
 
         let mut offset = 0;
@@ -364,7 +357,8 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr> {
     #[cfg(not(target_os = "solana"))]
     pub fn view_info(&self) {
         let authority_accounts = 1;
-        let identity_accounts = if self.identity.is_some() { 1 } else { 0 };
+        let identity_accounts = i32::from(self.identity.is_some());
+         // if self.identity.is_some() { 1 } else { 0 };
         // let execution_accounts = self.accounts.len() - user_accounts;
         // log_trace!("");
         // log_trace!("\n{}",
@@ -412,7 +406,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr> {
 
     #[cfg(not(target_os = "solana"))]
     pub fn view_hex(&self) {
-        let instruction_data_view = hexplay::HexViewBuilder::new(&self.incoming_data)
+        let instruction_data_view = hexplay::HexViewBuilder::new(self.incoming_data)
             .force_color()
             .add_colors(vec![(hexplay::color::yellow(), 0..2)])
             .address_offset(0)
@@ -427,8 +421,8 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr> {
 
         let string = instruction_data_view.to_string();
         let lines: Vec<String> = string
-            .split("\n")
-            .map(|l| format!("{} | {}", style("CTX").magenta(), l).to_string())
+            .split('\n')
+            .map(|l| format!("{} | {}", style("CTX").magenta(), l))
             .collect();
         log_trace!("{}", lines.join("\n"));
     }
@@ -512,7 +506,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr> {
     ) -> Result<()> {
         cfg_if! {
             if #[cfg(not(target_os = "solana"))] {
-                if self.system_accounts.iter().position(|account_info| account_info.key == &solana_sdk::system_program::id()).is_none() {
+                if !self.system_accounts.iter().any(|account_info| account_info.key == &solana_sdk::system_program::id()) {
                     return Err(error_code!(ErrorCode::SystemProgramAccountMissing));
                 }
             }
@@ -533,7 +527,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr> {
         };
 
         let payer = match allocation_args.payer {
-            AllocationPayer::Authority => &self.authority,
+            AllocationPayer::Authority => self.authority,
             AllocationPayer::Identity => match &self.identity {
                 Some(identity) => identity.account(),
                 None => return Err(error_code!(ErrorCode::IdentityMissingForAlloc)),

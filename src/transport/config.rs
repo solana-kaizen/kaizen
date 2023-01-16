@@ -11,10 +11,7 @@ pub enum TransportMode {
 
 impl TransportMode {
     pub fn is_emulator(&self) -> bool {
-        match self {
-            TransportMode::Validator => false,
-            _ => true,
-        }
+        !matches!(self, TransportMode::Validator)
     }
 }
 
@@ -42,9 +39,10 @@ impl TransportConfig {
     }
 
     pub fn default_with_root(root: Pubkey) -> TransportConfig {
-        let mut config = TransportConfig::default();
-        config.root = root;
-        config
+        TransportConfig { 
+            root, 
+            ..Default::default() 
+        }
     }
 }
 

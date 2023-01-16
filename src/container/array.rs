@@ -173,7 +173,7 @@ where
         let meta = self.try_init_meta()?;
         meta.records = records.len() as u32;
 
-        if records.len() != 0 {
+        if !records.is_empty() {
             let elements = self.as_slice_mut();
             #[cfg(test)]
             assert_eq!(records.len(), elements.len());
@@ -310,7 +310,7 @@ where
     pub unsafe fn try_allocate(&self, zero_init: bool) -> Result<&'refs mut T>
 // where T : 'info
     {
-        Ok(self.try_allocate_at(self.len(), zero_init)?)
+        self.try_allocate_at(self.len(), zero_init)
     }
 
     pub fn get_byte_offset_at_idx(&self, idx: usize) -> usize {

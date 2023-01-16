@@ -33,7 +33,7 @@ impl EmulatorRpcClient {
     }
 
     pub async fn connect(&self, block: bool) -> Result<Option<Listener>> {
-        Ok(self.rpc.connect(block).await.map_err(|e| error!("{}", e))?)
+        self.rpc.connect(block).await.map_err(|e| error!("{}", e))
     }
 
     pub fn connect_as_task(self: &Arc<Self>) -> Result<()> {
@@ -72,14 +72,14 @@ impl EmulatorInterface for EmulatorRpcClient {
         // we try to re-use existing data types from Solana but
         // these do not implement Borsh serialization
         let message = ExecuteReq {
-            program_id: instruction.program_id.clone(),
+            program_id: instruction.program_id,
             accounts: instruction
                 .accounts
                 .iter()
                 .map(|account| account.into())
                 .collect(),
             instruction_data: instruction.data.clone(),
-            authority: authority.clone(),
+            authority: *authority,
         };
         let resp: Result<ExecutionResponse> = self
             .rpc
@@ -89,7 +89,7 @@ impl EmulatorInterface for EmulatorRpcClient {
         if let Ok(resp) = &resp {
             // TODO setup verbose flag somewhere in configuration
             for line in resp.logs.iter() {
-                for l in line.split("\n") {
+                for l in line.split('\n') {
                     log_trace!("| {}", l);
                 }
             }
@@ -100,8 +100,8 @@ impl EmulatorInterface for EmulatorRpcClient {
 
     async fn fund(&self, key: &Pubkey, owner: &Pubkey, lamports: u64) -> Result<()> {
         let message = FundReq {
-            key: key.clone(),
-            owner: owner.clone(),
+            key: *key,
+            owner: *owner,
             lamports,
         };
         let resp: Result<()> = self

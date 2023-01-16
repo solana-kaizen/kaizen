@@ -695,7 +695,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                 allocation_args : &kaizen::context::AccountAllocationArgs<'info,'refs,'_>,
             ) -> kaizen::result::Result<#struct_name #struct_params> {
 
-                Ok(Self::try_allocate(ctx,allocation_args,0)?)
+                Self::try_allocate(ctx,allocation_args,0)
             }
 
             pub fn try_allocate(
@@ -706,7 +706,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
                 let data_len = Self::initial_data_len() + reserve_data_len;
                 let account_info = ctx.try_create_pda(data_len,allocation_args)?;
-                Ok(Self::try_create(account_info)?)
+                Self::try_create(account_info)
             }
 
 

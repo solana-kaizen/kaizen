@@ -46,6 +46,12 @@ pub struct TransactionQueue {
 
 unsafe impl Send for TransactionQueue {}
 
+impl Default for TransactionQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TransactionQueue {
     pub fn new() -> TransactionQueue {
         TransactionQueue {
@@ -56,7 +62,7 @@ impl TransactionQueue {
     }
 
     pub fn register_observer(&self, id: &Id, observer: Arc<dyn Observer>) -> Result<()> {
-        self.observers.lock()?.insert(id.clone(), observer);
+        self.observers.lock()?.insert(*id, observer);
         Ok(())
     }
 
@@ -68,7 +74,7 @@ impl TransactionQueue {
     // ~~~
 
     pub async fn discard_chain(&self, id: &Id) -> Result<()> {
-        let chain_opt = self.tx_chains.lock().unwrap().remove(&id);
+        let chain_opt = self.tx_chains.lock().unwrap().remove(id);
         if let Some(tx_chain) = chain_opt {
             for observer in self.observers()?.iter() {
                 observer.tx_chain_discarded(tx_chain.clone()).await;
@@ -90,8 +96,7 @@ impl TransactionQueue {
                 .lock()?
                 .pending
                 .iter()
-                .position(|tx| tx.id == tx_id)
-                .is_some()
+                .any(|tx| tx.id == tx_id)
             {
                 return Ok(Some(tx_chain.clone()));
             }
@@ -178,7 +183,7 @@ impl TransactionQueue {
                     queue
                         .tx_chains
                         .lock()?
-                        .insert(tx_chain.id.clone(), tx_chain.clone());
+                        .insert(tx_chain.id, tx_chain.clone());
                     for observer in queue.observers()?.iter() {
                         observer.tx_chain_created(tx_chain.clone()).await;
                     }

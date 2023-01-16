@@ -257,8 +257,8 @@ impl Variant {
                         };
                         match accounts {
                             Some(accounts) => {
-                                for n in 0..accounts.len() {
-                                    lines.push(format!("| account: {:?}", accounts[n]));
+                                for account in accounts {
+                                    lines.push(format!("| account: {:?}", account));
                                 }
                             }
                             None => {}
@@ -282,7 +282,7 @@ impl Variant {
                             None => {}
                         };
 
-                        format!("{}", lines.join("\n"))
+                        lines.join("\n")
                     }
                     _ => {
                         format!("{:#?}", client_error)
@@ -304,15 +304,15 @@ pub struct Error {
 
 impl Error {
     pub fn format(&self) -> String {
-        let message = self.message.clone().unwrap_or("no message".into());
+        let message = self.message.clone().unwrap_or_else(|| "no message".into());
 
         let account = match self.account {
-            None => "n/a".into(),
+            None => "n/a".to_string(),
             Some(key) => key.to_string(),
         };
 
         let source = match &self.source {
-            None => format!("no source"),
+            None => "no source".to_string(),
             Some(source) => format!("{}:{}", source.filename, source.line),
         };
 
@@ -353,6 +353,12 @@ impl std::fmt::Debug for Error {
     }
 }
 
+impl Default for Error {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Error {
     pub fn new() -> Error {
         Error {
@@ -368,7 +374,7 @@ impl Error {
             Some(ref message) => message.clone(),
             None => match &self.variant {
                 Some(variant) => variant.info(),
-                None => format!("no message"),
+                None => "no message".to_string(),
             },
         }
     }
@@ -407,7 +413,7 @@ impl Error {
     }
 
     pub fn with_account(mut self, key: &Pubkey) -> Self {
-        self.account = Some(key.clone());
+        self.account = Some(*key);
         self
     }
 }
@@ -463,7 +469,7 @@ impl From<&str> for Error {
     fn from(msg: &str) -> Error {
         Error::new()
             .with_code(ErrorCode::ErrorMessage)
-            .with_message(&msg)
+            .with_message(msg)
     }
 }
 

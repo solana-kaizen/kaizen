@@ -87,15 +87,21 @@ impl Cache {
 
             #[inline(always)]
             pub fn store(&self, reference : &Arc<AccountDataReference>) -> Result<()> {
-                Ok(self.cache_impl.insert(*reference.key,reference.clone()))
+                self.cache_impl.insert(*reference.key,reference.clone());
+                Ok(())
             }
 
             #[inline(always)]
             pub fn purge(&self, pubkey: Option<&Pubkey>) -> Result<()> {
                 match pubkey {
-                    Some(pubkey) => Ok(self.cache_impl.invalidate(pubkey)),
-                    None => Ok(self.cache_impl.invalidate_all()),
+                    Some(pubkey) => {
+                        self.cache_impl.invalidate(pubkey);
+                    }
+                    None => {
+                        self.cache_impl.invalidate_all();
+                    },
                 }
+                Ok(())
             }
 
         }

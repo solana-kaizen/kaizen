@@ -88,7 +88,7 @@ impl Transaction {
         meta: Option<TransactionMeta>,
         callback: TxCallback,
     ) -> Transaction {
-        let meta = meta.unwrap_or(TransactionMeta::new_without_accounts());
+        let meta = meta.unwrap_or_else(TransactionMeta::new_without_accounts);
         let (sender, receiver) = unbounded::<TransactionResult>();
         Transaction {
             name: name.to_string(),
@@ -143,7 +143,7 @@ impl Transaction {
         let meta = self.meta.lock()?;
 
         for pubkey in meta.accounts.iter() {
-            accounts.insert(pubkey.clone());
+            accounts.insert(*pubkey);
         }
 
         Ok(accounts)
@@ -170,7 +170,7 @@ impl Transaction {
         if meta.accounts.is_empty() {
             panic!("Transaction::target_account(): missing target account");
         } else {
-            Ok(meta.accounts[0].clone())
+            Ok(meta.accounts[0])
         }
     }
 
@@ -203,7 +203,7 @@ impl TransactionList {
     }
 
     pub fn target_account(&self) -> Result<Pubkey> {
-        if self.transactions.len() == 0 {
+        if self.transactions.is_empty() {
             return Err("No transactions".into());
         }
         let pubkey = self.transactions[0].target_account()?;
@@ -247,6 +247,12 @@ pub struct TransactionChainInner {
     pub accounts: HashSet<Pubkey>,
 }
 
+impl Default for TransactionChainInner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TransactionChainInner {
     pub fn new() -> TransactionChainInner {
         TransactionChainInner {
@@ -260,6 +266,12 @@ impl TransactionChainInner {
 pub struct TransactionChain {
     pub id: Id,
     pub inner: Arc<Mutex<TransactionChainInner>>,
+}
+
+impl Default for TransactionChain {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TransactionChain {

@@ -20,6 +20,12 @@ pub struct Reflector {
     pub channels: Arc<Mutex<HashMap<Id, Sender<Event>>>>,
 }
 
+impl Default for Reflector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Reflector {
     pub fn new() -> Reflector {
         Reflector {

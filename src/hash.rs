@@ -43,6 +43,15 @@ where
     V: BorshSerialize + BorshDeserialize,
     S: Default + BuildHasher;
 
+impl<V> Default for PubkeyHashMap<V, Pubkey, PubkeyHasher>
+where
+    V: BorshSerialize + BorshDeserialize,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<V> PubkeyHashMap<V, Pubkey, PubkeyHasher>
 where
     V: BorshSerialize + BorshDeserialize,

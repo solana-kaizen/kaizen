@@ -108,7 +108,7 @@ pub fn declare_interface(input: TokenStream) -> TokenStream {
                     workflow_log::log_error!("Error - invalid handler id {} for interface {}", ctx.handler_id, #handler_struct_name);
                     return Err(solana_program::program_error::ProgramError::InvalidArgument);
                 }
-                Ok(#handler_struct_path::INTERFACE_HANDLERS[ctx.handler_id](ctx)?)
+                #handler_struct_path::INTERFACE_HANDLERS[ctx.handler_id](ctx)
             }
         }
     };

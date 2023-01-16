@@ -7,7 +7,7 @@ use solana_program::{
 
 // ^ WARNING: This code is lifted from Solana SDK
 #[cfg(target_pointer_width = "64")]
-pub fn account_info_headers<'info>(account_info: &AccountInfo<'info>) -> Result<(u64, u64)> {
+pub fn account_info_headers(account_info: &AccountInfo) -> Result<(u64, u64)> {
     unsafe {
         // First set new length in the serialized data
         let ptr = account_info.try_borrow_mut_data()?.as_mut_ptr().offset(-8) as *mut u64;
@@ -23,24 +23,22 @@ pub fn account_info_headers<'info>(account_info: &AccountInfo<'info>) -> Result<
 }
 
 #[cfg(target_pointer_width = "64")]
-pub fn account_info_realloc<'info>(
-    account_info: &AccountInfo<'info>,
+pub fn account_info_realloc(
+    account_info: &AccountInfo,
     new_len: usize,
     zero_init: bool,
     is_alloc: bool,
 ) -> Result<()> {
     let orig_len = account_info.data_len();
 
-    if is_alloc == false {
-        if new_len > orig_len && new_len - orig_len > MAX_PERMITTED_DATA_INCREASE {
-            #[cfg(target_os = "solana")]
-            return Err(error_code!(ErrorCode::MaxPermittedAccountDataIncrease));
-            #[cfg(not(target_os = "solana"))]
-            panic!(
-                "maximum permitted account data increase - orig len: {} new len: {}",
-                orig_len, new_len
-            );
-        }
+    if !is_alloc && new_len > orig_len && new_len - orig_len > MAX_PERMITTED_DATA_INCREASE {
+        #[cfg(target_os = "solana")]
+        return Err(error_code!(ErrorCode::MaxPermittedAccountDataIncrease));
+        #[cfg(not(target_os = "solana"))]
+        panic!(
+            "maximum permitted account data increase - orig len: {} new len: {}",
+            orig_len, new_len
+        );
     }
 
     unsafe {
@@ -66,7 +64,7 @@ pub fn account_info_realloc<'info>(
 }
 
 #[cfg(target_pointer_width = "32")]
-pub fn account_info_headers<'info>(account_info: &AccountInfo<'info>) -> Result<(u64, u64)> {
+pub fn account_info_headers(account_info: &AccountInfo) -> Result<(u64, u64)> {
     unsafe {
         // First set new length in the serialized data
         let ptr = account_info.try_borrow_mut_data()?.as_mut_ptr().offset(-4) as *mut u32;
@@ -82,8 +80,8 @@ pub fn account_info_headers<'info>(account_info: &AccountInfo<'info>) -> Result<
 }
 
 #[cfg(target_pointer_width = "32")]
-pub fn account_info_realloc<'info>(
-    account_info: &AccountInfo<'info>,
+pub fn account_info_realloc(
+    account_info: &AccountInfo,
     new_len: usize,
     zero_init: bool,
     is_alloc: bool,

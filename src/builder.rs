@@ -28,7 +28,7 @@ pub enum Gather {
 pub fn find_interface_id(program_fn: HandlerFn, handlers: &[HandlerFn]) -> usize {
     handlers
         .iter()
-        .position(|&hfn| hfn as HandlerFnCPtr == program_fn as HandlerFnCPtr)
+        .position(|&hfn| std::ptr::eq(hfn as HandlerFnCPtr, program_fn as HandlerFnCPtr) )
         .expect("handler is not registered")
 }
 
@@ -174,7 +174,7 @@ impl InstructionBuilder {
     }
 
     pub fn identity_pubkey(&self) -> Option<Pubkey> {
-        self.inner().identity.as_ref().map(|m| m.pubkey.clone()) //.clone()
+        self.inner().identity.as_ref().map(|m| m.pubkey) //.clone()
                                                                  // match self.inner().identity.as_ref()
     }
 
@@ -253,7 +253,7 @@ impl InstructionBuilder {
         let inner = Inner {
             authority: None,
             identity: None,
-            program_id: program_id.clone(),
+            program_id: *program_id,
 
             interface_id: interface_id as u16,
             handler_id: handler_id.into(),
@@ -285,30 +285,30 @@ impl InstructionBuilder {
     }
 
     // pub fn generic_template_accounts<'this>(&'this self) -> &'this Vec<AccountMeta> {
-    pub fn generic_template_accounts<'this>(&'this self) -> Vec<AccountMeta> {
+    pub fn generic_template_accounts(&self) -> Vec<AccountMeta> {
         // &self.generic_template_accounts
         self.inner().generic_template_accounts.clone()
     }
 
     // pub fn generic_template_account_at<'this>(&'this self, idx : usize) -> &'this AccountMeta {
-    pub fn generic_template_account_at<'this>(&'this self, idx: usize) -> AccountMeta {
+    pub fn generic_template_account_at(&self, idx: usize) -> AccountMeta {
         self.inner().generic_template_accounts[idx].clone()
     }
 
-    pub fn generic_template_pubkey_at<'this>(&'this self, idx: usize) -> Pubkey {
+    pub fn generic_template_pubkey_at(&self, idx: usize) -> Pubkey {
         self.inner().generic_template_accounts[idx].pubkey
     }
 
-    pub fn collection_template_accounts<'this>(&'this self) -> Vec<AccountMeta> {
+    pub fn collection_template_accounts(&self) -> Vec<AccountMeta> {
         // &self.generic_template_accounts
         self.inner().generic_template_accounts.clone()
     }
 
-    pub fn collection_template_account_at<'this>(&'this self, idx: usize) -> AccountMeta {
+    pub fn collection_template_account_at(&self, idx: usize) -> AccountMeta {
         self.inner().collection_template_accounts[idx].clone()
     }
 
-    pub fn collection_template_pubkey_at<'this>(&'this self, idx: usize) -> Pubkey {
+    pub fn collection_template_pubkey_at(&self, idx: usize) -> Pubkey {
         self.inner().collection_template_accounts[idx].pubkey
     }
 
@@ -443,7 +443,7 @@ impl InstructionBuilder {
     }
 
     // fn encode_template_instruction_data(&self) -> Vec<u8> {
-    fn encode_template_instruction_data(data: &Vec<Vec<u8>>) -> Vec<u8> {
+    fn encode_template_instruction_data(data: &[Vec<u8>]) -> Vec<u8> {
         let mut template_address_data = Vec::new();
         // for data in self.generic_template_address_data.iter() {
         for data in data.iter() {
@@ -517,12 +517,12 @@ impl InstructionBuilder {
         suffixes: &[&[u8]],
     ) -> Arc<Self> {
         self.with_inner(|mut inner| {
-            for n in 0..suffixes.len() {
+            for s in suffixes.iter() {
                 inner.generic_template_account_descriptors.push((
                     IsSigner::NotSigner,
                     Access::Write,
                     AddressDomain::Default,
-                    SeedSuffix::Custom(suffixes[n].to_vec()),
+                    SeedSuffix::Custom(s.to_vec()),
                 ))
             }
         })
@@ -552,9 +552,9 @@ impl InstructionBuilder {
         suffixes: &[&[u8]],
     ) -> Arc<Self> {
         self.with_inner(|mut inner| {
-            for n in 0..suffixes.len() {
+            for s in suffixes.iter() {
                 let mut suffix = prefix.to_vec();
-                suffix.extend_from_slice(suffixes[n]);
+                suffix.extend_from_slice(s);
                 inner.generic_template_account_descriptors.push((
                     IsSigner::NotSigner,
                     Access::Write,
@@ -726,7 +726,7 @@ impl InstructionBuilder {
             Some(pubkey) => {
                 // TODO handle processing of concurrent requests!
 // Ok(self)
-                let identity = load_reference(&pubkey).await?;
+                let identity = load_reference(pubkey).await?;
                 match identity {
                     Some(identity) => {
 
@@ -782,11 +782,10 @@ impl InstructionBuilder {
             }
 
             // if we have templates, automatically include system account if not added by the user
-            if inner
+            if !inner
                 .system_accounts
                 .iter()
-                .position(|meta| meta.pubkey == solana_sdk::system_program::id())
-                .is_none()
+                .any(|meta| meta.pubkey == solana_sdk::system_program::id())
             {
                 inner
                     .system_accounts
@@ -810,17 +809,21 @@ impl InstructionBuilder {
                     SeedSuffix::Sequence => {
                         inner.suffix_seed_seq += 1;
                         let bytes: [u8; 8] =
-                            unsafe { std::mem::transmute(inner.suffix_seed_seq.to_le()) };
+                            inner.suffix_seed_seq.to_le_bytes();
+                            // unsafe { std::mem::transmute(inner.suffix_seed_seq.to_le()) };
                         let mut bytes = bytes.to_vec();
 
-                        loop {
-                            match bytes[bytes.len() - 1] {
-                                0 => {
-                                    bytes.pop();
-                                }
-                                _ => break,
-                            }
+                        while let 0 = bytes[bytes.len()-1] {
+                            bytes.pop();
                         }
+                        // loop {
+                        //     match bytes[bytes.len() - 1] {
+                        //         0 => {
+                        //             bytes.pop();
+                        //         }
+                        //         _ => break,
+                        //     }
+                        // }
 
                         bytes
                     }

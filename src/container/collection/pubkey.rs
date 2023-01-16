@@ -90,7 +90,7 @@ where
         Ok(collection)
     }
 
-    pub fn try_from_meta<'ctx, 'r>(
+    pub fn try_from_meta(
         data: &'info mut PubkeyCollectionMeta,
     ) -> Result<PubkeyCollectionInterface<'info, 'refs, PubkeyCollectionMetaInterface<'info>>> {
         let meta = PubkeyCollectionMetaInterface::new(data);
@@ -119,6 +119,10 @@ where
 
     pub fn len(&self) -> usize {
         self.meta.get_len() as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.meta.get_len() == 0
     }
 
     pub fn try_insert_container<'i, 'r, C: Container<'i, 'r>>(&mut self, target: &C) -> Result<()> {
@@ -446,10 +450,13 @@ cfg_if! {
                     for entry in pubkeys.iter() {
                         match transport.lookup(&entry.key).await? {
                             Some(reference) => {
-                                match reference.try_into_container::<C>() {
-                                    Ok(container) => return Ok(Some(container)),
-                                    Err(_) => { }
+                                if let Ok(container) = reference.try_into_container::<C>() { 
+                                    return Ok(Some(container))
                                 }
+                                // match reference.try_into_container::<C>() {
+                                //     Ok(container) => return Ok(Some(container)),
+                                //     Err(_) => { }
+                                // }
                             },
                             None => { }
                         }

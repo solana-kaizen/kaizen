@@ -102,16 +102,22 @@ where
         self.meta.get_len() as usize
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.meta.get_len() == 0
+    }
+
     pub fn get_proxy_seed_at<'seed>(
         &'seed self,
         idx: &u64,
         suffix: Option<&'seed [u8]>,
     ) -> Vec<&'seed [u8]> {
-        let index_bytes: &[u8; 8] = unsafe { std::mem::transmute(idx as *const u64) };
+        // let index_bytes: &[u8; 8] = unsafe { std::mem::transmute(idx as *const u64) };
+        let index_bytes = unsafe { &*(idx as *const u64 as *const [u8; 8]) };
+        // let index_bytes: &[u8; 8] = unsafe { std::mem::transmute(idx as *const u64) };
         if let Some(suffix) = suffix {
-            vec![self.domain, &self.meta.get_seed(), index_bytes, suffix]
+            vec![self.domain, self.meta.get_seed(), index_bytes, suffix]
         } else {
-            vec![self.domain, &self.meta.get_seed(), index_bytes]
+            vec![self.domain, self.meta.get_seed(), index_bytes]
         }
     }
 
@@ -212,7 +218,7 @@ cfg_if! {
             where T: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
-                Ok(self.load_container_at_with_transport::<T>(program_id, idx, &transport).await?)
+                self.load_container_at_with_transport::<T>(program_id, idx, &transport).await
             }
 
             pub async fn load_container_at_with_transport<'this,T>(&self, program_id: &Pubkey, idx: usize, transport: &Arc<Transport>)
@@ -220,13 +226,13 @@ cfg_if! {
             where T: kaizen::container::Container<'this,'this>
             {
                 let proxy_pubkey = self.get_proxy_pubkey_at(program_id, idx)?;
-                let proxy = match load_container_with_transport::<Proxy>(&transport, &proxy_pubkey).await? {
+                let proxy = match load_container_with_transport::<Proxy>(transport, &proxy_pubkey).await? {
                     Some(proxy) => proxy,
                     None => return Err(error_code!(ErrorCode::AccountReferenceCollectionProxyNotFound))
                 };
 
                 let container_pubkey = proxy.reference();
-                Ok(load_container_with_transport::<T>(&transport,container_pubkey).await?)
+                load_container_with_transport::<T>(transport,container_pubkey).await
             }
 
 
@@ -235,7 +241,7 @@ cfg_if! {
             where T: kaizen::container::Container<'this,'this>
             {
                 let transport = Transport::global()?;
-                Ok(self.load_container_range_with_transport::<T>(program_id, range, &transport).await?)
+                self.load_container_range_with_transport::<T>(program_id, range, &transport).await
             }
 
             pub async fn load_container_range_with_transport<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>, transport: &Arc<Transport>)
@@ -244,7 +250,7 @@ cfg_if! {
             {
                 let mut futures = FuturesOrdered::new();
                 for idx in range {
-                    let f = self.load_container_at_with_transport::<T>(program_id, idx, &transport);
+                    let f = self.load_container_at_with_transport::<T>(program_id, idx, transport);
                     futures.push_back(f);
                 }
 

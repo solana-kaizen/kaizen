@@ -90,7 +90,7 @@ impl Transport {
         authority: Option<Pubkey>,
         config: TransportConfig,
     ) -> Result<Arc<Transport>> {
-        let mut network = std::env::var("TRANSPORT").unwrap_or("inproc".into());
+        let mut network = std::env::var("TRANSPORT").unwrap_or_else(|_| "inproc".into());
         if network.starts_with("local") {
             network = "http://127.0.0.1:8899".into();
         }
@@ -168,13 +168,13 @@ impl Transport {
     }
 
     #[inline(always)]
-    pub fn emulator<'transport>(
-        &'transport self,
-    ) -> Option<&'transport Arc<dyn EmulatorInterface>> {
+    pub fn emulator(
+        &self,
+    ) -> Option<&Arc<dyn EmulatorInterface>> {
         self.emulator.as_ref()
     }
 
-    pub fn simulator<'transport>(&'transport self) -> Arc<Simulator> {
+    pub fn simulator(&self) -> Arc<Simulator> {
         let simulator = self
             .emulator
             .clone()
@@ -186,7 +186,7 @@ impl Transport {
     }
 
     pub fn global() -> Result<Arc<Transport>> {
-        let clone = unsafe { (&TRANSPORT).as_ref().unwrap().clone() };
+        let clone = unsafe { TRANSPORT.as_ref().unwrap().clone() };
         Ok(clone)
     }
 
@@ -207,10 +207,10 @@ impl Transport {
                 {
                     Some(reference) => Ok(reference.lamports()?),
                     None => {
-                        return Err(error!(
+                        Err(error!(
                             "[Emulator] - Transport::balance() unable to lookup account: {}",
                             pubkey
-                        ));
+                        ))
                     }
                 }
             }
@@ -243,7 +243,7 @@ impl Transport {
 
             TransportMode::Emulator => {
                 if let Some(key) = self.custom_authority.lock()?.as_ref() {
-                    return Ok(key.clone());
+                    return Ok(*key);
                 }
                 let home = home::home_dir().expect("unable to get home directory");
                 let home = Path::new(&home);
@@ -253,7 +253,7 @@ impl Transport {
                 let payer_pk = payer_kp.pubkey();
                 Ok(payer_pk)
             }
-            TransportMode::Validator => Ok(self.wallet.pubkey()?.clone()),
+            TransportMode::Validator => Ok(self.wallet.pubkey()?),
         }
     }
 
@@ -325,7 +325,7 @@ impl Transport {
                         Ok(Some(reference))
                     }
                     None => {
-                        return Ok(None);
+                        Ok(None)
                     }
                 }
             }
@@ -340,7 +340,7 @@ impl super::Interface for Transport {
     }
 
     fn purge(&self, pubkey: Option<&Pubkey>) -> Result<()> {
-        Ok(self.cache.purge(pubkey)?)
+        self.cache.purge(pubkey)
     }
 
     async fn post(&self, tx: Arc<super::transaction::Transaction>) -> Result<()> {
@@ -362,13 +362,13 @@ impl super::Interface for Transport {
                     .reflect(reflector::Event::EmulatorLogs(resp.logs));
                 self.reflector.reflect(reflector::Event::WalletRefresh(
                     "SOL".into(),
-                    authority.clone(),
+                    authority,
                 ));
                 match self.balance().await {
                     Ok(balance) => {
                         self.reflector.reflect(reflector::Event::WalletBalance(
                             "SOL".into(),
-                            authority.clone(),
+                            authority,
                             balance,
                         ));
                     }
@@ -423,9 +423,9 @@ impl super::Interface for Transport {
     }
 
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        let account_data = self.clone().lookup_local(pubkey).await?;
+        let account_data = self.lookup_local(pubkey).await?;
         match account_data {
-            Some(account_data) => Ok(Some(account_data.clone())),
+            Some(account_data) => Ok(Some(account_data)),
             None => Ok(self.lookup_remote(pubkey).await?),
         }
     }
@@ -435,7 +435,7 @@ impl super::Interface for Transport {
     }
 
     async fn lookup_remote(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        let lookup_handler = &self.clone().lookup_handler;
+        let lookup_handler = &self.lookup_handler;
         let request_type = lookup_handler.queue(pubkey).await;
         let result = match request_type {
             RequestType::New(receiver) => {

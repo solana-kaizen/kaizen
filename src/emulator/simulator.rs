@@ -68,7 +68,7 @@ impl Simulator {
         };
 
         let authority_account_data =
-            AccountData::new_static(authority.clone(), program_id.clone()).with_lamports(lamports);
+            AccountData::new_static(authority, program_id).with_lamports(lamports);
 
         self.store
             .store(&Arc::new(AccountDataReference::new(authority_account_data)))
@@ -84,8 +84,8 @@ impl Simulator {
         Ok(self)
     }
 
-    pub fn inproc_mock_data<'simulator>(&'simulator self) -> &'simulator InProcMockData {
-        &self
+    pub fn inproc_mock_data(&self) -> &InProcMockData {
+        self
             .inproc_mock_data
             .as_ref()
             .expect("simulator missing inproc mock account data")
@@ -104,9 +104,7 @@ impl Simulator {
             program_id,
             authority,
         } = self.inproc_mock_data();
-        let config = InstructionBuilderConfig::new(program_id.clone()).with_authority(authority);
-
-        config
+        InstructionBuilderConfig::new(*program_id).with_authority(authority)
     }
 
     pub fn new_instruction_builder(&self) -> Arc<InstructionBuilder> {
@@ -115,9 +113,7 @@ impl Simulator {
             authority,
         } = self.inproc_mock_data();
 
-        let builder = InstructionBuilder::new(&program_id, 0, 0u16).with_authority(authority);
-
-        builder
+        InstructionBuilder::new(program_id, 0, 0u16).with_authority(authority)
     }
 
     pub async fn execute_handler(

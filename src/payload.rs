@@ -41,7 +41,7 @@ impl Payload {
         payload.to_vec()
     }
 
-    pub fn try_from<'a>(data: &'a [u8]) -> Result<&'a Payload> {
+    pub fn try_from(data: &[u8]) -> Result<&Payload> {
         let payload = unsafe { std::mem::transmute(&data[0]) };
         Ok(payload)
     }

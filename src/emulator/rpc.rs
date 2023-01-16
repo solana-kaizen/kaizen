@@ -6,7 +6,7 @@ use solana_program::pubkey::Pubkey;
 use workflow_core::u32_try_from;
 
 #[derive(
-    Debug, Default, PartialEq, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+    Debug, Default, Eq, PartialEq, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
 )]
 pub struct AccountMeta {
     pub pubkey: Pubkey,
@@ -24,12 +24,12 @@ impl From<&instruction::AccountMeta> for AccountMeta {
     }
 }
 
-impl Into<instruction::AccountMeta> for &AccountMeta {
-    fn into(self) -> instruction::AccountMeta {
+impl From<&AccountMeta> for instruction::AccountMeta {
+    fn from(meta: &AccountMeta) -> Self {
         instruction::AccountMeta {
-            pubkey: self.pubkey,
-            is_signer: self.is_signer,
-            is_writable: self.is_writable,
+            pubkey: meta.pubkey,
+            is_signer: meta.is_signer,
+            is_writable: meta.is_writable,
         }
     }
 }
@@ -45,27 +45,27 @@ pub struct ExecuteReq {
 impl From<(&Pubkey, instruction::Instruction)> for ExecuteReq {
     fn from((authority, instruction): (&Pubkey, instruction::Instruction)) -> Self {
         Self {
-            program_id: instruction.program_id.clone(),
+            program_id: instruction.program_id,
             accounts: instruction
                 .accounts
                 .iter()
                 .map(|account| account.into())
                 .collect(),
             instruction_data: instruction.data.clone(),
-            authority: authority.clone(),
+            authority: *authority,
         }
     }
 }
 
-impl Into<(Pubkey, instruction::Instruction)> for ExecuteReq {
-    fn into(self) -> (Pubkey, instruction::Instruction) {
+impl From<ExecuteReq> for (Pubkey, instruction::Instruction) {
+    fn from(req: ExecuteReq) -> Self {
         (
-            self.authority,
+            req.authority,
             instruction::Instruction {
-                program_id: self.program_id.clone(),
-                accounts: self.accounts.iter().map(|account| account.into()).collect(),
-                data: self.instruction_data.clone(),
-            },
+                program_id: req.program_id,
+                accounts: req.accounts.iter().map(|account| account.into()).collect(),
+                data: req.instruction_data.clone(),
+            }
         )
     }
 }
@@ -99,8 +99,8 @@ u32_try_from! {
     }
 }
 
-impl Into<u32> for EmulatorOps {
-    fn into(self) -> u32 {
-        self as u32
+impl From<EmulatorOps> for u32 {
+    fn from(ops: EmulatorOps) -> u32 {
+        ops as u32
     }
 }

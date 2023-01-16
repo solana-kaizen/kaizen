@@ -10,8 +10,8 @@ pub struct InProcMockData {
 impl InProcMockData {
     pub fn new(authority: &Pubkey, program_id: &Pubkey) -> Self {
         InProcMockData {
-            authority: authority.clone(),
-            program_id: program_id.clone(),
+            authority: *authority,
+            program_id: *program_id,
         }
     }
 }

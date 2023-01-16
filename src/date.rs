@@ -49,7 +49,7 @@ cfg_if! {
 
         impl ToString for Date{
             fn to_string(&self) -> String {
-                String::from(self.clone())
+                String::from(*self)
             }
         }
 
@@ -69,7 +69,7 @@ cfg_if! {
         impl TryFrom<&str> for Date{
             type Error = String;//Error
             fn try_from(str: &str) -> Result<Self, Self::Error> {
-                let parts = str.split("-");
+                let parts = str.split('-');
                 let mut ymd = Vec::new();
                 for v in parts{
                     if let Ok(v) = v.parse::<u32>(){

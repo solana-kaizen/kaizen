@@ -29,7 +29,7 @@ pub fn allocate_pda<'info, 'pid>(
     // log_trace!("* * * program pda seeds:\n{}\n", seeds_hex);
 
     if validate_pda {
-        match Pubkey::create_program_address(tpl_seeds, &program_id) {
+        match Pubkey::create_program_address(tpl_seeds, program_id) {
             Ok(address) => {
                 if address != *tpl_account_info.key {
                     // log_trace!("| pda: PDA ADDRESS MISMATCH {} vs {}", address, tpl_account_info.key);

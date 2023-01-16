@@ -67,8 +67,10 @@ impl Emulator {
     }
 
     pub async fn init(&self) -> Result<()> {
-        let mut default = AccountData::default();
-        default.lamports = utils::u64sol_to_lamports(500_000_000);
+        let default = AccountData { 
+            lamports: utils::u64sol_to_lamports(500_000_000), 
+            ..Default::default() 
+        };
         self.store
             .store(&Arc::new(AccountDataReference::new(default)))
             .await?;
@@ -78,12 +80,12 @@ impl Emulator {
     pub fn execute_entrypoing_impl(
         &self,
         program_id: &Pubkey,
-        accounts: &Vec<AccountInfo>,
+        accounts: &[AccountInfo],
         instruction_data: &[u8],
         entrypoint: ProcessInstruction,
     ) -> Result<()> {
         log_trace!("▷ entrypoint begin");
-        match entrypoint(program_id, &accounts[..], instruction_data) {
+        match entrypoint(program_id, accounts, instruction_data) {
             Ok(_) => {}
             Err(e) => return Err(error!("entrypoint error: {:?}", e)),
         }
@@ -148,7 +150,7 @@ impl Emulator {
                     error!("[store] Store::program_local_load(): duplicate account supplied to program: {}",pubkey.to_string())
                 );
             } else {
-                keyset.insert(pubkey.clone());
+                keyset.insert(pubkey);
             }
 
             let mut account_data = match self.lookup(&pubkey).await? {
@@ -159,7 +161,7 @@ impl Emulator {
                 }
                 None => {
                     let account_data =
-                        AccountData::new_template_for_program(pubkey.clone(), program_id.clone());
+                        AccountData::new_template_for_program(pubkey, *program_id);
 
                     if pubkey == Pubkey::default() {
                         log_trace!("[store] ...   system: {}", account_data.info());
@@ -187,11 +189,9 @@ impl Emulator {
         for (pubkey, account_data) in accounts.iter() {
             if let Some(existing_account_data) = self.store.lookup(&account_data.key).await? {
                 let existing_account_data = existing_account_data.account_data.lock()?; //.ok_or(error!("account read lock failed"))?;
-                if !account_data.is_writable {
-                    if account_data.data[..] != existing_account_data.data[..] {
-                        log_error!("ERROR: non-mutable account has been modified: {}", pubkey);
-                        return Err(ErrorCode::NonMutableAccountChange.into());
-                    }
+                if !account_data.is_writable && account_data.data[..] != existing_account_data.data[..] {
+                    log_error!("ERROR: non-mutable account has been modified: {}", pubkey);
+                    return Err(ErrorCode::NonMutableAccountChange.into());
                 }
             }
         }
@@ -281,14 +281,12 @@ impl Emulator {
                     return Err(error!(
                         "program entrypoint not found: {:?}",
                         instruction.program_id
-                    )
-                    .into());
+                    ));
                 }
             }
         };
 
         let mut account_data_vec = self
-            .clone()
             .program_local_load(&instruction.program_id, &instruction.accounts)
             .await?;
         {
@@ -305,7 +303,7 @@ impl Emulator {
                 accounts.push(account_info);
             }
 
-            self.clone().execute_entrypoing_impl(
+            self.execute_entrypoing_impl(
                 &instruction.program_id,
                 &accounts,
                 &instruction.data,
@@ -367,8 +365,8 @@ impl EmulatorInterface for Emulator {
                 to
             } else {
                 Arc::new(AccountDataReference::new(AccountData::new_static(
-                    key.clone(),
-                    owner.clone(),
+                    *key,
+                    *owner,
                 )))
             };
 
@@ -385,8 +383,8 @@ impl EmulatorInterface for Emulator {
 
         log_trace!(
             "[EMU] funding - from: {} to: {}",
-            utils::shorten_pubkey(&*ref_from.key),
-            utils::shorten_pubkey(&*ref_to.key),
+            utils::shorten_pubkey(&ref_from.key),
+            utils::shorten_pubkey(&ref_to.key),
         );
 
         Ok(())

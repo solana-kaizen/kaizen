@@ -46,7 +46,7 @@ pub mod registry {
     static mut ENTRYPOINT_REGISTRY: Option<EntrypointDeclarationRegistry> = None;
 
     pub fn global() -> EntrypointDeclarationRegistry {
-        let registry = unsafe { (&ENTRYPOINT_REGISTRY).as_ref() };
+        let registry = unsafe { ENTRYPOINT_REGISTRY.as_ref() };
         match registry {
             Some(registry) => registry.clone(),
             None => {

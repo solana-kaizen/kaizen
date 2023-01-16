@@ -54,7 +54,8 @@ pub fn account_buffer_as_struct_ref<'refs, 'info, T>(
     byte_offset: usize,
 ) -> &'info T {
     let data = account.data.borrow();
-    unsafe { std::mem::transmute::<_, &T>(data.as_ptr().offset(byte_offset as isize)) }
+    // unsafe { std::mem::transmute::<_, &T>(data.as_ptr().add(byte_offset)) }
+    unsafe { &*data.as_ptr().add(byte_offset).cast::<T>() }
 }
 
 pub fn account_buffer_as_struct_mut<'refs, 'info, T>(
@@ -62,7 +63,8 @@ pub fn account_buffer_as_struct_mut<'refs, 'info, T>(
     byte_offset: usize,
 ) -> &'info mut T {
     let data = account.data.borrow();
-    unsafe { std::mem::transmute::<_, &mut T>(data.as_ptr().offset(byte_offset as isize)) }
+    // unsafe { &mut *data.as_ptr().add(byte_offset).cast::<T>() }
+    unsafe { std::mem::transmute::<_, &mut T>(data.as_ptr().add(byte_offset)) }
 }
 
 pub fn account_buffer_as_slice<'refs, 'info, T>(
@@ -74,7 +76,7 @@ pub fn account_buffer_as_slice<'refs, 'info, T>(
     let data = account.data.borrow();
     unsafe {
         std::slice::from_raw_parts::<T>(
-            std::mem::transmute::<_, *const T>(data.as_ptr().offset(byte_offset as isize)),
+            std::mem::transmute::<_, *const T>(data.as_ptr().add(byte_offset)),
             elements,
         )
     }
@@ -88,7 +90,7 @@ pub fn account_buffer_as_slice_mut<'info, T>(
     let mut data = account.data.borrow_mut();
     unsafe {
         std::slice::from_raw_parts_mut::<T>(
-            std::mem::transmute::<_, *mut T>(data.as_mut_ptr().offset(byte_offset as isize)),
+            std::mem::transmute::<_, *mut T>(data.as_mut_ptr().add(byte_offset)),
             elements,
         )
     }

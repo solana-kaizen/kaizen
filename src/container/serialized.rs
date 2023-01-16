@@ -53,7 +53,7 @@ where
     #[inline]
     pub fn store_bytes(&self, vec: &[u8]) -> Result<()> {
         self.segment.try_resize(vec.len(), false)?;
-        self.segment.as_slice_mut().copy_from_slice(&vec);
+        self.segment.as_slice_mut().copy_from_slice(vec);
         Ok(())
     }
 }
@@ -101,7 +101,7 @@ impl<'info, 'refs> SerializedVariant<'info, 'refs> {
     #[inline]
     pub fn store_bytes(&self, vec: &[u8]) -> Result<()> {
         self.segment.try_resize(vec.len(), false)?;
-        self.segment.as_slice_mut().copy_from_slice(&vec);
+        self.segment.as_slice_mut().copy_from_slice(vec);
         Ok(())
     }
 }

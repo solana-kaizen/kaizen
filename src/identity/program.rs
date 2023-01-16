@@ -156,12 +156,16 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         let record = IdentityRecord {
             data_type: DataType::Authority as u32,
             flags: 0,
-            pubkey: pubkey.clone(),
+            pubkey : *pubkey,
         };
         unsafe { self.records.try_insert(&record) }
     }
 
     /// Remove entry from the identity entry list
+    /// # Safety
+    /// This function may shift the underlying account memory buffer
+    /// as such any references to account data should be considered
+    /// invalid after its use.
     pub unsafe fn try_remove_entry(&mut self, target: &IdentityRecord) -> Result<()> {
         for idx in 0..self.records.len() {
             let entry = self.records.get_at(idx);
@@ -189,8 +193,8 @@ impl<'info, 'refs> Identity<'info, 'refs> {
     pub fn create(ctx: &ContextReference) -> ProgramResult {
         let mut records: Vec<IdentityRecordStore> = Vec::new();
         let mut collection_data_types: Vec<(u32, Option<u32>)> = Vec::new();
-        if ctx.instruction_data.len() > 0 {
-            match Instr::try_from_slice(&ctx.instruction_data)? {
+        if !ctx.instruction_data.is_empty() {
+            match Instr::try_from_slice(ctx.instruction_data)? {
                 Instr::Ops(ops) => {
                     for op in ops {
                         match op {

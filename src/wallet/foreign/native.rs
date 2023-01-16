@@ -24,7 +24,7 @@ impl Wallet {
         Ok(wallet)
     }
 
-    pub fn keypair<'wallet>(&'wallet self) -> &'wallet Keypair {
+    pub fn keypair(&self) -> &Keypair {
         &self.keypair
     }
 }

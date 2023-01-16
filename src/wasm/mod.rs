@@ -11,19 +11,19 @@ pub fn init_kaizen(
     init_workflow(workflow, mods)?;
 
     let g = global()?;
-    js_sys::Reflect::set(&g, &"solana".into(), &solana)?;
+    js_sys::Reflect::set(&g, &"solana".into(), solana)?;
     Ok(())
 }
 
 pub fn solana() -> std::result::Result<JsValue, JsValue> {
-    Ok(js_sys::Reflect::get(&global()?, &"solana".into())?)
+    js_sys::Reflect::get(&global()?, &"solana".into())
 }
 
 pub fn wallet_ready_state() -> std::result::Result<JsValue, JsValue> {
-    Ok(js_sys::Reflect::get(
+    js_sys::Reflect::get(
         &modules()?,
         &"WalletReadyState".into(),
-    )?)
+    )
 }
 
 pub fn adapters() -> std::result::Result<Vec<JsValue>, JsValue> {

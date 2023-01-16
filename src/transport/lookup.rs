@@ -13,9 +13,21 @@ pub enum RequestType<T> {
     Pending(Receiver<LookupResult<T>>),
 }
 
+pub type SenderList<T> = Vec<Sender<LookupResult<T>>>;
+
 pub struct LookupHandler<K, T> {
-    pub map: Arc<Mutex<AHashMap<K, Vec<Sender<LookupResult<T>>>>>>,
+    pub map: Arc<Mutex<AHashMap<K, SenderList<T>>>>,
     pending: AtomicUsize,
+}
+
+impl<K,T> Default for LookupHandler<K,T> 
+where
+    T: Clone,
+    K: Clone + Eq + Hash + Display,
+{
+    fn default() -> Self {
+        LookupHandler::<K,T>::new()
+    }
 }
 
 impl<K, T> LookupHandler<K, T>
@@ -38,12 +50,11 @@ where
         let mut pending = self.map.lock().await;
         let (sender, receiver) = oneshot::<LookupResult<T>>();
 
-        if let Some(list) = pending.get_mut(&key) {
+        if let Some(list) = pending.get_mut(key) {
             list.push(sender);
             RequestType::Pending(receiver)
         } else {
-            let mut list = Vec::new();
-            list.push(sender);
+            let list = vec![sender];
             pending.insert(key.clone(), list);
             self.pending.fetch_add(1, Ordering::Relaxed);
             RequestType::New(receiver)
@@ -53,7 +64,7 @@ where
     pub async fn complete(&self, key: &K, result: LookupResult<T>) {
         let mut pending = self.map.lock().await;
 
-        if let Some(list) = pending.remove(&key) {
+        if let Some(list) = pending.remove(key) {
             self.pending.fetch_sub(1, Ordering::Relaxed);
             for sender in list {
                 sender

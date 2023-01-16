@@ -41,7 +41,7 @@ impl Server {
     pub fn try_new() -> Result<Server> {
         let cache = Arc::new(Cache::new_with_capacity(DEFAULT_CAPACITY));
         let store = Arc::new(FileStore::try_new_with_cache(cache)?);
-        let emulator = Arc::new(Emulator::new(store.clone()));
+        let emulator = Arc::new(Emulator::new(store));
 
         let server = Server { emulator };
 

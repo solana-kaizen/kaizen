@@ -16,7 +16,7 @@ static mut STORE: Option<MemoryStore> = None;
 
 impl MemoryStore {
     pub fn new_global() -> Result<MemoryStore> {
-        let cache = unsafe { (&STORE).as_ref() };
+        let cache = unsafe { STORE.as_ref() };
         if cache.is_some() {
             return Err(error!("Store::new() already invoked"));
         }
@@ -30,7 +30,7 @@ impl MemoryStore {
     }
 
     pub fn global() -> Result<MemoryStore> {
-        let cache = unsafe { (&STORE).as_ref() };
+        let cache = unsafe { STORE.as_ref() };
         match cache {
             Some(cache) => Ok(cache.clone()),
             None => Ok(MemoryStore::new_global()?),
@@ -60,7 +60,7 @@ impl Store for MemoryStore {
     }
 
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        Ok(self.map.read().await.get(&pubkey).cloned())
+        Ok(self.map.read().await.get(pubkey).cloned())
     }
     async fn store(&self, reference: &Arc<AccountDataReference>) -> Result<()> {
         self.map
@@ -70,7 +70,7 @@ impl Store for MemoryStore {
         Ok(())
     }
     async fn purge(&self, pubkey: &Pubkey) -> Result<()> {
-        self.map.write().await.remove(&pubkey);
+        self.map.write().await.remove(pubkey);
         Ok(())
     }
 }

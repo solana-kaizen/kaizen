@@ -7,7 +7,7 @@ pub trait CollectionMeta {
     fn min_data_len() -> usize;
     fn try_create(&mut self) -> Result<()>; // }, seed : &[u8], container_type : Option<u32>) -> Result<()>;
     fn try_load(&mut self) -> Result<()>;
-    fn get_seed<'data>(&'data self) -> &'data [u8]; //Vec<u8>;
+    fn get_seed(&self) -> &[u8]; //Vec<u8>;
     fn get_len(&self) -> u64;
     fn set_len(&mut self, _len: u64);
     fn get_container_type(&self) -> Option<u32>;
@@ -78,11 +78,11 @@ impl<'info> PdaCollectionMetaInterface<'info> {
         }
     }
 
-    pub fn data_ref<'data>(&'data self) -> &'data PdaCollectionMeta {
+    pub fn data_ref(&self) -> &PdaCollectionMeta {
         self.data
     }
 
-    pub fn data_mut<'data>(&'data mut self) -> &'data mut PdaCollectionMeta {
+    pub fn data_mut(&mut self) -> &mut PdaCollectionMeta {
         self.data
     }
 }
@@ -102,7 +102,7 @@ impl<'info> CollectionMeta for PdaCollectionMetaInterface<'info> {
         std::mem::size_of::<PdaCollectionMeta>()
     }
 
-    fn get_seed<'data>(&'data self) -> &'data [u8] {
+    fn get_seed(&self) -> &[u8] {
         //Vec<u8> {
         //self.data_ref().get_seed()
         self.seed
@@ -145,7 +145,7 @@ impl<'info, 'refs> PdaCollectionSegmentInterface<'info, 'refs> {
         self.segment.as_struct_ref::<PdaCollectionMeta>()
     }
 
-    pub fn data_mut<'data>(&'data self) -> &'data mut PdaCollectionMeta {
+    pub fn data_mut(&self) -> &mut PdaCollectionMeta {
         self.segment.as_struct_mut::<PdaCollectionMeta>()
     }
 }
@@ -164,7 +164,7 @@ impl<'info, 'refs> CollectionMeta for PdaCollectionSegmentInterface<'info, 'refs
         std::mem::size_of::<PdaCollectionMeta>()
     }
 
-    fn get_seed<'data>(&'data self) -> &'data [u8] {
+    fn get_seed(&self) -> &[u8] {
         //Vec<u8> {
         // self.data_ref().get_seed()
         self.seed
@@ -244,11 +244,11 @@ impl<'data> PubkeyCollectionMetaInterface<'data> {
         Self { data }
     }
 
-    pub fn data_ref<'t>(&'t self) -> &'t PubkeyCollectionMeta {
+    pub fn data_ref(&self) -> &PubkeyCollectionMeta {
         self.data
     }
 
-    pub fn data_mut<'t>(&'t mut self) -> &'t mut PubkeyCollectionMeta {
+    pub fn data_mut(&mut self) -> &mut PubkeyCollectionMeta {
         self.data
     }
 }
@@ -272,7 +272,7 @@ impl<'info> PubkeyCollectionMetaTrait for PubkeyCollectionMetaInterface<'info> {
         std::mem::size_of::<PubkeyCollectionMeta>()
     }
 
-    fn pubkey<'key>(&'key self) -> &'key Pubkey {
+    fn pubkey(&self) -> &Pubkey {
         &self.data_ref().pubkey
     }
 
@@ -318,11 +318,11 @@ impl<'info, 'refs> PubkeyCollectionSegmentInterface<'info, 'refs> {
         Self { segment }
     }
 
-    pub fn data_ref<'data>(&'data self) -> &'data PubkeyCollectionMeta {
+    pub fn data_ref(&self) -> &PubkeyCollectionMeta {
         self.segment.as_struct_ref::<PubkeyCollectionMeta>()
     }
 
-    pub fn data_mut<'data>(&'data self) -> &'data mut PubkeyCollectionMeta {
+    pub fn data_mut(&self) -> &mut PubkeyCollectionMeta {
         self.segment.as_struct_mut::<PubkeyCollectionMeta>()
     }
 }
@@ -346,7 +346,7 @@ impl<'info, 'refs> PubkeyCollectionMetaTrait for PubkeyCollectionSegmentInterfac
         std::mem::size_of::<PubkeyCollectionMeta>()
     }
 
-    fn pubkey<'key>(&'key self) -> &'key Pubkey {
+    fn pubkey(&self) -> &Pubkey {
         &self.data_ref().pubkey
     }
 

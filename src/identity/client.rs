@@ -31,7 +31,7 @@ pub async fn load_identity(
 ) -> Result<Option<Arc<AccountDataReference>>> {
     let transport = kaizen::transport::Transport::global()?;
     if let Some(identity_pubkey) =
-        locate_identity_pubkey(&transport, &program_id, &authority).await?
+        locate_identity_pubkey(&transport, program_id, authority).await?
     {
         Ok(transport.lookup(&identity_pubkey).await?)
     } else {
@@ -46,7 +46,7 @@ pub async fn reload_identity(
 ) -> Result<Option<Arc<AccountDataReference>>> {
     let transport = kaizen::transport::Transport::global()?;
     if let Some(identity_pubkey) =
-        locate_identity_pubkey(&transport, &program_id, &authority).await?
+        locate_identity_pubkey(&transport, program_id, authority).await?
     {
         Ok(transport.lookup_remote(&identity_pubkey).await?)
     } else {
@@ -88,7 +88,7 @@ pub async fn create_identity_for_unit_tests(
     authority: &Pubkey,
     program_id: &Pubkey,
 ) -> Result<Pubkey> {
-    let config = InstructionBuilderConfig::new(program_id.clone())
+    let config = InstructionBuilderConfig::new(*program_id)
         .with_authority(authority)
         .with_sequence(0u64);
 

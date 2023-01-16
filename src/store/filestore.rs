@@ -119,7 +119,7 @@ impl Store for FileStore {
         // }
 
         if let Some(cache) = &self.cache {
-            cache.store(&reference)?;
+            cache.store(reference)?;
         }
 
         let data = AccountDataStore::from(&*reference.account_data.lock()?);
