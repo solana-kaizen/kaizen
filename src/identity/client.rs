@@ -30,8 +30,7 @@ pub async fn load_identity(
     authority: &Pubkey,
 ) -> Result<Option<Arc<AccountDataReference>>> {
     let transport = kaizen::transport::Transport::global()?;
-    if let Some(identity_pubkey) =
-        locate_identity_pubkey(&transport, program_id, authority).await?
+    if let Some(identity_pubkey) = locate_identity_pubkey(&transport, program_id, authority).await?
     {
         Ok(transport.lookup(&identity_pubkey).await?)
     } else {
@@ -45,8 +44,7 @@ pub async fn reload_identity(
     authority: &Pubkey,
 ) -> Result<Option<Arc<AccountDataReference>>> {
     let transport = kaizen::transport::Transport::global()?;
-    if let Some(identity_pubkey) =
-        locate_identity_pubkey(&transport, program_id, authority).await?
+    if let Some(identity_pubkey) = locate_identity_pubkey(&transport, program_id, authority).await?
     {
         Ok(transport.lookup_remote(&identity_pubkey).await?)
     } else {

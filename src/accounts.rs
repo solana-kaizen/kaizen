@@ -520,7 +520,7 @@ mod client {
                 is_writable: account_data.is_writable,
                 container_type: account_data.container_type(),
             }
-        }            
+        }
     }
 
     impl AccountDescriptor {
@@ -621,7 +621,7 @@ mod client {
         }
 
         pub fn to_log(&self) {
-            for (seq,descriptor) in self.list.iter().enumerate() {
+            for (seq, descriptor) in self.list.iter().enumerate() {
                 log_info!("[store] [{:>8}] {}", seq, descriptor.info());
             }
         }

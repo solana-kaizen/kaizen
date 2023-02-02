@@ -39,8 +39,6 @@ impl Instant {
                 Ok(Instant(unix_timestamp))
             }
         }
-
-        
     }
 
     pub fn elapsed_since(&self, timestamp: &Instant) -> Duration {

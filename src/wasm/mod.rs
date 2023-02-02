@@ -20,10 +20,7 @@ pub fn solana() -> std::result::Result<JsValue, JsValue> {
 }
 
 pub fn wallet_ready_state() -> std::result::Result<JsValue, JsValue> {
-    js_sys::Reflect::get(
-        &modules()?,
-        &"WalletReadyState".into(),
-    )
+    js_sys::Reflect::get(&modules()?, &"WalletReadyState".into())
 }
 
 pub fn adapters() -> std::result::Result<Vec<JsValue>, JsValue> {

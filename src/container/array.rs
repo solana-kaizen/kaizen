@@ -196,7 +196,7 @@ where
     pub fn len(&self) -> usize {
         self.get_meta().records as usize
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.get_meta().records == 0
     }

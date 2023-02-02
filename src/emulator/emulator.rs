@@ -67,9 +67,9 @@ impl Emulator {
     }
 
     pub async fn init(&self) -> Result<()> {
-        let default = AccountData { 
-            lamports: utils::u64sol_to_lamports(500_000_000), 
-            ..Default::default() 
+        let default = AccountData {
+            lamports: utils::u64sol_to_lamports(500_000_000),
+            ..Default::default()
         };
         self.store
             .store(&Arc::new(AccountDataReference::new(default)))
@@ -160,8 +160,7 @@ impl Emulator {
                     account_data
                 }
                 None => {
-                    let account_data =
-                        AccountData::new_template_for_program(pubkey, *program_id);
+                    let account_data = AccountData::new_template_for_program(pubkey, *program_id);
 
                     if pubkey == Pubkey::default() {
                         log_trace!("[store] ...   system: {}", account_data.info());
@@ -189,7 +188,9 @@ impl Emulator {
         for (pubkey, account_data) in accounts.iter() {
             if let Some(existing_account_data) = self.store.lookup(&account_data.key).await? {
                 let existing_account_data = existing_account_data.account_data.lock()?; //.ok_or(error!("account read lock failed"))?;
-                if !account_data.is_writable && account_data.data[..] != existing_account_data.data[..] {
+                if !account_data.is_writable
+                    && account_data.data[..] != existing_account_data.data[..]
+                {
                     log_error!("ERROR: non-mutable account has been modified: {}", pubkey);
                     return Err(ErrorCode::NonMutableAccountChange.into());
                 }
@@ -365,8 +366,7 @@ impl EmulatorInterface for Emulator {
                 to
             } else {
                 Arc::new(AccountDataReference::new(AccountData::new_static(
-                    *key,
-                    *owner,
+                    *key, *owner,
                 )))
             };
 

@@ -179,8 +179,7 @@ impl<'info, 'refs, 'pid, 'instr> TryFrom<(&'pid Pubkey, &'refs [AccountInfo<'inf
                 incoming_accounts_len
             );
             return Err(ErrorCode::ContextAccounts.into());
-        }
-        else if incoming_accounts_len < 1 {
+        } else if incoming_accounts_len < 1 {
             log_trace!(
                 "FATAL: Invalid number of context accounts - expecting: {} received: {}",
                 payload_accounts_len + 1,
@@ -358,7 +357,7 @@ impl<'info, 'refs, 'pid, 'instr> Context<'info, 'refs, 'pid, 'instr> {
     pub fn view_info(&self) {
         let authority_accounts = 1;
         let identity_accounts = i32::from(self.identity.is_some());
-         // if self.identity.is_some() { 1 } else { 0 };
+        // if self.identity.is_some() { 1 } else { 0 };
         // let execution_accounts = self.accounts.len() - user_accounts;
         // log_trace!("");
         // log_trace!("\n{}",

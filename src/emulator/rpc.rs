@@ -65,7 +65,7 @@ impl From<ExecuteReq> for (Pubkey, instruction::Instruction) {
                 program_id: req.program_id,
                 accounts: req.accounts.iter().map(|account| account.into()).collect(),
                 data: req.instruction_data.clone(),
-            }
+            },
         )
     }
 }

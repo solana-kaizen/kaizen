@@ -168,9 +168,7 @@ impl Transport {
     }
 
     #[inline(always)]
-    pub fn emulator(
-        &self,
-    ) -> Option<&Arc<dyn EmulatorInterface>> {
+    pub fn emulator(&self) -> Option<&Arc<dyn EmulatorInterface>> {
         self.emulator.as_ref()
     }
 
@@ -206,12 +204,10 @@ impl Transport {
                     .await?
                 {
                     Some(reference) => Ok(reference.lamports()?),
-                    None => {
-                        Err(error!(
-                            "[Emulator] - Transport::balance() unable to lookup account: {}",
-                            pubkey
-                        ))
-                    }
+                    None => Err(error!(
+                        "[Emulator] - Transport::balance() unable to lookup account: {}",
+                        pubkey
+                    )),
                 }
             }
             TransportMode::Validator => {
@@ -324,9 +320,7 @@ impl Transport {
                         self.cache.store(&reference)?;
                         Ok(Some(reference))
                     }
-                    None => {
-                        Ok(None)
-                    }
+                    None => Ok(None),
                 }
             }
         }
@@ -360,10 +354,8 @@ impl super::Interface for Transport {
 
                 self.reflector
                     .reflect(reflector::Event::EmulatorLogs(resp.logs));
-                self.reflector.reflect(reflector::Event::WalletRefresh(
-                    "SOL".into(),
-                    authority,
-                ));
+                self.reflector
+                    .reflect(reflector::Event::WalletRefresh("SOL".into(), authority));
                 match self.balance().await {
                     Ok(balance) => {
                         self.reflector.reflect(reflector::Event::WalletBalance(

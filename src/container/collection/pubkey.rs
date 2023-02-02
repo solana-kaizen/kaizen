@@ -449,7 +449,7 @@ cfg_if! {
                     let pubkeys = container.records.as_slice();
                     for entry in pubkeys.iter() {
                         if let Some(reference) = transport.lookup(&entry.key).await? {
-                            if let Ok(container) = reference.try_into_container::<C>() { 
+                            if let Ok(container) = reference.try_into_container::<C>() {
                                 return Ok(Some(container))
                             }
                         }

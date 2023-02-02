@@ -166,7 +166,7 @@ impl<'info, 'refs> Identity<'info, 'refs> {
         let record = IdentityRecord {
             data_type: DataType::Authority as u32,
             flags: 0,
-            pubkey : *pubkey,
+            pubkey: *pubkey,
         };
         unsafe { self.records.try_insert(&record) }
     }

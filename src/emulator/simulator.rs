@@ -85,8 +85,7 @@ impl Simulator {
     }
 
     pub fn inproc_mock_data(&self) -> &InProcMockData {
-        self
-            .inproc_mock_data
+        self.inproc_mock_data
             .as_ref()
             .expect("simulator missing inproc mock account data")
     }

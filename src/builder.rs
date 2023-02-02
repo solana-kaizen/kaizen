@@ -28,7 +28,7 @@ pub enum Gather {
 pub fn find_interface_id(program_fn: HandlerFn, handlers: &[HandlerFn]) -> usize {
     handlers
         .iter()
-        .position(|&hfn| std::ptr::eq(hfn as HandlerFnCPtr, program_fn as HandlerFnCPtr) )
+        .position(|&hfn| std::ptr::eq(hfn as HandlerFnCPtr, program_fn as HandlerFnCPtr))
         .expect("handler is not registered")
 }
 
@@ -175,7 +175,7 @@ impl InstructionBuilder {
 
     pub fn identity_pubkey(&self) -> Option<Pubkey> {
         self.inner().identity.as_ref().map(|m| m.pubkey) //.clone()
-                                                                 // match self.inner().identity.as_ref()
+                                                         // match self.inner().identity.as_ref()
     }
 
     /// Creates a default [InstructionBuilder] copying Authority, optional Identity and an optional PDA seed sequence
@@ -808,12 +808,11 @@ impl InstructionBuilder {
                     }
                     SeedSuffix::Sequence => {
                         inner.suffix_seed_seq += 1;
-                        let bytes: [u8; 8] =
-                            inner.suffix_seed_seq.to_le_bytes();
-                            // unsafe { std::mem::transmute(inner.suffix_seed_seq.to_le()) };
+                        let bytes: [u8; 8] = inner.suffix_seed_seq.to_le_bytes();
+                        // unsafe { std::mem::transmute(inner.suffix_seed_seq.to_le()) };
                         let mut bytes = bytes.to_vec();
 
-                        while let 0 = bytes[bytes.len()-1] {
+                        while let 0 = bytes[bytes.len() - 1] {
                             bytes.pop();
                         }
                         // loop {

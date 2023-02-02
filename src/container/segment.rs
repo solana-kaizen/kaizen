@@ -617,7 +617,8 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
                 }
             }
 
-            for entry in index.iter_mut().take(segments).skip(next_idx) { //next_idx..segments {
+            for entry in index.iter_mut().take(segments).skip(next_idx) {
+                //next_idx..segments {
                 entry.offset += IndexUnit::from_usize(delta);
             }
         } else if new_len < segment_data_len {
@@ -638,7 +639,8 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
 
                 log_trace!("[segment store] resize [reduce segment size] segment[{}] account_data_len: {} delta: {}  new_account_data_len: {}",
                     idx, self.account.data_len(), delta, new_account_data_len);
-                for entry in index.iter_mut().take(segments).skip(idx) { //idx..segments {
+                for entry in index.iter_mut().take(segments).skip(idx) {
+                    //idx..segments {
                     entry.offset -= IndexUnit::from_usize(delta);
                 }
 

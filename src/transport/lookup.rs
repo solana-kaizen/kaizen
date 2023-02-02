@@ -20,13 +20,13 @@ pub struct LookupHandler<K, T> {
     pending: AtomicUsize,
 }
 
-impl<K,T> Default for LookupHandler<K,T> 
+impl<K, T> Default for LookupHandler<K, T>
 where
     T: Clone,
     K: Clone + Eq + Hash + Display,
 {
     fn default() -> Self {
-        LookupHandler::<K,T>::new()
+        LookupHandler::<K, T>::new()
     }
 }
 

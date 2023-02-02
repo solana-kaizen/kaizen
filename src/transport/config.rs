@@ -39,9 +39,9 @@ impl TransportConfig {
     }
 
     pub fn default_with_root(root: Pubkey) -> TransportConfig {
-        TransportConfig { 
-            root, 
-            ..Default::default() 
+        TransportConfig {
+            root,
+            ..Default::default()
         }
     }
 }

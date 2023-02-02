@@ -9,8 +9,8 @@ use solana_program::pubkey::Pubkey;
 use std::sync::Arc;
 use workflow_core::trigger::Listener;
 use workflow_log::*;
+use workflow_rpc::client::prelude::{Encoding, Interface, RpcClient, RpcClientOptions};
 use workflow_rpc::client::result::Result as RpcResult;
-use workflow_rpc::client::prelude::{Encoding,Interface,RpcClient,RpcClientOptions};
 
 use super::interface::{EmulatorConfig, EmulatorInterface, ExecutionResponse};
 use super::rpc::*;
@@ -29,11 +29,15 @@ impl EmulatorRpcClient {
         let interface = Interface::<EmulatorOps>::new();
 
         let options = RpcClientOptions {
-            url : &url,
+            url: &url,
             ..RpcClientOptions::default()
         };
         let client = EmulatorRpcClient {
-            rpc: Arc::new(RpcClient::new_with_encoding(Encoding::Borsh, interface.into(), options)?),
+            rpc: Arc::new(RpcClient::new_with_encoding(
+                Encoding::Borsh,
+                interface.into(),
+                options,
+            )?),
         };
 
         Ok(client)
