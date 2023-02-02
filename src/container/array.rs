@@ -19,7 +19,7 @@ pub struct ArrayMeta {
 }
 
 impl ArrayMeta {
-    pub fn from_buffer<'refs>(data: &'refs [u8], offset: usize) -> &'refs ArrayMeta {
+    pub fn from_buffer(data: &[u8], offset: usize) -> &ArrayMeta {
         unsafe { &*((data[offset..]).as_ptr() as *const ArrayMeta) }
     }
     pub fn from_buffer_mut(data: &mut [u8], offset: usize) -> &mut ArrayMeta {
@@ -153,9 +153,7 @@ where
             let elements = self.as_slice_mut();
             #[cfg(test)]
             assert_eq!(records.len(), elements.len());
-            for idx in 0..records.len() {
-                elements[idx] = records[idx];
-            }
+            elements[..records.len()].copy_from_slice(&records[..]);
         }
 
         Ok(meta)

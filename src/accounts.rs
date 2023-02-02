@@ -19,9 +19,9 @@ pub enum IsSigner {
     NotSigner,
 }
 
-impl Into<bool> for IsSigner {
-    fn into(self) -> bool {
-        match self {
+impl From<IsSigner> for bool {
+    fn from(is_signer: IsSigner) -> Self {
+        match is_signer {
             IsSigner::Signer => true,
             IsSigner::NotSigner => false,
         }
@@ -34,9 +34,9 @@ pub enum Access {
     Write,
 }
 
-impl Into<bool> for Access {
-    fn into(self) -> bool {
-        match self {
+impl From<Access> for bool {
+    fn from(access: Access) -> bool {
+        match access {
             Access::Write => true,
             Access::Read => false,
         }
@@ -113,7 +113,7 @@ mod client {
 
     impl AccountDataReference {
         pub fn new(account_data: AccountData) -> Self {
-            let key = Arc::new(account_data.key.clone());
+            let key = Arc::new(account_data.key);
             let timestamp = Arc::new(Mutex::new(Instant::now().unwrap()));
             let data_len = account_data.data.len() - ACCOUNT_DATA_OFFSET;
             let data_type = account_data.data_type;
@@ -134,8 +134,8 @@ mod client {
             }
         }
 
-        pub fn pubkey<'key>(&'key self) -> &'key Pubkey {
-            &*self.key
+        pub fn pubkey(&self) -> &Pubkey {
+            &self.key
         }
 
         pub fn container_type(&self) -> u32 {
@@ -501,28 +501,26 @@ mod client {
         pub container_type: Option<u32>,
     }
 
-    // impl Into<AccountDescriptor> for AccountData {
-    //     fn into(self) -> AccountDescriptor {
-    impl Into<AccountDescriptor> for AccountData {
-        fn into(self) -> AccountDescriptor {
-            (&self).into()
+    impl From<AccountData> for AccountDescriptor {
+        fn from(account_data: AccountData) -> Self {
+            (&account_data).into()
         }
     }
 
-    impl Into<AccountDescriptor> for &AccountData {
-        fn into(self) -> AccountDescriptor {
+    impl From<&AccountData> for AccountDescriptor {
+        fn from(account_data: &AccountData) -> Self {
             AccountDescriptor {
-                key: self.key,
-                owner: self.owner,
-                lamports: self.lamports,
-                data_len: self.data_len() as u64,
-                rent_epoch: self.rent_epoch,
-                executable: self.executable,
-                is_signer: self.is_signer,
-                is_writable: self.is_writable,
-                container_type: self.container_type(),
+                key: account_data.key,
+                owner: account_data.owner,
+                lamports: account_data.lamports,
+                data_len: account_data.data_len() as u64,
+                rent_epoch: account_data.rent_epoch,
+                executable: account_data.executable,
+                is_signer: account_data.is_signer,
+                is_writable: account_data.is_writable,
+                container_type: account_data.container_type(),
             }
-        }
+        }            
     }
 
     impl AccountDescriptor {
@@ -727,7 +725,7 @@ mod client {
             let mut data = Vec::with_capacity(buffer_len);
             data.resize(buffer_len, 0);
             AccountData::init_data_len(&mut data, data_len);
-            data[ACCOUNT_DATA_OFFSET..].copy_from_slice(&src_data);
+            data[ACCOUNT_DATA_OFFSET..].copy_from_slice(src_data);
 
             AccountData {
                 data_type: AccountType::Container,
@@ -872,7 +870,7 @@ mod client {
                     *space as usize
                 }
 
-                pub fn init_data_len(data : &mut Vec<u8>, data_len : usize) {
+                pub fn init_data_len(data : &mut [u8], data_len : usize) {
                     let data_len_ptr: &mut u64 = unsafe { std::mem::transmute(&mut data[0]) };
                     *data_len_ptr = data_len as u64;
                 }

@@ -97,6 +97,10 @@ where
         self.meta.get_len() as usize
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.meta.get_len() == 0
+    }
+
     // pub fn get_seed_at(&self, idx : u64) -> Vec<u8> {
     //     let domain = self.domain;
     //     let index_bytes: [u8; 8] = unsafe { std::mem::transmute(idx.to_be()) };

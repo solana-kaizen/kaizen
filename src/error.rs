@@ -285,7 +285,7 @@ impl Variant {
                         lines.join("\n")
                     }
                     _ => {
-                        format!("{:#?}", client_error)
+                        format!("{client_error:#?}")
                     }
                 }
             }

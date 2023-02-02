@@ -256,7 +256,7 @@ where
     pub fn new(offset: usize, size: usize) -> IndexEntry<T> {
         IndexEntry {
             offset: IndexUnit::from_usize(offset),
-            size: IndexUnit::from_usize(size.into()),
+            size: IndexUnit::from_usize(size),
         }
     }
 
