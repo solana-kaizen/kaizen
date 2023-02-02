@@ -68,7 +68,7 @@ impl<'info, 'refs> Segment<'info, 'refs> {
 
     pub fn from(store: &SegmentStore<'info, 'refs>, idx: usize) -> Result<Segment<'info, 'refs>> {
         Ok(Segment {
-            store: store.clone(),
+            store: *store,
             idx,
             resizable: true,
         })
@@ -255,7 +255,7 @@ where
 {
     pub fn new(offset: usize, size: usize) -> IndexEntry<T> {
         IndexEntry {
-            offset: IndexUnit::from_usize(offset.into()),
+            offset: IndexUnit::from_usize(offset),
             size: IndexUnit::from_usize(size.into()),
         }
     }
@@ -425,12 +425,16 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         self.get_meta().segments as usize
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.get_meta().segments == 0
+    }
+
     #[inline(always)]
     pub fn get_meta(&self) -> &mut SegmentStoreMeta {
         SegmentStoreMeta::from(&self.account.data, self.offset)
     }
 
-    pub fn try_allocate_segment<'store>(&self, _data_len: usize) -> Result<Segment<'info, 'refs>> {
+    pub fn try_allocate_segment(&self, _data_len: usize) -> Result<Segment<'info, 'refs>> {
         let idx = self.len(); //meta.segments as usize;
         let segments = idx + 1;
         self.get_meta().segments = segments as u32;
@@ -443,7 +447,7 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         }
 
         let segment = Segment::<'info, 'refs> {
-            store: self.clone(),
+            store: *self,
             idx,
             resizable: true,
         };
@@ -613,8 +617,8 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
                 }
             }
 
-            for k in next_idx..segments {
-                index[k].offset += IndexUnit::from_usize(delta);
+            for entry in index.iter_mut().take(segments).skip(next_idx) { //next_idx..segments {
+                entry.offset += IndexUnit::from_usize(delta);
             }
         } else if new_len < segment_data_len {
             log_trace!("[segment store] reduce segment size... idx: {}", idx);
@@ -634,8 +638,8 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
 
                 log_trace!("[segment store] resize [reduce segment size] segment[{}] account_data_len: {} delta: {}  new_account_data_len: {}",
                     idx, self.account.data_len(), delta, new_account_data_len);
-                for k in idx..segments {
-                    index[k].offset -= IndexUnit::from_usize(delta);
+                for entry in index.iter_mut().take(segments).skip(idx) { //idx..segments {
+                    entry.offset -= IndexUnit::from_usize(delta);
                 }
 
                 let dest = src - delta;
@@ -715,7 +719,7 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
 
     pub fn try_get_segment_offset(&self, idx: usize) -> Result<usize> {
         if idx >= self.len() {
-            return Err(ErrorCode::SegmentStorageBounds.into());
+            Err(ErrorCode::SegmentStorageBounds.into())
         } else {
             Ok(self.get_segment_offset(idx))
         }
@@ -768,11 +772,11 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         ))
     }
 
-    pub fn try_get_segment_at<'store>(&self, idx: usize) -> Result<Rc<Segment<'info, 'refs>>> {
+    pub fn try_get_segment_at(&self, idx: usize) -> Result<Rc<Segment<'info, 'refs>>> {
         if idx >= self.len() {
             #[cfg(test)]
             log_trace!("try_get_segment() out of bounds idx: {}", idx);
-            return Err(ErrorCode::SegmentStorageBounds.into());
+            Err(ErrorCode::SegmentStorageBounds.into())
         } else {
             Ok(Rc::new(Segment::<'info, 'refs>::from(self, idx)?))
         }

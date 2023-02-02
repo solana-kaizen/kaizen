@@ -7,9 +7,9 @@ use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::slot_history::AccountInfo;
 use workflow_log::*;
 
-pub fn allocate_pda<'info, 'pid>(
+pub fn allocate_pda<'info>(
     payer: &AccountInfo<'info>,
-    program_id: &'pid Pubkey,
+    program_id: &Pubkey,
     tpl_seeds: &[&[u8]],
     tpl_account_info: &AccountInfo<'info>,
     space: usize,
@@ -18,8 +18,7 @@ pub fn allocate_pda<'info, 'pid>(
 ) -> Result<()> {
     if space > ACCOUNT_DATA_TEMPLATE_SIZE {
         panic!(
-            "create_pda() account size is too large (current limit is: {} bytes",
-            ACCOUNT_DATA_TEMPLATE_SIZE
+            "create_pda() account size is too large (current limit is: {ACCOUNT_DATA_TEMPLATE_SIZE} bytes",
         );
     }
 
@@ -76,9 +75,10 @@ pub fn allocate_pda<'info, 'pid>(
 
 // FIXME - fix allocate_multiple_pda!
 // WARNING: This function is not currently operational!
-pub fn allocate_multiple_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
-    _payer: &'payer_refs AccountInfo<'payer_info>,
-    _program_id: &'pid Pubkey,
+// pub fn allocate_multiple_pda<'info, 'refs, 'payer_info, 'payer_refs, 'pid>(
+pub fn allocate_multiple_pda<'info, 'refs>(
+    _payer: &AccountInfo<'_>,
+    _program_id: &Pubkey,
     _user_seed: &[u8],
     account_templates: &[(&ProgramAddressData, &'refs AccountInfo<'info>)],
     // account_templates: &[AccountInfoTemplate<'info, 'refs>],

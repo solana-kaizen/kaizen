@@ -30,14 +30,17 @@ impl Instant {
         cfg_if! {
             if #[cfg(target_os = "solana")] {
                 let unix_timestamp = Clock::get()?.unix_timestamp;
+                Ok(Instant(unix_timestamp as u64))
             } else if #[cfg(target_arch = "wasm32")] {
                 let unix_timestamp = Date::now() / 1000.0;
+                Ok(Instant(unix_timestamp as u64))
             } else {
                 let unix_timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_secs();
+                Ok(Instant(unix_timestamp))
             }
         }
 
-        Ok(Instant(unix_timestamp as u64))
+        
     }
 
     pub fn elapsed_since(&self, timestamp: &Instant) -> Duration {

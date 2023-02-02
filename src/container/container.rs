@@ -190,7 +190,7 @@ cfg_if! {
             static mut CONTAINER_TYPE_REGISTRY : Option<ContainerTypeRegistry> = None;
 
             pub fn global() -> ContainerTypeRegistry {
-                let registry = unsafe { (&CONTAINER_TYPE_REGISTRY).as_ref()};
+                let registry = unsafe { CONTAINER_TYPE_REGISTRY.as_ref() };
                 match registry {
                     Some(registry) => registry.clone(),
                     None => {

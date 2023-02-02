@@ -448,17 +448,10 @@ cfg_if! {
                 if let Some(container) = load_container::<PubkeyCollectionStore>(self.meta.pubkey()).await? {
                     let pubkeys = container.records.as_slice();
                     for entry in pubkeys.iter() {
-                        match transport.lookup(&entry.key).await? {
-                            Some(reference) => {
-                                if let Ok(container) = reference.try_into_container::<C>() { 
-                                    return Ok(Some(container))
-                                }
-                                // match reference.try_into_container::<C>() {
-                                //     Ok(container) => return Ok(Some(container)),
-                                //     Err(_) => { }
-                                // }
-                            },
-                            None => { }
+                        if let Some(reference) = transport.lookup(&entry.key).await? {
+                            if let Ok(container) = reference.try_into_container::<C>() { 
+                                return Ok(Some(container))
+                            }
                         }
                     }
                 }

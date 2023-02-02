@@ -942,7 +942,7 @@ impl InstructionBuilder {
         if let Some(first) = first {
             let index = vec.iter().position(|pubkey| pubkey == first).unwrap();
             vec.remove(index);
-            vec.insert(0, first.clone());
+            vec.insert(0, *first);
         }
 
         Ok(vec)

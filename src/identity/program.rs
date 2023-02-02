@@ -47,15 +47,25 @@ pub struct IdentityRecordStore {
     pub pubkey: Pubkey,
 }
 
-impl Into<IdentityRecord> for &IdentityRecordStore {
-    fn into(self) -> IdentityRecord {
+impl From<&IdentityRecordStore> for IdentityRecord {
+    fn from(record: &IdentityRecordStore) -> Self {
         IdentityRecord {
-            data_type: self.get_data_type(),
-            flags: self.get_flags(),
-            pubkey: self.get_pubkey(),
+            data_type: record.get_data_type(),
+            flags: record.get_flags(),
+            pubkey: record.get_pubkey(),
         }
     }
 }
+
+// impl Into<IdentityRecord> for &IdentityRecordStore {
+//     fn into(self) -> IdentityRecord {
+//         IdentityRecord {
+//             data_type: self.get_data_type(),
+//             flags: self.get_flags(),
+//             pubkey: self.get_pubkey(),
+//         }
+//     }
+// }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum Op {

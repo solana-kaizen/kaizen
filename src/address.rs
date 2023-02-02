@@ -63,7 +63,7 @@ impl<'data> ProgramAddressData<'data> {
     }
 
     pub fn try_from(data: &'data [u8]) -> Result<(ProgramAddressData<'data>, usize)> {
-        if data.len() < 1 {
+        if data.is_empty() {
             log_trace!("Error: ProgramAddressData is receiving data len {} (you are not supplying valid template accounts?)",data.len());
             return Err(error_code!(ErrorCode::PADDataBufferSizeAvailable));
         }

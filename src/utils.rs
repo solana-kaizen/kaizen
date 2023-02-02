@@ -49,8 +49,8 @@ pub fn fill_account_buffer_u8(account: &AccountInfo, range: std::ops::Range<usiz
     fill_buffer_u8(&mut buffer[range], v)
 }
 
-pub fn account_buffer_as_struct_ref<'refs, 'info, T>(
-    account: &'refs AccountInfo<'info>,
+pub fn account_buffer_as_struct_ref<'info, T>(
+    account: &AccountInfo<'info>,
     byte_offset: usize,
 ) -> &'info T {
     let data = account.data.borrow();
@@ -58,8 +58,8 @@ pub fn account_buffer_as_struct_ref<'refs, 'info, T>(
     unsafe { &*data.as_ptr().add(byte_offset).cast::<T>() }
 }
 
-pub fn account_buffer_as_struct_mut<'refs, 'info, T>(
-    account: &'refs AccountInfo<'info>,
+pub fn account_buffer_as_struct_mut<'info, T>(
+    account: &AccountInfo<'info>,
     byte_offset: usize,
 ) -> &'info mut T {
     let data = account.data.borrow();
@@ -67,9 +67,9 @@ pub fn account_buffer_as_struct_mut<'refs, 'info, T>(
     unsafe { std::mem::transmute::<_, &mut T>(data.as_ptr().add(byte_offset)) }
 }
 
-pub fn account_buffer_as_slice<'refs, 'info, T>(
+pub fn account_buffer_as_slice<'info, T>(
     // account: &'refs AccountInfo<'info>,
-    account: &'refs AccountInfo<'info>,
+    account: &AccountInfo<'info>,
     byte_offset: usize,
     elements: usize,
 ) -> &'info [T] {

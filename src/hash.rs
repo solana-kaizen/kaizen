@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PubkeyHasher {
     state: u64,
 }
@@ -26,12 +26,6 @@ impl std::hash::Hasher for PubkeyHasher {
 impl std::hash::BuildHasher for PubkeyHasher {
     type Hasher = PubkeyHasher;
     fn build_hasher(&self) -> PubkeyHasher {
-        PubkeyHasher { state: 0 }
-    }
-}
-
-impl std::default::Default for PubkeyHasher {
-    fn default() -> PubkeyHasher {
         PubkeyHasher { state: 0 }
     }
 }

@@ -145,7 +145,7 @@ pub async fn load_reference_with_transport(
     transport: &Arc<Transport>,
     pubkey: &Pubkey,
 ) -> Result<Option<Arc<AccountDataReference>>> {
-    Ok(transport.lookup(pubkey).await?)
+    transport.lookup(pubkey).await
 }
 
 pub async fn reload_reference(pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {

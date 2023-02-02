@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use crate::accounts::AccountDataStore;
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -53,6 +54,7 @@ impl Server {
     }
 }
 
+/*
 #[async_trait]
 // impl RpcHandlerBorsh<EmulatorOps> for Server
 // impl RpcHandler<EmulatorOps> for Server {
@@ -101,3 +103,4 @@ impl RpcHandler for Server {
         }
     }
 }
+*/

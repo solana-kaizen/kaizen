@@ -541,7 +541,7 @@ mod client {
             let (container_type, container_type_name) = match self.container_type {
                 Some(container_type) => match kaizen::container::registry::lookup(container_type) {
                     Ok(Some(declaration)) => {
-                        let container_type = format!("0x{:08x}", container_type);
+                        let container_type = format!("0x{container_type:08x}");
                         (container_type, declaration.name)
                     }
                     _ => ("n/a".to_string(), "n/a"),
@@ -608,7 +608,7 @@ mod client {
                 sol,
                 status
             );
-            v.into()
+            v
         }
     }
 
@@ -623,10 +623,8 @@ mod client {
         }
 
         pub fn to_log(&self) {
-            let mut seq = 0;
-            for descriptor in &self.list {
+            for (seq,descriptor) in self.list.iter().enumerate() {
                 log_info!("[store] [{:>8}] {}", seq, descriptor.info());
-                seq += 1;
             }
         }
     }
@@ -655,7 +653,7 @@ mod client {
     }
 
     impl AccountData {
-        pub fn into_account_info<'info>(&'info mut self) -> AccountInfo<'info> {
+        pub fn into_account_info(&mut self) -> AccountInfo<'_> {
             AccountInfo::new(
                 &self.key,
                 self.is_signer,
@@ -676,7 +674,7 @@ mod client {
                 let header = unsafe {
                     std::mem::transmute::<_, &mut ContainerHeader>(
                         // &self.data[SIMULATOR_ACCOUNT_DATA_OFFSET]//.as_ptr()
-                        self.data.as_ptr().offset(ACCOUNT_DATA_OFFSET as isize),
+                        self.data.as_ptr().add(ACCOUNT_DATA_OFFSET),
                     )
                 };
                 Some(header.container_type)
@@ -824,13 +822,14 @@ mod client {
             }
         }
 
-        pub fn clone_from_account_info<'info>(account_info: &AccountInfo<'info>) -> AccountData {
+        pub fn clone_from_account_info(account_info: &AccountInfo<'_>) -> AccountData {
             let lamports: u64 = **account_info.lamports.borrow();
             let src = account_info.data.borrow();
             let space = src.len();
             let buffer_len = src.len() + ACCOUNT_DATA_OFFSET;
 
             let mut data = Vec::with_capacity(buffer_len);
+            // let mut data = vec![0;buffer_len];
             data.resize(buffer_len, 0);
             let data_begin = ACCOUNT_DATA_OFFSET;
             let data_end = ACCOUNT_DATA_OFFSET + space;
@@ -841,8 +840,8 @@ mod client {
 
             AccountData {
                 data_type: AccountType::Container,
-                key: account_info.key.clone(),
-                owner: account_info.owner.clone(),
+                key: *account_info.key,
+                owner: *account_info.owner,
                 rent_epoch: account_info.rent_epoch,
                 executable: account_info.executable,
                 is_signer: account_info.is_signer,
@@ -894,11 +893,11 @@ mod client {
         }
     }
 
-    impl<'info> account_info::Account for AccountData {
+    impl account_info::Account for AccountData {
         fn get(&mut self) -> (&mut u64, &mut [u8], &Pubkey, bool, u64) {
             let rent_epoch = 0;
             let data_begin = ACCOUNT_DATA_OFFSET;
-            let data_end = ACCOUNT_DATA_OFFSET + self.data_len() as usize;
+            let data_end = ACCOUNT_DATA_OFFSET + self.data_len();
             (
                 &mut self.lamports,
                 &mut self.data[data_begin..data_end],

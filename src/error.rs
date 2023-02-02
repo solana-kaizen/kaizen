@@ -203,33 +203,33 @@ impl Variant {
     pub fn info(&self) -> String {
         match self {
             Variant::ErrorCode(code) => {
-                format!("code: {:?}", code)
+                format!("code: {code:?}")
             }
             Variant::ProgramError(program_error) => {
-                format!("program error: {:?}", program_error)
+                format!("program error: {program_error:?}")
             }
 
             #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::OsString(os_str) => {
-                format!("OsString error: {:?}", os_str)
+                format!("OsString error: {os_str:?}")
             }
             Variant::IoError(error) => {
-                format!("I/O error: {:?}", error)
+                format!("I/O error: {error:?}")
             }
             Variant::BorrowError(error) => {
-                format!("borrow error: {:?}", error)
+                format!("borrow error: {error:?}")
             }
             Variant::BorrowMutError(error) => {
-                format!("borrow mut error: {:?}", error)
+                format!("borrow mut error: {error:?}")
             }
             // #[cfg(target_arch = "wasm32")]
             #[cfg(not(target_os = "solana"))]
             Variant::JsValue(js_value) => {
-                format!("{:?}", js_value)
+                format!("{js_value:?}")
             }
             #[cfg(not(target_os = "solana"))]
             Variant::RpcError(err) => {
-                format!("{:?}", err)
+                format!("{err:?}")
             }
             #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
             Variant::ClientError(client_error) => {
@@ -251,14 +251,14 @@ impl Variant {
                         let mut lines: Vec<String> = Vec::new();
                         match err {
                             Some(err) => {
-                                lines.push(format!("+ error: {:?}", err));
+                                lines.push(format!("+ error: {err:?}"));
                             }
                             None => {}
                         };
                         match accounts {
                             Some(accounts) => {
                                 for account in accounts {
-                                    lines.push(format!("| account: {:?}", account));
+                                    lines.push(format!("| account: {account:?}"));
                                 }
                             }
                             None => {}
@@ -277,7 +277,7 @@ impl Variant {
                         };
                         match units_consumed {
                             Some(units_consumed) => {
-                                lines.push(format!("| units consumed: {}", units_consumed));
+                                lines.push(format!("| units consumed: {units_consumed}"));
                             }
                             None => {}
                         };
@@ -323,18 +323,14 @@ impl Error {
                     format!("\n+---\n{}\n+---\n", variant.info())
                 }
                 _ => {
-                    format!("\n+---\n|   error: {}\n|  source: {}\n| variant: {}\n| account: {}\n+---\n", 
-                            message,
-                            source,
+                    format!("\n+---\n|   error: {message}\n|  source: {source}\n| variant: {}\n| account: {account}\n+---\n", 
                             variant.info(),
-                            account
                         )
                 }
             },
             None => {
                 format!(
-                    "\n+---\n|   error: {}\n|  source: {}\n| account: {}\n+---\n",
-                    message, source, account
+                    "\n+---\n|   error: {message}\n|  source: {source}\n| account: {account}\n+---\n"
                 )
             }
         }
@@ -451,9 +447,9 @@ pub fn parse_js_error(e: wasm_bindgen::JsValue, msg: Option<&str>) -> Error {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl From<Error> for RpcResponseError {
+impl From<Error> for ServerError {
     fn from(err: Error) -> Self {
-        RpcResponseError::Text(err.to_string())
+        ServerError::Text(err.to_string())
     }
 }
 
@@ -513,7 +509,7 @@ impl<T> From<PoisonError<T>> for Error {
     fn from(error: PoisonError<T>) -> Error {
         Error::new()
             .with_code(ErrorCode::PoisonError)
-            .with_message(&format!("{:#?}", error))
+            .with_message(&format!("{error:#?}"))
     }
 }
 
@@ -550,7 +546,7 @@ impl From<BorrowMutError> for Error {
 
 impl From<Error> for String {
     fn from(error: Error) -> String {
-        format!("{:?}", error)
+        format!("{error:?}")
     }
 }
 
@@ -559,7 +555,7 @@ impl From<Error> for wasm_bindgen::JsValue {
     fn from(error: Error) -> wasm_bindgen::JsValue {
         match error.variant {
             Some(Variant::JsValue(js_value)) => wasm_bindgen::JsValue::from_str(&js_value),
-            _ => wasm_bindgen::JsValue::from(format!("{:?}", error)),
+            _ => wasm_bindgen::JsValue::from(format!("{error:?}")),
         }
     }
 }
@@ -567,7 +563,7 @@ impl From<Error> for wasm_bindgen::JsValue {
 #[cfg(not(target_os = "solana"))]
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(error: wasm_bindgen::JsValue) -> Error {
-        Error::new().with_variant(Variant::JsValue(format!("{:?}", error)))
+        Error::new().with_variant(Variant::JsValue(format!("{error:?}")))
     }
 }
 
@@ -583,7 +579,7 @@ impl From<async_std::channel::RecvError> for Error {
     fn from(error: async_std::channel::RecvError) -> Error {
         Error::new()
             .with_code(ErrorCode::ChannelRecvError)
-            .with_message(&format!("{}", error))
+            .with_message(&format!("{error}"))
     }
 }
 
@@ -592,7 +588,7 @@ impl<T> From<async_std::channel::SendError<T>> for Error {
     fn from(error: async_std::channel::SendError<T>) -> Error {
         Error::new()
             .with_code(ErrorCode::ChannelSendError)
-            .with_message(&format!("{}", error))
+            .with_message(&format!("{error}"))
     }
 }
 

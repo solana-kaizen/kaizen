@@ -215,7 +215,7 @@ impl TransactionQueue {
             chains.insert(tx_chain.id, tx_chain);
         }
         let list: Vec<Arc<TransactionChain>> =
-            chains.into_iter().map(|(_id, chain)| chain).collect();
+            chains.into_values().collect();
         self.process_chains(list).await?;
         Ok(())
     }

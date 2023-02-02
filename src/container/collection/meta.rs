@@ -141,7 +141,7 @@ impl<'info, 'refs> PdaCollectionSegmentInterface<'info, 'refs> {
         }
     }
 
-    pub fn data_ref<'data>(&'data self) -> &'data PdaCollectionMeta {
+    pub fn data_ref(&self) -> &PdaCollectionMeta {
         self.segment.as_struct_ref::<PdaCollectionMeta>()
     }
 
@@ -225,7 +225,7 @@ pub trait PubkeyCollectionMetaTrait {
     ) -> Result<()>;
     fn try_load(&mut self) -> Result<()>;
     fn min_data_len() -> usize;
-    fn pubkey<'key>(&'key self) -> &'key Pubkey;
+    fn pubkey(&self) -> &Pubkey;
     fn get_len(&self) -> u64;
     fn set_len(&mut self, count: u64);
     fn advance_sequence(&mut self) -> u32;

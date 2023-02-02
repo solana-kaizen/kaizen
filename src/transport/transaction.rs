@@ -24,7 +24,7 @@ impl ToString for TransactionStatus {
             TransactionStatus::Pending => "Pending".to_string(),
             TransactionStatus::Success => "Success".to_string(),
             TransactionStatus::Timeout => "Timeout".to_string(),
-            TransactionStatus::Error(e) => format!("Error: {}", e),
+            TransactionStatus::Error(err) => format!("Error: {err}"),
         }
     }
 }

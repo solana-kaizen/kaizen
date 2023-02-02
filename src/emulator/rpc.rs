@@ -88,8 +88,8 @@ pub struct FundReq {
 }
 
 u32_try_from! {
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    #[repr(u32)]
+    #[derive(Clone, Debug, Hash, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+    // #[repr(u32)]
     pub enum EmulatorOps {
         Lookup = 0,
         Execute,

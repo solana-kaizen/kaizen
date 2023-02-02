@@ -107,7 +107,7 @@ impl Transport {
             Transport::try_new_with_args(TransportMode::Emulator, None, Some(emulator), config)
                 .await
         } else {
-            panic!("Unabel to create transport for network '{}'", network);
+            panic!("Unabel to create transport for network '{network}'");
         }
     }
 

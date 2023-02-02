@@ -25,8 +25,8 @@ impl ArrayMeta {
     pub fn from_buffer_mut(data: &mut [u8], offset: usize) -> &mut ArrayMeta {
         unsafe { &mut *((data[offset..]).as_ptr() as *mut ArrayMeta) }
     }
-    pub fn from_account_buffer_mut<'refs, 'info>(
-        account: &'refs AccountInfo<'info>,
+    pub fn from_account_buffer_mut<'info>(
+        account: &AccountInfo<'info>,
         offset: usize,
     ) -> &'info mut ArrayMeta {
         let data = account.data.borrow_mut();
@@ -149,7 +149,7 @@ where
         let meta = self.try_init_meta()?;
         meta.records = records.len() as u32;
 
-        if records.len() != 0 {
+        if !records.is_empty() {
             let elements = self.as_slice_mut();
             #[cfg(test)]
             assert_eq!(records.len(), elements.len());
@@ -197,6 +197,10 @@ where
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.get_meta().records as usize
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.get_meta().records == 0
     }
 
     pub fn get_offset(&self) -> usize {

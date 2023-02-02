@@ -77,7 +77,7 @@ cfg_if! {
                     }
                 }
 
-                let err = format!("Unable to parse date `{}`", str);
+                let err = format!("Unable to parse date `{str}`");
 
                 if ymd.len() < 3{
                     return Err(err);
