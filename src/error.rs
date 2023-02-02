@@ -12,7 +12,7 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(not(target_os = "solana"))] {
-        use workflow_rpc::asynchronous::error::RpcResponseError;
+        use workflow_rpc::error::ServerError;
         use std::sync::PoisonError;
         use std::sync::Arc;
     }
@@ -173,7 +173,7 @@ pub enum Variant {
     #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
     OsString(OsString),
     #[cfg(not(target_os = "solana"))]
-    RpcError(Arc<workflow_rpc::asynchronous::client::error::Error>),
+    RpcError(Arc<workflow_rpc::client::error::Error>),
     #[cfg(not(target_os = "solana"))]
     JsValue(String),
 }
@@ -572,8 +572,8 @@ impl From<wasm_bindgen::JsValue> for Error {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl From<workflow_rpc::asynchronous::client::error::Error> for Error {
-    fn from(error: workflow_rpc::asynchronous::client::error::Error) -> Error {
+impl From<workflow_rpc::client::error::Error> for Error {
+    fn from(error: workflow_rpc::client::error::Error) -> Error {
         Error::new().with_variant(Variant::RpcError(Arc::new(error)))
     }
 }

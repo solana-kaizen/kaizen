@@ -9,9 +9,9 @@ use kaizen::store::FileStore;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use std::sync::Arc;
-use workflow_rpc::asynchronous::result::RpcResult;
-use workflow_rpc::asynchronous::server::RpcHandler;
-use workflow_rpc::asynchronous::server::RpcResponseError;
+use workflow_rpc::result::ServerResult;
+use workflow_rpc::server::RpcHandler;
+use workflow_rpc::server::ServerError;
 
 use super::interface::EmulatorConfig;
 use super::Emulator;
@@ -24,9 +24,9 @@ pub enum Error {
     SomeError,
 }
 
-impl From<Error> for RpcResponseError {
+impl From<Error> for ServerError {
     fn from(err: Error) -> Self {
-        RpcResponseError::Text(err.to_string())
+        ServerError::Text(err.to_string())
     }
 }
 
@@ -55,7 +55,8 @@ impl Server {
 
 #[async_trait]
 // impl RpcHandlerBorsh<EmulatorOps> for Server
-impl RpcHandler<EmulatorOps> for Server {
+// impl RpcHandler<EmulatorOps> for Server {
+impl RpcHandler for Server {
     async fn handle_request(self: Arc<Self>, op: EmulatorOps, data: &[u8]) -> RpcResult {
         match op {
             EmulatorOps::Lookup => {

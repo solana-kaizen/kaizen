@@ -9,8 +9,8 @@ use solana_program::pubkey::Pubkey;
 use std::sync::Arc;
 use workflow_core::trigger::Listener;
 use workflow_log::*;
-use workflow_rpc::asynchronous::client::result::Result as RpcResult;
-use workflow_rpc::asynchronous::client::RpcClient;
+use workflow_rpc::client::result::Result as RpcResult;
+use workflow_rpc::client::RpcClient;
 
 use super::interface::{EmulatorConfig, EmulatorInterface, ExecutionResponse};
 use super::rpc::*;
