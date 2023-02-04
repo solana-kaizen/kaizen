@@ -149,7 +149,8 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
             ) -> Result<()> {
                 use kaizen::transport::Interface;
                 let transport = kaizen::transport::Transport::global()?;
-                Ok(transport.execute(&instruction).await?)
+                transport.execute(&instruction).await?;
+                Ok(())
                 // transport.execute(&instruction).await
             }
 
@@ -158,7 +159,8 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
                 instruction : solana_program::instruction::Instruction
             ) -> Result<()> {
                 use kaizen::transport::Interface;
-                Ok(transport.execute(&instruction).await?)
+                transport.execute(&instruction).await?;
+                Ok(())
                 // transport.execute(&instruction).await
             }
         }
