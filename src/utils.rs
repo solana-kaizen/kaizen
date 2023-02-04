@@ -27,17 +27,11 @@ pub fn u64sol_to_lamports(sol: u64) -> u64 {
 }
 
 pub fn pubkey_from_slice(slice: &[u8]) -> crate::result::Result<Pubkey> {
-    let pubkey = Pubkey::new_from_array(
-        <[u8; 32]>::try_from(
-            <&[u8]>::clone(
-                &slice
-                //&utils::try_get_vec_from_bn_prop(&response, "owner")?.as_slice()
-            )
-        )?
-    );
+    let pubkey = Pubkey::new_from_array(<[u8; 32]>::try_from(<&[u8]>::clone(
+        &slice, //&utils::try_get_vec_from_bn_prop(&response, "owner")?.as_slice()
+    ))?);
     Ok(pubkey)
 }
-
 
 #[cfg(not(target_os = "solana"))]
 pub fn generate_random_pubkey() -> Pubkey {

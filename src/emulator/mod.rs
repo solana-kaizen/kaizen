@@ -14,8 +14,8 @@ cfg_if! {
     }
 }
 
-pub use simulator::Simulator;
 pub use rpc::EmulatorOps;
+pub use simulator::Simulator;
 pub use stubs::*;
 
 use ahash::AHashSet;

@@ -11,8 +11,8 @@ use crate::transport::lookup::{LookupHandler, RequestType};
 use crate::transport::queue::TransactionQueue;
 use crate::transport::{reflector, Reflector};
 use crate::transport::{Transaction, TransportConfig};
-use crate::wallet::*;
 use crate::utils::pubkey_from_slice;
+use crate::wallet::*;
 use async_std::sync::RwLock;
 use async_trait::async_trait;
 use js_sys::*;
@@ -385,7 +385,8 @@ impl Transport {
                 //         )
                 //     )?
                 // );
-                let owner = pubkey_from_slice(&utils::try_get_vec_from_bn_prop(&response, "owner")?)?;
+                let owner =
+                    pubkey_from_slice(&utils::try_get_vec_from_bn_prop(&response, "owner")?)?;
                 // let owner = Pubkey::new(&utils::try_get_vec_from_bn_prop(&response, "owner")?);
                 let data = utils::try_get_vec_from_prop(&response, "data")?;
                 let _executable = utils::try_get_bool_from_prop(&response, "executable")?;

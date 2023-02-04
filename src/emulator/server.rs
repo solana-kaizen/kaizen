@@ -11,9 +11,9 @@ use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use std::sync::Arc;
 use workflow_rpc::result::ServerResult;
+use workflow_rpc::server::prelude::*;
 use workflow_rpc::server::RpcHandler;
 use workflow_rpc::server::ServerError;
-use workflow_rpc::server::prelude::*;
 
 use super::interface::EmulatorConfig;
 use super::Emulator;
@@ -46,7 +46,6 @@ impl Server {
         let store = Arc::new(FileStore::try_new_with_cache(cache)?);
         let emulator = Arc::new(Emulator::new(store));
 
-
         let server = Server { emulator };
 
         Ok(server)
@@ -56,48 +55,69 @@ impl Server {
         self.emulator.init().await
     }
 
-    pub fn interface(self : Arc<Server>) -> Interface<Arc<Server>,(),EmulatorOps> {
-        let mut interface = Interface::<Arc<Server>,(),EmulatorOps>::new(self.clone());
+    pub fn interface(self: Arc<Server>) -> Interface<Arc<Server>, (), EmulatorOps> {
+        let mut interface = Interface::<Arc<Server>, (), EmulatorOps>::new(self.clone());
 
-        interface.method(EmulatorOps::Lookup, method!(|server: Arc<Server>, _connection, req: LookupReq| async move {
-            let reference = server.emulator.clone().lookup(&req.pubkey).await?;
-            let resp = match reference {
-                Some(reference) => {
-                    let account_data_store =
-                        AccountDataStore::from(&*reference.account_data.lock()?);
-                    LookupResp {
-                        account_data_store: Some(account_data_store),
-                    }
+        interface.method(
+            EmulatorOps::Lookup,
+            method!(
+                |server: Arc<Server>, _connection, req: LookupReq| async move {
+                    let reference = server.emulator.clone().lookup(&req.pubkey).await?;
+                    let resp = match reference {
+                        Some(reference) => {
+                            let account_data_store =
+                                AccountDataStore::from(&*reference.account_data.lock()?);
+                            LookupResp {
+                                account_data_store: Some(account_data_store),
+                            }
+                        }
+                        None => LookupResp {
+                            account_data_store: None,
+                        },
+                    };
+                    Ok(resp)
                 }
-                None => LookupResp {
-                    account_data_store: None,
-                },
-            };
-            Ok(resp)
-        }));
+            ),
+        );
 
-        interface.method(EmulatorOps::Execute, method!(|server: Arc<Server>, _connection, req: ExecuteReq| async move {
-            let (authority, instruction): (Pubkey, Instruction) = req.into();
-            let resp = server.emulator.execute(&authority, &instruction).await?;
-            Ok(resp)
-        }));
+        interface.method(
+            EmulatorOps::Execute,
+            method!(
+                |server: Arc<Server>, _connection, req: ExecuteReq| async move {
+                    let (authority, instruction): (Pubkey, Instruction) = req.into();
+                    let resp = server.emulator.execute(&authority, &instruction).await?;
+                    Ok(resp)
+                }
+            ),
+        );
 
-        interface.method(EmulatorOps::Fund, method!(|server: Arc<Server>, _connection, req: FundReq| async move {
-            server.emulator
-                .fund(&req.key, &req.owner, req.lamports)
-                .await?;
-            Ok(())
-        }));
+        interface.method(
+            EmulatorOps::Fund,
+            method!(
+                |server: Arc<Server>, _connection, req: FundReq| async move {
+                    server
+                        .emulator
+                        .fund(&req.key, &req.owner, req.lamports)
+                        .await?;
+                    Ok(())
+                }
+            ),
+        );
 
-        interface.method(EmulatorOps::List, method!(|server: Arc<Server>, _connection, _req: ()| async move {
-            let resp = server.emulator.list().await?;
-            Ok(resp)
-        }));
+        interface.method(
+            EmulatorOps::List,
+            method!(|server: Arc<Server>, _connection, _req: ()| async move {
+                let resp = server.emulator.list().await?;
+                Ok(resp)
+            }),
+        );
 
-        interface.method(EmulatorOps::Configure, method!(|_server: Arc<Server>, _connection, _req: EmulatorConfig| async move {
-
-            Ok(())
-        }));
+        interface.method(
+            EmulatorOps::Configure,
+            method!(
+                |_server: Arc<Server>, _connection, _req: EmulatorConfig| async move { Ok(()) }
+            ),
+        );
 
         interface
     }
@@ -118,49 +138,49 @@ impl RpcHandler for Server {
     ) -> WebSocketResult<Self::Context> {
         Ok(())
     }
-/*
-    async fn handle_request(self: Arc<Self>, op: EmulatorOps, data: &[u8]) -> RpcResult {
-        match op {
-            EmulatorOps::Lookup => {
-                let req = LookupReq::try_from_slice(data)?;
-                let reference = self.emulator.clone().lookup(&req.pubkey).await?;
-                let resp = match reference {
-                    Some(reference) => {
-                        let account_data_store =
-                            AccountDataStore::from(&*reference.account_data.lock()?);
-                        LookupResp {
-                            account_data_store: Some(account_data_store),
+    /*
+        async fn handle_request(self: Arc<Self>, op: EmulatorOps, data: &[u8]) -> RpcResult {
+            match op {
+                EmulatorOps::Lookup => {
+                    let req = LookupReq::try_from_slice(data)?;
+                    let reference = self.emulator.clone().lookup(&req.pubkey).await?;
+                    let resp = match reference {
+                        Some(reference) => {
+                            let account_data_store =
+                                AccountDataStore::from(&*reference.account_data.lock()?);
+                            LookupResp {
+                                account_data_store: Some(account_data_store),
+                            }
                         }
-                    }
-                    None => LookupResp {
-                        account_data_store: None,
-                    },
-                };
-                Ok(resp.try_to_vec()?)
-            }
-            EmulatorOps::Execute => {
-                let req = ExecuteReq::try_from_slice(data)?;
-                let (authority, instruction): (Pubkey, Instruction) = req.into();
-                let resp = self.emulator.execute(&authority, &instruction).await?;
-                Ok(resp.try_to_vec()?)
-            }
-            EmulatorOps::Fund => {
-                let req = FundReq::try_from_slice(data)?;
-                self.emulator
-                    .fund(&req.key, &req.owner, req.lamports)
-                    .await?;
-                log_trace!("fundinng done...");
-                Ok(().try_to_vec()?)
-            }
-            EmulatorOps::List => {
-                let resp = self.emulator.list().await?;
-                Ok(resp.try_to_vec()?)
-            }
-            EmulatorOps::Configure => {
-                let _config = EmulatorConfig::try_from_slice(data)?;
-                Ok(().try_to_vec()?)
+                        None => LookupResp {
+                            account_data_store: None,
+                        },
+                    };
+                    Ok(resp.try_to_vec()?)
+                }
+                EmulatorOps::Execute => {
+                    let req = ExecuteReq::try_from_slice(data)?;
+                    let (authority, instruction): (Pubkey, Instruction) = req.into();
+                    let resp = self.emulator.execute(&authority, &instruction).await?;
+                    Ok(resp.try_to_vec()?)
+                }
+                EmulatorOps::Fund => {
+                    let req = FundReq::try_from_slice(data)?;
+                    self.emulator
+                        .fund(&req.key, &req.owner, req.lamports)
+                        .await?;
+                    log_trace!("fundinng done...");
+                    Ok(().try_to_vec()?)
+                }
+                EmulatorOps::List => {
+                    let resp = self.emulator.list().await?;
+                    Ok(resp.try_to_vec()?)
+                }
+                EmulatorOps::Configure => {
+                    let _config = EmulatorConfig::try_from_slice(data)?;
+                    Ok(().try_to_vec()?)
+                }
             }
         }
-    }
-*/
+    */
 }

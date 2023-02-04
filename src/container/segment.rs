@@ -553,9 +553,9 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         let segment_data_len = IndexUnit::as_usize(index[idx].size); //.as_usize(); // as usize;
                                                                      // let segment_data_len = index[idx].size.as_usize(); // as usize;
                                                                      // log_trace!("@@@\n@@@\n@@@\n idx: {} new_len: {}  segment_data_len: {} \n@@@\n@@@", idx, new_len, segment_data_len);
-        // if new_len > segment_data_len {
+                                                                     // if new_len > segment_data_len {
         match new_len.cmp(&segment_data_len) {
-            Ordering::Equal => { }
+            Ordering::Equal => {}
             Ordering::Greater => {
                 let delta = new_len - segment_data_len;
                 let account_data_len = self.account.data_len();
@@ -627,7 +627,7 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
                 }
             }
             Ordering::Less => {
-            // } else if new_len < segment_data_len {
+                // } else if new_len < segment_data_len {
                 log_trace!("[segment store] reduce segment size... idx: {}", idx);
                 log_trace!("[segment store] segment_data_len: {}", segment_data_len);
                 log_trace!("[segment store] new_len: {}", new_len);

@@ -473,7 +473,7 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             // let mut data = Vec::with_capacity(buffer_len);
             // data.resize(buffer_len, 0);
-            let mut data = vec![0;buffer_len];
+            let mut data = vec![0; buffer_len];
             AccountData::init_data_len(&mut data, data_len);
             data[ACCOUNT_DATA_OFFSET..].copy_from_slice(&account_data_store.data);
             AccountData {
@@ -531,15 +531,9 @@ mod client {
             let sol = format!("{:>20.10}", crate::utils::lamports_to_sol(self.lamports));
             let minimum_balance = rent.minimum_balance(self.data_len as usize);
             let (sol, status) = match self.lamports.cmp(&minimum_balance) {
-                Ordering::Equal => {
-                    (style(sol).green(), style("").green())
-                }
-                Ordering::Less => {
-                    (style(sol).red(), style("~").red())
-                }
-                Ordering::Greater => {
-                    (style(sol).yellow(), style("").yellow())
-                }
+                Ordering::Equal => (style(sol).green(), style("").green()),
+                Ordering::Less => (style(sol).red(), style("~").red()),
+                Ordering::Greater => (style(sol).yellow(), style("").yellow()),
             };
 
             let (container_type, container_type_name) = match self.container_type {
@@ -676,7 +670,11 @@ mod client {
                 None
             } else {
                 let header = unsafe {
-                    &*self.data.as_ptr().add(ACCOUNT_DATA_OFFSET).cast::<ContainerHeader>()
+                    &*self
+                        .data
+                        .as_ptr()
+                        .add(ACCOUNT_DATA_OFFSET)
+                        .cast::<ContainerHeader>()
                     // std::mem::transmute::<_, &mut ContainerHeader>(
                     //     self.data.as_ptr().add(ACCOUNT_DATA_OFFSET),
                     // )
@@ -704,7 +702,7 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             // let mut data = Vec::with_capacity(buffer_len);
             // data.resize(buffer_len, 0);
-            let mut data = vec![0;buffer_len];
+            let mut data = vec![0; buffer_len];
             AccountData::init_data_len(&mut data, data_len);
             AccountData {
                 data_type: AccountType::Container,
@@ -731,7 +729,7 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             // let mut data = Vec::with_capacity(buffer_len);
             // data.resize(buffer_len, 0);
-            let mut data = vec![0;buffer_len];
+            let mut data = vec![0; buffer_len];
             AccountData::init_data_len(&mut data, data_len);
             data[ACCOUNT_DATA_OFFSET..].copy_from_slice(src_data);
 
@@ -757,8 +755,8 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
             // let mut data = Vec::with_capacity(buffer_len);
             // data.resize(buffer_len, 0);
-            let mut data = vec![0;buffer_len];
-            
+            let mut data = vec![0; buffer_len];
+
             AccountData::init_data_len(&mut data, data_len);
             // *size_ptr = space as u64;
             data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len]
@@ -781,8 +779,8 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET;
             // let mut data = Vec::with_capacity(buffer_len);
             // data.resize(buffer_len, 0);
-            let mut data = vec![0;buffer_len];
-            
+            let mut data = vec![0; buffer_len];
+
             AccountData::init_data_len(&mut data, data_len);
             // *size_ptr = space as u64;
             data[ACCOUNT_DATA_OFFSET..ACCOUNT_DATA_OFFSET + data_len]
@@ -814,8 +812,8 @@ mod client {
             let buffer_len = data_len + ACCOUNT_DATA_OFFSET + ACCOUNT_DATA_PADDING;
             // let mut data = Vec::with_capacity(buffer_len);
             // data.resize(buffer_len, 0);
-            let mut data = vec![0;buffer_len];
-            
+            let mut data = vec![0; buffer_len];
+
             AccountData::init_data_len(&mut data, data_len);
             // *size_ptr = space as u64;
             AccountData {
@@ -838,7 +836,7 @@ mod client {
             let buffer_len = src.len() + ACCOUNT_DATA_OFFSET;
 
             // let mut data = Vec::with_capacity(buffer_len);
-            let mut data = vec![0;buffer_len];
+            let mut data = vec![0; buffer_len];
             // data.resize(buffer_len, 0);
             let data_begin = ACCOUNT_DATA_OFFSET;
             let data_end = ACCOUNT_DATA_OFFSET + space;
