@@ -336,7 +336,7 @@ impl Transport {
 
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
-                let delay: u64 = rand::thread_rng().gen_range(500, 1500);
+                let delay: u64 = rand::thread_rng().gen_range(500..1500);
                 workflow_core::task::sleep(std::time::Duration::from_millis(delay)).await;
 
                 let reference = self
