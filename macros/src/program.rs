@@ -171,7 +171,7 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         }
 
         #[cfg(not(any(target_os = "solana",target_arch = "wasm32")))]
-        inventory::submit! {
+        ::inventory::submit! {
             kaizen::program::registry::EntrypointDeclaration::new(
                 ID,
                 #program_name,
