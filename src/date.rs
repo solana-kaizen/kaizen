@@ -27,7 +27,7 @@ cfg_if! {
                 self.format("%Y-%m-%d")
             }
             pub fn format(self, str:&str)->String{
-                let n_date = NaiveDate::from_num_days_from_ce(self.0 as i32);
+                let n_date = NaiveDate::from_num_days_from_ce_opt(self.0 as i32).expect("the date is out of range");
                 n_date.format(str).to_string()
             }
         }
@@ -40,8 +40,8 @@ cfg_if! {
 
         impl From<Date> for DateTime::<Utc>{
             fn from(date: Date) -> Self {
-                let n_date = NaiveDate::from_num_days_from_ce(date.0 as i32);
-                let n_time = NaiveTime::from_hms(0, 0, 0);
+                let n_date = NaiveDate::from_num_days_from_ce_opt(date.0 as i32).expect("the date is out of range");
+                let n_time = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
                 let n_date_time = NaiveDateTime::new(n_date, n_time);
                 DateTime::<Utc>::from_utc(n_date_time, Utc)
             }
@@ -83,8 +83,8 @@ cfg_if! {
                     return Err(err);
                 }
 
-                let d = NaiveDate::from_ymd(ymd[0] as i32, ymd[1], ymd[2]);
-                let t = NaiveTime::from_hms_milli(0,0,0,0);
+                let d = NaiveDate::from_ymd_opt(ymd[0] as i32, ymd[1], ymd[2]).expect("the date is out of range");
+                let t = NaiveTime::from_hms_milli_opt(0,0,0,0).unwrap();
 
                 let ndt = NaiveDateTime::new(d, t);
                 Ok(DateTime::<Utc>::from_utc(ndt, Utc).into())

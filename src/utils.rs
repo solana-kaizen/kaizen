@@ -26,9 +26,23 @@ pub fn u64sol_to_lamports(sol: u64) -> u64 {
     sol * LAMPORTS_PER_SOL
 }
 
+pub fn pubkey_from_slice(slice: &[u8]) -> crate::result::Result<Pubkey> {
+    let pubkey = Pubkey::new_from_array(
+        <[u8; 32]>::try_from(
+            <&[u8]>::clone(
+                &slice
+                //&utils::try_get_vec_from_bn_prop(&response, "owner")?.as_slice()
+            )
+        )?
+    );
+    Ok(pubkey)
+}
+
+
 #[cfg(not(target_os = "solana"))]
 pub fn generate_random_pubkey() -> Pubkey {
-    Pubkey::new(&rand::random::<[u8; 32]>())
+    // Pubkey::new(&rand::random::<[u8; 32]>())
+    Pubkey::new_from_array(rand::random::<[u8; 32]>())
 }
 
 #[cfg(target_os = "solana")]
@@ -62,9 +76,8 @@ pub fn account_buffer_as_struct_mut<'info, T>(
     account: &AccountInfo<'info>,
     byte_offset: usize,
 ) -> &'info mut T {
-    let data = account.data.borrow();
-    // unsafe { &mut *data.as_ptr().add(byte_offset).cast::<T>() }
-    unsafe { std::mem::transmute::<_, &mut T>(data.as_ptr().add(byte_offset)) }
+    let mut data = account.data.borrow_mut();
+    unsafe { &mut *data.as_mut_ptr().add(byte_offset).cast::<T>() }
 }
 
 pub fn account_buffer_as_slice<'info, T>(

@@ -153,7 +153,7 @@ where
             let elements = self.as_slice_mut();
             #[cfg(test)]
             assert_eq!(records.len(), elements.len());
-            elements[..records.len()].copy_from_slice(&records[..]);
+            elements[..records.len()].copy_from_slice(records);
         }
 
         Ok(meta)

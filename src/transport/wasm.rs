@@ -12,6 +12,7 @@ use crate::transport::queue::TransactionQueue;
 use crate::transport::{reflector, Reflector};
 use crate::transport::{Transaction, TransportConfig};
 use crate::wallet::*;
+use crate::utils::pubkey_from_slice;
 use async_std::sync::RwLock;
 use async_trait::async_trait;
 use js_sys::*;
@@ -214,7 +215,7 @@ impl Transport {
                 let wallet_adapter = &self.wallet_adapter()?;
                 let public_key =
                     unsafe { js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))? };
-                let pubkey = Pubkey::new(&utils::try_get_vec_from_bn(&public_key)?);
+                let pubkey = pubkey_from_slice(&utils::try_get_vec_from_bn(&public_key)?)?;
                 Ok(pubkey)
             }
 
@@ -222,7 +223,7 @@ impl Transport {
                 let wallet_adapter = &self.wallet_adapter()?;
                 let public_key =
                     unsafe { js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))? };
-                let pubkey = Pubkey::new(&utils::try_get_vec_from_bn(&public_key)?);
+                let pubkey = pubkey_from_slice(&utils::try_get_vec_from_bn(&public_key)?)?;
                 Ok(pubkey)
             }
         }
@@ -377,7 +378,15 @@ impl Transport {
 
                 let rent_epoch = utils::try_get_u64_from_prop(&response, "rentEpoch")?;
                 let lamports = utils::try_get_u64_from_prop(&response, "lamports")?;
-                let owner = Pubkey::new(&utils::try_get_vec_from_bn_prop(&response, "owner")?);
+                // let owner = Pubkey::new_from_array(
+                //     <[u8; 32]>::try_from(
+                //         <&[u8]>::clone(
+                //             &utils::try_get_vec_from_bn_prop(&response, "owner")?.as_slice()
+                //         )
+                //     )?
+                // );
+                let owner = pubkey_from_slice(&utils::try_get_vec_from_bn_prop(&response, "owner")?)?;
+                // let owner = Pubkey::new(&utils::try_get_vec_from_bn_prop(&response, "owner")?);
                 let data = utils::try_get_vec_from_prop(&response, "data")?;
                 let _executable = utils::try_get_bool_from_prop(&response, "executable")?;
 

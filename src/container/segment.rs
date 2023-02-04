@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 // use std::cell::Ref;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -552,112 +553,117 @@ impl<'info, 'refs> SegmentStore<'info, 'refs> {
         let segment_data_len = IndexUnit::as_usize(index[idx].size); //.as_usize(); // as usize;
                                                                      // let segment_data_len = index[idx].size.as_usize(); // as usize;
                                                                      // log_trace!("@@@\n@@@\n@@@\n idx: {} new_len: {}  segment_data_len: {} \n@@@\n@@@", idx, new_len, segment_data_len);
-        if new_len > segment_data_len {
-            let delta = new_len - segment_data_len;
-            let account_data_len = self.account.data_len();
+        // if new_len > segment_data_len {
+        match new_len.cmp(&segment_data_len) {
+            Ordering::Equal => { }
+            Ordering::Greater => {
+                let delta = new_len - segment_data_len;
+                let account_data_len = self.account.data_len();
 
-            // !  - - - - - - - - - - - -
-            // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
-            // let headers = accounts::account_info_headers(self.account)?;
-            // log_trace!("{} serialized: {} slice: {}",style("HEADERS ===============>").white().on_red(),headers.0,headers.1);
-            // let new_account_data_len = account_data_len + delta;
-            // let migration_data_len = if next_idx == segments {
-            //     0
-            // } else {
-            //     account_data_len - IndexUnit::as_usize(index[idx+1].offset) // as usize
-            // };
-            // log_trace!("ALLOC B - account_data_len: {}, new_account_data_len: {}", account_data_len, new_account_data_len);
+                // !  - - - - - - - - - - - -
+                // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
+                // let headers = accounts::account_info_headers(self.account)?;
+                // log_trace!("{} serialized: {} slice: {}",style("HEADERS ===============>").white().on_red(),headers.0,headers.1);
+                // let new_account_data_len = account_data_len + delta;
+                // let migration_data_len = if next_idx == segments {
+                //     0
+                // } else {
+                //     account_data_len - IndexUnit::as_usize(index[idx+1].offset) // as usize
+                // };
+                // log_trace!("ALLOC B - account_data_len: {}, new_account_data_len: {}", account_data_len, new_account_data_len);
 
-            // account_info_realloc(self.account, new_account_data_len, false,false)?;
-            // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
+                // account_info_realloc(self.account, new_account_data_len, false,false)?;
+                // ^ TODO:  ACCOUNT DATA LEN MUST BE THE SUM OF ALL SEGMENTS
 
-            let total_segment_data_len = IndexUnit::as_usize(index[segments - 1].offset)
-                + IndexUnit::as_usize(index[segments - 1].size);
+                let total_segment_data_len = IndexUnit::as_usize(index[segments - 1].offset)
+                    + IndexUnit::as_usize(index[segments - 1].size);
 
-            if account_data_len < total_segment_data_len {
-                panic!("account data len is less than total segment data len");
-            }
-
-            //log_trace!("CHECK-A next_idx, {next_idx} segments:{segments}, total_segment_data_len:{total_segment_data_len}" );
-
-            let new_account_data_len = total_segment_data_len + delta;
-            let migration_data_len = if next_idx == segments {
-                0
-            } else {
-                total_segment_data_len - IndexUnit::as_usize(index[next_idx].offset)
-                // as usize
-            };
-
-            //log_trace!("CHECK-B migration_data_len: {migration_data_len} total:{total_segment_data_len}");
-            // log_trace!("ALLOC B - account_data_len: {}, new_account_data_len: {}", account_data_len, new_account_data_len);
-            // log_trace!("{:#?}", self.account);
-            // let headers = accounts::account_info_headers(self.account)?;
-            // log_trace!("{} serialized: {} slice: {}",style("===============>").white().on_red(),headers.0,headers.1);
-            // log_trace!("{} migration data len: {}",style("===============>").white().on_red(),migration_data_len);
-            if new_account_data_len > account_data_len {
-                account_info_realloc(self.account, new_account_data_len, false, false)?;
-            } else {
-                log_trace!("[segment store] capacity ok, skipping allocation");
-            }
-
-            let index = self.get_index::<T>();
-            // log_trace!("index reaquire: {:?}", index);
-            // log_trace!("index[{}] = {}",idx,new_len);
-            index[idx].size = IndexUnit::from_usize(new_len); //  as u32;
-
-            let mut data = self.account.data.borrow_mut();
-            if migration_data_len != 0 {
-                let src = IndexUnit::as_usize(index[next_idx].offset); // as usize;
-                let dest = src + delta;
-                data[..].copy_within(src..(src + migration_data_len), dest);
-
-                if zero_init {
-                    // TODO: cleanup, set to 0
-                    data[src..src + delta].fill(88);
-                }
-            }
-
-            for entry in index.iter_mut().take(segments).skip(next_idx) {
-                //next_idx..segments {
-                entry.offset += IndexUnit::from_usize(delta);
-            }
-        } else if new_len < segment_data_len {
-            log_trace!("[segment store] reduce segment size... idx: {}", idx);
-            log_trace!("[segment store] segment_data_len: {}", segment_data_len);
-            log_trace!("[segment store] new_len: {}", new_len);
-            let delta = segment_data_len - new_len;
-            let account_data_len = self.account.data_len();
-            log_trace!("[segment store] delta: {}", delta);
-            log_trace!("[segment store] account_data_len: {}", account_data_len);
-            let new_account_data_len = account_data_len - delta;
-
-            if idx < segments - 1 {
-                let src = index[idx].next_offset();
-                log_trace!("[segment store] src:{}", src);
-
-                let migration_data_len = account_data_len - src;
-
-                log_trace!("[segment store] resize [reduce segment size] segment[{}] account_data_len: {} delta: {}  new_account_data_len: {}",
-                    idx, self.account.data_len(), delta, new_account_data_len);
-                for entry in index.iter_mut().take(segments).skip(idx) {
-                    //idx..segments {
-                    entry.offset -= IndexUnit::from_usize(delta);
+                if account_data_len < total_segment_data_len {
+                    panic!("account data len is less than total segment data len");
                 }
 
-                let dest = src - delta;
+                //log_trace!("CHECK-A next_idx, {next_idx} segments:{segments}, total_segment_data_len:{total_segment_data_len}" );
 
-                {
-                    let mut data = self.account.data.borrow_mut();
+                let new_account_data_len = total_segment_data_len + delta;
+                let migration_data_len = if next_idx == segments {
+                    0
+                } else {
+                    total_segment_data_len - IndexUnit::as_usize(index[next_idx].offset)
+                    // as usize
+                };
+
+                //log_trace!("CHECK-B migration_data_len: {migration_data_len} total:{total_segment_data_len}");
+                // log_trace!("ALLOC B - account_data_len: {}, new_account_data_len: {}", account_data_len, new_account_data_len);
+                // log_trace!("{:#?}", self.account);
+                // let headers = accounts::account_info_headers(self.account)?;
+                // log_trace!("{} serialized: {} slice: {}",style("===============>").white().on_red(),headers.0,headers.1);
+                // log_trace!("{} migration data len: {}",style("===============>").white().on_red(),migration_data_len);
+                if new_account_data_len > account_data_len {
+                    account_info_realloc(self.account, new_account_data_len, false, false)?;
+                } else {
+                    log_trace!("[segment store] capacity ok, skipping allocation");
+                }
+
+                let index = self.get_index::<T>();
+                // log_trace!("index reaquire: {:?}", index);
+                // log_trace!("index[{}] = {}",idx,new_len);
+                index[idx].size = IndexUnit::from_usize(new_len); //  as u32;
+
+                let mut data = self.account.data.borrow_mut();
+                if migration_data_len != 0 {
+                    let src = IndexUnit::as_usize(index[next_idx].offset); // as usize;
+                    let dest = src + delta;
                     data[..].copy_within(src..(src + migration_data_len), dest);
+
+                    if zero_init {
+                        // TODO: cleanup, set to 0
+                        data[src..src + delta].fill(88);
+                    }
+                }
+
+                for entry in index.iter_mut().take(segments).skip(next_idx) {
+                    //next_idx..segments {
+                    entry.offset += IndexUnit::from_usize(delta);
                 }
             }
+            Ordering::Less => {
+            // } else if new_len < segment_data_len {
+                log_trace!("[segment store] reduce segment size... idx: {}", idx);
+                log_trace!("[segment store] segment_data_len: {}", segment_data_len);
+                log_trace!("[segment store] new_len: {}", new_len);
+                let delta = segment_data_len - new_len;
+                let account_data_len = self.account.data_len();
+                log_trace!("[segment store] delta: {}", delta);
+                log_trace!("[segment store] account_data_len: {}", account_data_len);
+                let new_account_data_len = account_data_len - delta;
 
-            index[idx].size = IndexUnit::from_usize(new_len);
+                if idx < segments - 1 {
+                    let src = index[idx].next_offset();
+                    log_trace!("[segment store] src:{}", src);
 
-            account_info_realloc(self.account, new_account_data_len, false, false)?;
-            log_trace!("[segment store] reduce segment size is done");
+                    let migration_data_len = account_data_len - src;
+
+                    log_trace!("[segment store] resize [reduce segment size] segment[{}] account_data_len: {} delta: {}  new_account_data_len: {}",
+                        idx, self.account.data_len(), delta, new_account_data_len);
+                    for entry in index.iter_mut().take(segments).skip(idx) {
+                        //idx..segments {
+                        entry.offset -= IndexUnit::from_usize(delta);
+                    }
+
+                    let dest = src - delta;
+
+                    {
+                        let mut data = self.account.data.borrow_mut();
+                        data[..].copy_within(src..(src + migration_data_len), dest);
+                    }
+                }
+
+                index[idx].size = IndexUnit::from_usize(new_len);
+
+                account_info_realloc(self.account, new_account_data_len, false, false)?;
+                log_trace!("[segment store] reduce segment size is done");
+            }
         }
-
         Ok(())
     }
 

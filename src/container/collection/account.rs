@@ -112,7 +112,7 @@ where
         idx: &u64,
         suffix: Option<&'seed [u8]>,
     ) -> Vec<&'seed [u8]> {
-        let index_bytes: &[u8; 8] = unsafe { std::mem::transmute(idx as *const u64) };
+        let index_bytes: &[u8; 8] = unsafe { &*(idx as *const u64 as *const [u8;8]) };
         if let Some(suffix) = suffix {
             vec![self.domain, self.meta.get_seed(), index_bytes, suffix]
         } else {

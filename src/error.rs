@@ -24,6 +24,7 @@ use solana_program::program_error::ProgramError;
 use solana_program::pubkey::ParsePubkeyError;
 use solana_program::pubkey::Pubkey;
 use solana_program::pubkey::PubkeyError;
+use std::array::TryFromSliceError;
 use std::cell::{BorrowError, BorrowMutError};
 use std::convert::From;
 use std::io::Error as IoError;
@@ -64,6 +65,7 @@ pub enum ErrorCode {
     AccountIsBlank,
     AccountIsMissing,
     MaxPermittedAccountDataIncrease,
+    TryFromSliceError,
 
     PDAAddressMatch,
     PDAAddressCreate,
@@ -477,6 +479,12 @@ impl From<ParsePubkeyError> for Error {
         };
 
         Error::new().with_code(code)
+    }
+}
+
+impl From<TryFromSliceError> for Error {
+    fn from(_: TryFromSliceError) -> Error {
+        Error::new().with_code(ErrorCode::TryFromSliceError)
     }
 }
 

@@ -13,6 +13,7 @@ use std::sync::Arc;
 use workflow_rpc::result::ServerResult;
 use workflow_rpc::server::RpcHandler;
 use workflow_rpc::server::ServerError;
+use workflow_rpc::server::prelude::*;
 
 use super::interface::EmulatorConfig;
 use super::Emulator;
@@ -33,6 +34,7 @@ impl From<Error> for ServerError {
 
 const DEFAULT_CAPACITY: u64 = 1024u64 * 1024u64 * 256u64; // 256 megabytes
 
+#[derive(Clone)]
 pub struct Server {
     pub emulator: Arc<Emulator>,
 }
@@ -44,6 +46,7 @@ impl Server {
         let store = Arc::new(FileStore::try_new_with_cache(cache)?);
         let emulator = Arc::new(Emulator::new(store));
 
+
         let server = Server { emulator };
 
         Ok(server)
@@ -52,13 +55,70 @@ impl Server {
     pub async fn init(&self) -> Result<()> {
         self.emulator.init().await
     }
+
+    pub fn interface(self : Arc<Server>) -> Interface<Arc<Server>,(),EmulatorOps> {
+        let mut interface = Interface::<Arc<Server>,(),EmulatorOps>::new(self.clone());
+
+        interface.method(EmulatorOps::Lookup, method!(|server: Arc<Server>, _connection, req: LookupReq| async move {
+            let reference = server.emulator.clone().lookup(&req.pubkey).await?;
+            let resp = match reference {
+                Some(reference) => {
+                    let account_data_store =
+                        AccountDataStore::from(&*reference.account_data.lock()?);
+                    LookupResp {
+                        account_data_store: Some(account_data_store),
+                    }
+                }
+                None => LookupResp {
+                    account_data_store: None,
+                },
+            };
+            Ok(resp)
+        }));
+
+        interface.method(EmulatorOps::Execute, method!(|server: Arc<Server>, _connection, req: ExecuteReq| async move {
+            let (authority, instruction): (Pubkey, Instruction) = req.into();
+            let resp = server.emulator.execute(&authority, &instruction).await?;
+            Ok(resp)
+        }));
+
+        interface.method(EmulatorOps::Fund, method!(|server: Arc<Server>, _connection, req: FundReq| async move {
+            server.emulator
+                .fund(&req.key, &req.owner, req.lamports)
+                .await?;
+            Ok(())
+        }));
+
+        interface.method(EmulatorOps::List, method!(|server: Arc<Server>, _connection, _req: ()| async move {
+            let resp = server.emulator.list().await?;
+            Ok(resp)
+        }));
+
+        interface.method(EmulatorOps::Configure, method!(|_server: Arc<Server>, _connection, _req: EmulatorConfig| async move {
+
+            Ok(())
+        }));
+
+        interface
+    }
 }
 
-/*
 #[async_trait]
 // impl RpcHandlerBorsh<EmulatorOps> for Server
 // impl RpcHandler<EmulatorOps> for Server {
 impl RpcHandler for Server {
+    type Context = ();
+
+    async fn handshake(
+        self: Arc<Self>,
+        _peer: &SocketAddr,
+        _sender: &mut WebSocketSender,
+        _receiver: &mut WebSocketReceiver,
+        _messenger: Arc<Messenger>,
+    ) -> WebSocketResult<Self::Context> {
+        Ok(())
+    }
+/*
     async fn handle_request(self: Arc<Self>, op: EmulatorOps, data: &[u8]) -> RpcResult {
         match op {
             EmulatorOps::Lookup => {
@@ -102,5 +162,5 @@ impl RpcHandler for Server {
             }
         }
     }
-}
 */
+}

@@ -409,7 +409,8 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                     quote! {
                         let #meta_name : #type_name = {
                             let mut data = #store_field_name.account.data.borrow_mut();
-                            unsafe { std::mem::transmute(&mut data[container_meta_offset]) }
+                            unsafe { &mut *data.as_mut_ptr().add(container_meta_offset).cast::<_>() }
+                            // unsafe { std::mem::transmute(&mut data[container_meta_offset]) }
                         };
                     }
                 }
@@ -442,7 +443,8 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                                                 quote! {
                                                     let #meta_name : #type_name = {
                                                         let mut data = #store_field_name.account.data.borrow_mut();
-                                                        let meta = unsafe { std::mem::transmute(&mut data[container_meta_offset]) };  // @meta
+                                                        // let meta = unsafe { std::mem::transmute(&mut data[container_meta_offset]) };  // @meta
+                                                        let meta = unsafe { &mut *data.as_mut_ptr().add(container_meta_offset).cast::<_>() };  // @meta
                                                         RefCell::new(meta)
                                                     };
                                                 }
@@ -721,10 +723,8 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                 #inits_ts2
 
                 {
-                    let data = account.data.borrow_mut();
-                    let header = unsafe { std::mem::transmute::<_,&mut kaizen::container::ContainerHeader>(
-                        data.as_ptr()
-                    ) };
+                    let mut data = account.data.borrow_mut();
+                    let header = unsafe { &mut *data.as_mut_ptr().cast::<&mut kaizen::container::ContainerHeader>() };
                     header.set_container_type(container_type);
                 }
 
@@ -742,10 +742,8 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                 #inits_ts2
 
                 {
-                    let data = account.data.borrow_mut();
-                    let header = unsafe { std::mem::transmute::<_,&mut kaizen::container::ContainerHeader>(
-                        data.as_ptr()
-                    ) };
+                    let mut data = account.data.borrow_mut();
+                    let header = unsafe { &mut *data.as_mut_ptr().cast::<&mut kaizen::container::ContainerHeader>() };
                     header.set_container_type(container_type);
                 }
 
@@ -758,10 +756,8 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
                 let container_type : u32 = #container_type as u32;
 
                 {
-                    let data = account.data.borrow_mut();
-                    let header = unsafe { std::mem::transmute::<_,&mut kaizen::container::ContainerHeader>(
-                        data.as_ptr()
-                    )};
+                    let mut data = account.data.borrow_mut();
+                    let header = unsafe { &mut *data.as_mut_ptr().cast::<&mut kaizen::container::ContainerHeader>()};
 
                     let header_container_type = header.get_container_type();
                     if header_container_type != container_type {

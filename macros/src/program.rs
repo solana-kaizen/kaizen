@@ -143,7 +143,8 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
                 println!("Error - invalid interface id");
                 return Err(solana_program::program_error::ProgramError::InvalidArgument);
             }
-            Ok(PROGRAM_HANDLERS[ctx.interface_id](ctx)?)
+            // Ok(PROGRAM_HANDLERS[ctx.interface_id](ctx)?)
+            PROGRAM_HANDLERS[ctx.interface_id](ctx)
         }
 
         #[cfg(not(feature = "no-entrypoint"))]

@@ -9,7 +9,7 @@ use solana_program::pubkey::Pubkey;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use super::emulator::Emulator;
+use super::Emulator;
 use super::interface::{EmulatorConfig, EmulatorInterface, ExecutionResponse};
 use super::mockdata::InProcMockData;
 use async_trait::async_trait;
