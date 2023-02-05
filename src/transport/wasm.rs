@@ -20,7 +20,7 @@ use kaizen::{
     cache::Cache,
     wasm::{solana, workflow},
 };
-use rand::*;
+// use rand::*;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use std::convert::From;
@@ -34,6 +34,11 @@ use workflow_wasm::{init::global, utils};
 
 static mut TRANSPORT: Option<Arc<Transport>> = None;
 
+pub struct UnitTestConfig {
+    pub program_id: Pubkey,
+    pub authority: Pubkey,
+}
+
 mod wasm_bridge {
     use super::*;
 
@@ -46,10 +51,11 @@ mod wasm_bridge {
     #[wasm_bindgen]
     impl Transport {
         #[wasm_bindgen(constructor)]
-        pub fn new(network: String) -> std::result::Result<Transport, JsValue> {
+        pub async fn new(network: String) -> std::result::Result<Transport, JsValue> {
             log_trace!("Creating Transport (WASM bridge)");
             let transport =
                 super::Transport::try_new(network.as_str(), super::TransportConfig::default())
+                    .await
                     .map_err(|e| JsValue::from(e))?;
             Ok(Transport { transport })
         }
@@ -57,6 +63,22 @@ mod wasm_bridge {
         pub fn with_wallet(&mut self, wallet: JsValue) -> std::result::Result<(), JsValue> {
             self.transport.with_wallet(wallet)?;
             Ok(())
+        }
+
+        #[wasm_bindgen(js_name = "InProcUnitTests")]
+        pub async fn in_proc_unit_tests(
+            program_id: Pubkey,
+            authority: Option<Pubkey>,
+        ) -> std::result::Result<Transport, JsValue> {
+            let transport = super::Transport::try_new_for_unit_tests(
+                program_id,
+                authority,
+                TransportConfig::default(),
+            )
+            .await
+            .map_err(|e| JsValue::from(e))?;
+
+            Ok(Transport { transport })
         }
 
         #[wasm_bindgen(js_name = "getAuthorityPubkey")]
@@ -79,7 +101,7 @@ pub struct Transport {
     pub emulator: Option<Arc<dyn EmulatorInterface>>,
     pub wallet: Arc<dyn foreign::WalletInterface>,
     pub queue: Arc<TransactionQueue>,
-    cache: Cache,
+    cache: Arc<Cache>,
     pub config: Arc<RwLock<TransportConfig>>,
     pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
     connection: JsValue,
@@ -138,14 +160,6 @@ impl Transport {
             &Self::solana()?,
             &JsValue::from("PublicKey"),
         )?)
-    }
-
-    pub async fn try_new_for_unit_tests(
-        _program_id: Pubkey,
-        _authority: Option<Pubkey>,
-        config: TransportConfig,
-    ) -> Result<Arc<Transport>> {
-        Self::try_new("inproc", config)
     }
 
     #[inline(always)]
@@ -233,21 +247,47 @@ impl Transport {
         self.config.read().await.root
     }
 
-    pub fn try_new(network: &str, config: TransportConfig) -> Result<Arc<Transport>> {
+    pub async fn try_new_for_unit_tests(
+        program_id: Pubkey,
+        authority: Option<Pubkey>,
+        config: TransportConfig,
+    ) -> Result<Arc<Transport>> {
+        let simulator = Simulator::try_new_for_testing()?
+            .with_mock_accounts(program_id, authority)
+            .await?;
+        let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
+        Transport::try_new_with_args(TransportMode::Inproc, JsValue::NULL, Some(emulator), config)
+            .await
+    }
+
+    pub async fn try_new(network: &str, config: TransportConfig) -> Result<Arc<Transport>> {
         log_trace!("Creating transport (rust) for network {}", network);
         if let Some(_) = unsafe { (&TRANSPORT).as_ref() } {
             return Err(error!("Transport already initialized"));
         }
 
         let solana = Self::solana()?;
-        let (mode, connection, emulator) = if network == "inproc" {
+
+        if network == "inproc" {
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
-            (TransportMode::Inproc, JsValue::NULL, Some(emulator))
+            Transport::try_new_with_args(
+                TransportMode::Inproc,
+                JsValue::NULL,
+                Some(emulator),
+                config,
+            )
+            .await
         } else if regex::Regex::new(r"^rpcs?://").unwrap().is_match(network) {
             let emulator = Arc::new(EmulatorRpcClient::new(network)?);
             emulator.connect_as_task()?;
             let emulator: Arc<dyn EmulatorInterface> = emulator;
-            (TransportMode::Emulator, JsValue::NULL, Some(emulator))
+            Transport::try_new_with_args(
+                TransportMode::Emulator,
+                JsValue::NULL,
+                Some(emulator),
+                config,
+            )
+            .await
         } else if network == "mainnet-beta" || network == "testnet" || network == "devnet" {
             let cluster_api_url_fn =
                 js_sys::Reflect::get(&solana, &JsValue::from("clusterApiUrl"))?;
@@ -260,42 +300,49 @@ impl Transport {
             let args = Array::new_with_length(1);
             args.set(0, url);
             let ctor = js_sys::Reflect::get(&solana, &JsValue::from("Connection"))?;
-            (
+            Transport::try_new_with_args(
                 TransportMode::Validator,
                 js_sys::Reflect::construct(&ctor.into(), &args)?,
                 None,
+                config,
             )
+            .await
         } else if regex::Regex::new(r"^https?://").unwrap().is_match(network) {
             let args = Array::new_with_length(1);
             args.set(0, JsValue::from(network));
             let ctor = js_sys::Reflect::get(&solana, &JsValue::from("Connection"))?;
             log_trace!("ctor: {:?}", ctor);
-            (
+
+            Transport::try_new_with_args(
                 TransportMode::Validator,
                 js_sys::Reflect::construct(&ctor.into(), &args)?,
                 None,
+                config,
             )
+            .await
         } else {
             return Err(error!(
                 "Transport cluster must be mainnet-beta, devnet, testnet, simulation"
             )
             .into());
-        };
+        }
+    }
 
+    pub async fn try_new_with_args(
+        mode: TransportMode,
+        connection: JsValue,
+        emulator: Option<Arc<dyn EmulatorInterface>>,
+        config: TransportConfig,
+    ) -> Result<Arc<Transport>> {
         let wallet = Arc::new(foreign::Wallet::try_new()?);
 
-        log_trace!("Transport interface creation ok...");
-
         let queue = Arc::new(TransactionQueue::new());
-        log_trace!("Creating caching store");
-        let cache = Cache::new_with_default_capacity();
-        log_trace!("Creating lookup handler");
+        let cache = Arc::new(Cache::new_with_default_capacity());
+        let config = Arc::new(RwLock::new(config));
         let lookup_handler = LookupHandler::new();
         let reflector = Reflector::new();
 
-        let config = Arc::new(RwLock::new(config));
-
-        let transport = Arc::new(Transport {
+        let transport = Transport {
             mode,
             emulator,
             config,
@@ -306,18 +353,23 @@ impl Transport {
             lookup_handler,
             reflector,
             custom_authority: Arc::new(Mutex::new(None)),
-        });
+        };
 
+        let transport = Arc::new(transport);
         unsafe {
             TRANSPORT = Some(transport.clone());
         }
-        log_trace!("Transport init successful");
 
         Ok(transport)
     }
 
     pub fn global() -> Result<Arc<Transport>> {
-        let transport = unsafe { (&TRANSPORT).as_ref().unwrap().clone() };
+        let transport = unsafe {
+            (&TRANSPORT)
+                .as_ref()
+                .expect("Transport is not initialized")
+                .clone()
+        };
         Ok(transport.clone())
     }
 
@@ -336,8 +388,8 @@ impl Transport {
 
         match self.mode {
             TransportMode::Inproc | TransportMode::Emulator => {
-                let delay: u64 = rand::thread_rng().gen_range(500..1500);
-                workflow_core::task::sleep(std::time::Duration::from_millis(delay)).await;
+                // let delay: u64 = rand::thread_rng().gen_range(500..1500);
+                // workflow_core::task::sleep(std::time::Duration::from_millis(delay)).await;
 
                 let reference = self
                     .emulator()
@@ -430,7 +482,7 @@ impl Transport {
                     .await?;
 
                 // TODO - migrate into server
-                workflow_core::task::sleep(std::time::Duration::from_millis(5000)).await;
+                // workflow_core::task::sleep(std::time::Duration::from_millis(5000)).await;
 
                 self.reflector
                     .reflect(reflector::Event::EmulatorLogs(resp.logs));

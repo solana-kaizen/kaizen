@@ -73,6 +73,7 @@ mod client {
     use owning_ref::OwningHandle;
     use serde::{Deserialize, Serialize};
     //use std::time::Instant;
+    use cfg_if::cfg_if;
     use kaizen::container::*;
     use kaizen::result::Result;
     use kaizen::time::Instant;
@@ -83,7 +84,14 @@ mod client {
     use solana_program::rent::Rent;
     use workflow_log::*;
 
-    const ACCOUNT_DATA_OFFSET: usize = 8;
+    cfg_if! {
+        if #[cfg(target_pointer_width = "64")] {
+            const ACCOUNT_DATA_OFFSET: usize = 8;
+        } else if #[cfg(target_pointer_width = "32")] {
+            const ACCOUNT_DATA_OFFSET: usize = 4;
+        }
+    }
+
     const ACCOUNT_DATA_PADDING: usize = 1024;
     pub static ACCOUNT_DATA_TEMPLATE_SIZE: usize = 1024 * 512; //1024 * 1; // 1mb
 

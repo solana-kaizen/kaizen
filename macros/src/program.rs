@@ -123,10 +123,19 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
         #[inline(never)]
         pub fn init() -> solana_program::pubkey::Pubkey { id() }
 
-        #[inline(always)]
-        pub fn program_id() -> solana_program::pubkey::Pubkey { id() }
-
-        pub fn program_name() -> &'static str { #program_name }
+        kaizen::cfg_if! {
+            if #[cfg(target_os = "solana")] {
+                #[inline(always)]
+                pub fn program_id() -> solana_program::pubkey::Pubkey { id() }
+                pub fn program_name() -> &'static str { #program_name }
+            } else {
+                #[wasm_bindgen]
+                #[inline(always)]
+                pub fn program_id() -> solana_program::pubkey::Pubkey { id() }
+                #[wasm_bindgen]
+                pub fn program_name() -> &'static str { #program_name }
+            }
+        }
 
         #[inline(always)]
         pub fn program_handlers() -> &'static [kaizen::context::HandlerFn] { &PROGRAM_HANDLERS[..] }

@@ -3,6 +3,7 @@ pub use std::cell::RefCell;
 pub use std::rc::Rc;
 pub use std::sync::Arc;
 
+pub use borsh::*;
 pub use solana_program::account_info::{AccountInfo, IntoAccountInfo};
 pub use solana_program::entrypoint::ProcessInstruction;
 pub use solana_program::entrypoint::ProgramResult;
@@ -12,7 +13,6 @@ pub use solana_program::pubkey::Pubkey;
 pub use solana_program::system_instruction::SystemInstruction;
 pub use std::convert::TryFrom;
 pub use std::convert::TryInto;
-pub use borsh::*;
 
 pub use crate::accounts::{Access, AllocationPayer, IsSigner, LamportAllocation};
 pub use crate::address::AddressDomain;

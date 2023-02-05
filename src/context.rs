@@ -17,11 +17,15 @@ use kaizen::payload::Payload;
 use kaizen::rent::RentCollector;
 use kaizen::result::*;
 use workflow_log::*;
+
+#[derive(Debug)]
 pub enum AccountType {
     Token,
     Index,
     Handler,
 }
+
+#[derive(Debug)]
 pub struct AccountAllocationArgs<'info, 'refs, 'seed> {
     /// Seed prefix: None, Authority key, Identity key, or Identity key w/sequence
     pub domain: AddressDomain,

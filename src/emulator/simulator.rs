@@ -67,6 +67,13 @@ impl Simulator {
             None => Pubkey::from_str("42bML5qB3WkMwfa2cosypjUrN7F2PLQm4qhxBdRDyW7f")?, //generate_random_pubkey();
         };
 
+        let system_account_data =
+            AccountData::new_static(Pubkey::default(), program_id).with_lamports(lamports);
+
+        self.store
+            .store(&Arc::new(AccountDataReference::new(system_account_data)))
+            .await?;
+
         let authority_account_data =
             AccountData::new_static(authority, program_id).with_lamports(lamports);
 

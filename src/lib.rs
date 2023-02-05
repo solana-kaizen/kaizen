@@ -1,4 +1,4 @@
-use cfg_if::cfg_if;
+pub use cfg_if::cfg_if;
 
 extern crate self as kaizen;
 

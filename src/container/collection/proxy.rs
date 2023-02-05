@@ -30,7 +30,7 @@ impl<'info, 'refs> Proxy<'info, 'refs> {
 
     pub fn try_create(account: &'refs AccountInfo<'info>, reference: &Pubkey) -> Result<Self> {
         let mut data = account.data.borrow_mut();
-        let meta = unsafe { &mut *data.as_mut_ptr().cast::<&mut ProxyMeta>() };
+        let meta = unsafe { &mut *data.as_mut_ptr().cast::<ProxyMeta>() };
         meta.set_container_type(Containers::Proxy as u32);
         meta.set_reference(*reference);
 
@@ -41,7 +41,7 @@ impl<'info, 'refs> Proxy<'info, 'refs> {
 
     pub fn try_load(account: &'refs AccountInfo<'info>) -> Result<Self> {
         let mut data = account.data.borrow_mut();
-        let meta = unsafe { &mut *data.as_mut_ptr().cast::<&mut ProxyMeta>() };
+        let meta = unsafe { &mut *data.as_mut_ptr().cast::<ProxyMeta>() };
 
         if meta.get_container_type() != Containers::Proxy as u32 {
             return Err(error_code!(ErrorCode::InvalidProxyContainerType));

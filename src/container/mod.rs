@@ -61,7 +61,7 @@ pub fn try_get_container_type(account: &AccountInfo) -> Result<u32> {
     if data.len() < std::mem::size_of::<ContainerHeader>() {
         return Err(ErrorCode::UnknownContainerType.into());
     }
-    let header = unsafe { &*data.as_ptr().cast::<&ContainerHeader>() };
+    let header = unsafe { &*data.as_ptr().cast::<ContainerHeader>() };
 
     Ok(header.container_type)
 }

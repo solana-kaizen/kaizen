@@ -724,7 +724,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
                 {
                     let mut data = account.data.borrow_mut();
-                    let header = unsafe { &mut *data.as_mut_ptr().cast::<&mut kaizen::container::ContainerHeader>() };
+                    let header = unsafe { &mut *data.as_mut_ptr().cast::<kaizen::container::ContainerHeader>() };
                     header.set_container_type(container_type);
                 }
 
@@ -743,7 +743,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
                 {
                     let mut data = account.data.borrow_mut();
-                    let header = unsafe { &mut *data.as_mut_ptr().cast::<&mut kaizen::container::ContainerHeader>() };
+                    let header = unsafe { &mut *data.as_mut_ptr().cast::<kaizen::container::ContainerHeader>() };
                     header.set_container_type(container_type);
                 }
 
@@ -757,7 +757,7 @@ pub fn container_attribute_handler(attr: TokenStream, item: TokenStream) -> Toke
 
                 {
                     let mut data = account.data.borrow_mut();
-                    let header = unsafe { &mut *data.as_mut_ptr().cast::<&mut kaizen::container::ContainerHeader>()};
+                    let header = unsafe { &mut *data.as_mut_ptr().cast::<kaizen::container::ContainerHeader>()};
 
                     let header_container_type = header.get_container_type();
                     if header_container_type != container_type {

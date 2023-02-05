@@ -45,6 +45,8 @@ const DEFAULT_TRANSACTION_FEES: u64 = 50_000;
 
 use interface::{EmulatorConfig, EmulatorInterface, ExecutionResponse};
 
+use crate::utils::lamports_to_sol;
+
 #[derive(Clone)]
 pub struct LogSink {
     logs: Arc<Mutex<Option<Vec<String>>>>,
@@ -206,6 +208,7 @@ impl Emulator {
         accounts: Vec<(Pubkey, AccountData)>,
     ) -> Result<()> {
         for (pubkey, account_data) in accounts.iter() {
+            // log_info!("[EMU] account data len: {} {:#?}",pubkey, account_data.data_len());
             if let Some(existing_account_data) = self.store.lookup(&account_data.key).await? {
                 let existing_account_data = existing_account_data.account_data.lock()?; //.ok_or(error!("account read lock failed"))?;
                 if !account_data.is_writable
@@ -402,9 +405,10 @@ impl EmulatorInterface for Emulator {
         self.store.store(&ref_to).await?;
 
         log_trace!(
-            "[EMU] funding - from: {} to: {}",
+            "[EMU] funding - from: {} to: {} amount: {} SOL",
             utils::shorten_pubkey(&ref_from.key),
             utils::shorten_pubkey(&ref_to.key),
+            lamports_to_sol(lamports)
         );
 
         Ok(())
