@@ -12,6 +12,7 @@ pub use solana_program::pubkey::Pubkey;
 pub use solana_program::system_instruction::SystemInstruction;
 pub use std::convert::TryFrom;
 pub use std::convert::TryInto;
+pub use borsh::*;
 
 pub use crate::accounts::{Access, AllocationPayer, IsSigner, LamportAllocation};
 pub use crate::address::AddressDomain;
