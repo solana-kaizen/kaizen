@@ -14,32 +14,33 @@
 
 ## Overview
 
-Kaizen is a *security-and-reliability-centric* framework for development of Solana Programs and *client-side web applications* using Rust. The primary goal behind this project is to eliminate IDLs and contain the program and client-side application within the same Rust codebase, allowing program functionaity, if needed, to exist in the same Rust file as the client-side functionality. 
+Kaizen is a *security-and-reliability-centric* framework for developing of Solana Programs and *client-side web applications* using Rust. The primary goal behind this project is to eliminate IDLs and contain the program and client-side application within the same Rust codebase.
 
 This in-turn allows developers to use functions and data structures that are a part of the program directly within the client-side web application.
 
-The framework is then backed by native and in-browser async Rust transport layers that can fetch account data and access it client-side via functions interfacing with [AccountInfo](https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html).
+The framework is backed by native and in-browser async Rust transport layers that can fetch account data and access it client-side via functions interfacing with [AccountInfo](https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html) and *Account Data Containers*.
 
-Example available here: <https://github.com/solana-kaizen/kaizen-example>
+An example is available here: <https://github.com/solana-kaizen/kaizen-example>
+
+
+## Features
+
+* Unified async Rust Web3 transport interface (uses native Rust Solana implementation when building native and Web3.js implementation when running under WASM32 browser environment).
+* Built on top of [`workflow-rs`](https://github.com/workflow-rs/workflow-rs) async Rust application development framework and designed to provide unified environment where functions can be used client-side (for example, a function using `workflow_log::log_info!()` will invoke printf!() on native, `console.log()` in browser and `solana_program::log::sol_log()` under Solana OS).
+* Unified Solana *instruction builder interface* that uses [Rust Builder Pattern](https://doc.rust-lang.org/1.0.0/style/ownership/builders.html) and includes various functionality for account data exchange and PDA key management. The instruction builder supports creation of batch transactions for dispatch of multi-stage (or large-side) operations and includes transaction queue management functionality.
+* Macros for program function mappings, allowing invocation of program functions by function names in-client.
+* Segmented account data storage derived from Rust structure declarations, allowing each structure field to be accessed directly, and resized. Segments can be memory-mapped data structures as well as borsh-serialized data structures.
+* Container-based approach for account management with a simultaneous in-program and client-side container type registration.
+* Client-side container access and caching mechanisms (using async Rust transport api).
+* Solana Emulator (extremely simplified) provides the developer with the ability to run programs on native targets (OS) and in-browser (in WASM). This emulator supports a limited subset of account functionality such as account resizing, SOL balance tracking etc., and is intended for testing and prototyping program functionality in the native of in-browser environments. The emulator also supports basic scaffolding for off-chain program unit-testing.
+* async Rust subsystem for client-side account data and container fetching, including application-level in-memory account data cache.
+* Basic user identity data structures allowing multiple wallets to be bound to a single user identity.
+* `Instant` data structure for time tracking (uses Instance on native, `Date::now()` in WASM32 and `Clock::get()` in Solana).
+* Support for integration with multiple Solana Programs as well as interfacing with multiple programs from within a single application.
+* Helper functions for automated account creation and resizing.
 
 ## Motivation
 
 - Interpreted languages such as TypeScript and JavaScript are inherently unsecure, especially taking into account package managers such as NPM and developer practices using them. There are various code-injection attacks that can be performed on the code written in these languages. These technologies should not be used in high-security and high-reliability applications, especially business oriented applications. Rust + WASM greatly reduces these attack surfaces.
 - Solana application frameworks such as [Anchor](https://www.anchor-lang.com/) rely on exposing data structures via IDL, introducing multiple layers of tools and technologies between the application and the program. Rust compiled straight into WASM eliminates these layers, allowing application developer to publish primitives directly from the Rust codebase into front-end applications. In many cases, the core application functionality can be written in Rust exposing only API calls needed by the application front-end, thus imposing Rust reliability and strict type system onto the core of the web application.
 - When creating complex APIs meant to interface with Solana programs, at times it is desirable to create both a web front-end and a server backend that are capable of communicating with the network and on-chain programs. APIs developed on top of Kaizen, function uniformly in native applications and in web applications. Currently, to function in web applications and to interface with wallets, Kaizen uses Solana web3 libraries. It is our goal in the long-term to completely eliminate web3 dependencies.
-
-## Features
-
-* Unified async Rust Web3 transport interface (uses native Rust Solana implementation when building native and Web3.js implementation when running under WASM32 browser environment).
-* Built on top of [`workflow-rs`](https://github.com/workflow-rs/workflow-rs) - an async Rust application development framework and designed to provide unified environment where Solana Program functions can be used client-side (for example, a function using `workflow_log::log_info!()` will invoke printf!() on native, `console.log()` in browser and `solana_program::log::sol_log()` under Solana OS).
-* Unified Solana Instruction builder interface that uses [Rust Builder Pattern](https://doc.rust-lang.org/1.0.0/style/ownership/builders.html) and includes various framework-centric functionality.
-* Macros for program function mappings, allowing invocation of program functions by function names in-client. 
-* Segmented account data storage derived from Rust structure declarations, allowing each structure field to be accessed directly, and resized. Segments can be memory-mapped data structures as well as borsh-serialized data structures.
-* Container-based approach for account management with a simultaneous in-program and client-side container type registration.
-* Client-side container access and caching mechanisms (using async Rust transport api).
-* Solana Emulator (extremely simplified) provides the developer with the ability to run programs on native targets (OS) and in-browser (in WASM). This emulator supports a limited subset of account functionality such as account resizing, SOL balance tracking etc., and is intended for testing and prototyping program functionality in the native of in-browser environments.
-* Basic user identity data structures allowing multiple wallets to be bound to a single user identity.
-* `Instant` data structure for time tracking (uses Instance on native, `Date::now()` in WASM32 and `Clock::get()` in Solana).
-* Support for integration with multiple Solana Programs as well as interfacing with multiple programs from within a single application.
-* Helper functions for automated account creation and resizing.
-
