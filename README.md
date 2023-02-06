@@ -10,7 +10,7 @@
 <img src="https://img.shields.io/badge/platform-solana_os-informational?style=for-the-badge&color=50a0f0" height="20">
 
 <p style="margin:32px auto 32px auto;text-align:center;font-size:10px;color:#888;">
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Tsunami_by_hokusai_19th_century.jpg/2560px-Tsunami_by_hokusai_19th_century.jpg" style="display:block;height:320px;width:auto;margin: 0px auto 0px auto;">THE GREAT WAVE OFF KANAGAWA &bull; KATSUSHIKA HOKUSAI &bull; JAPAN 1831</p>
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Tsunami_by_hokusai_19th_century.jpg/2560px-Tsunami_by_hokusai_19th_century.jpg" style="display:block;height:320px;width:auto;margin: 0px auto 0px auto;"><br/>THE GREAT WAVE OFF KANAGAWA &bull; KATSUSHIKA HOKUSAI &bull; JAPAN 1831</p>
 
 ## Overview
 
