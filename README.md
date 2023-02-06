@@ -9,15 +9,24 @@
 <img src="https://img.shields.io/badge/platform-wasm32/node.js-informational?style=for-the-badge&color=50a0f0" height="20">
 <img src="https://img.shields.io/badge/platform-solana_os-informational?style=for-the-badge&color=50a0f0" height="20">
 
+<div style="margin:32px auto 32px auto;text-align:center;font-size:10px;color:#888;">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Tsunami_by_hokusai_19th_century.jpg/2560px-Tsunami_by_hokusai_19th_century.jpg" style="display:block;height:320px;width:auto;margin: 0px auto 0px auto;">THE GREAT WAVE OFF KANAGAWA &bull; KATSUSHIKA HOKUSAI &bull; JAPAN 1831</div>
+
 ## Overview
 
-This crate is a *security-and-reliability-centric* framework for development of Solana Programs using Rust and *client-side applications using pure async Rust*. The primary goal behind this project is to eliminate IDLs and contain the program and client-side application within the same Rust codebase, allowing program functionaity, if needed, to exist in the same Rust file as the client-side functionality.
+Kaizen is a *security-and-reliability-centric* framework for development of Solana Programs and *client-side web applications* using Rust. The primary goal behind this project is to eliminate IDLs and contain the program and client-side application within the same Rust codebase, allowing program functionaity, if needed, to exist in the same Rust file as the client-side functionality. 
 
-This in-turn allows create of a single data processing layer that is able to process account data in-program as well as client-side.
+This in-turn allows developers to use functions and data structures that are a part of the program directly within the client-side web application.
 
 The framework is then backed by native and in-browser async Rust transport layers that can fetch account data and access it client-side via functions interfacing with [AccountInfo](https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html).
 
 Example available here: <https://github.com/solana-kaizen/kaizen-example>
+
+## Motivation
+
+- Interpreted languages such as TypeScript and JavaScript are inherently unsecure, especially taking into account package managers such as NPM and developer practices using them. There are various code-injection attacks that can be performed on the code written in these languages. These technologies should not be used in high-security and high-reliability applications, especially business oriented applications. Rust + WASM greatly reduces these attack surfaces.
+- Solana application frameworks such as [Anchor](https://www.anchor-lang.com/) rely on exposing data structures via IDL, introducing multiple layers of tools and technologies between the application and the program. Rust compiled straight into WASM eliminates these layers, allowing application developer to publish primitives directly from the Rust codebase into front-end applications. In many cases, the core application functionality can be written in Rust exposing only API calls needed by the application front-end, thus imposing Rust reliability and strict type system onto the core of the web application.
+- When creating complex APIs meant to interface with Solana programs, at times it is desirable to create both a web front-end and a server backend that are capable of communicating with the network and on-chain programs. APIs developed on top of Kaizen, function uniformly in native applications and in web applications. Currently, to function in web applications and to interface with wallets, Kaizen uses Solana web3 libraries. It is our goal in the long-term to completely eliminate web3 dependencies.
 
 ## Features
 
