@@ -125,9 +125,9 @@ pub fn declare_program(input: TokenStream) -> TokenStream {
 
         #[inline(always)]
         pub fn program_id() -> solana_program::pubkey::Pubkey { id() }
-        
+
         pub fn program_name() -> &'static str { #program_name }
-        
+
         #[inline(always)]
         pub fn program_handlers() -> &'static [kaizen::context::HandlerFn] { &PROGRAM_HANDLERS[..] }
 
