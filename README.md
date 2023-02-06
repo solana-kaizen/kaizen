@@ -41,6 +41,13 @@ An example is available here: <https://github.com/solana-kaizen/kaizen-example>
 
 ## Motivation
 
-- Interpreted languages such as TypeScript and JavaScript are inherently unsecure, especially taking into account package managers such as NPM and developer practices using them. There are various code-injection attacks that can be performed on the code written in these languages. These technologies should not be used in high-security and high-reliability applications, especially business oriented applications. Rust + WASM greatly reduces these attack surfaces.
+- Interpreted languages such as TypeScript and JavaScript are inherently unsecure, especially taking into account package managers such as NPM and general practices of developers using them. There are various code-injection attacks that can be performed on the code written in these languages. These technologies should not be used in high-security and high-reliability applications, especially business oriented cryptocurrency applications. Rust + WASM greatly reduces these attack surfaces.
 - Solana application frameworks such as [Anchor](https://www.anchor-lang.com/) rely on exposing data structures via IDL, introducing multiple layers of tools and technologies between the application and the program. Rust compiled straight into WASM eliminates these layers, allowing application developer to publish primitives directly from the Rust codebase into front-end applications. In many cases, the core application functionality can be written in Rust exposing only API calls needed by the application front-end, thus imposing Rust reliability and strict type system onto the core of the web application.
 - When creating complex APIs meant to interface with Solana programs, at times it is desirable to create both a web front-end and a server backend that are capable of communicating with the network and on-chain programs. APIs developed on top of Kaizen, function uniformly in native applications and in web applications. Currently, to function in web applications and to interface with wallets, Kaizen uses Solana web3 libraries. It is our goal in the long-term to completely eliminate web3 dependencies.
+
+## Development status
+
+We have been using the framework for in-house development for few months, gradually improving it.  The framework is currently under developmnet and should be considered in alpha / preview stage. Additional work is needed on documentation and tutorials.  We are looking for sponsorship to help us dedicate more time toward polishing this platform.
+
+You should currently approach this only if you are confident in your Rust skills, have good understanding of the Solana Account system and are looking to develop large-scale business or "industrial-grade" applications exposing WASM APIs client-side.
+
