@@ -182,7 +182,6 @@ pub enum Variant {
     JsError(String),
 }
 
-
 impl Clone for Variant {
     fn clone(&self) -> Self {
         match self {
@@ -230,13 +229,9 @@ impl Variant {
                 format!("borrow mut error: {error:?}")
             }
             #[cfg(not(target_os = "solana"))]
-            Variant::JsValue(js_value) => {
-                js_value.to_owned()
-            }
+            Variant::JsValue(js_value) => js_value.to_owned(),
             #[cfg(not(target_os = "solana"))]
-            Variant::JsError(js_error) => {
-                js_error.to_owned()
-            }
+            Variant::JsError(js_error) => js_error.to_owned(),
             #[cfg(not(target_os = "solana"))]
             Variant::RpcError(err) => {
                 format!("{err:?}")
