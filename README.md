@@ -1,5 +1,7 @@
 ## Kaizen
 
+Solana OS Rust framework for industrial grade applications.
+
 [<img alt="github" src="https://img.shields.io/badge/github-solana--kaizen/kaizen-8da0cb?style=for-the-badge&labelColor=555555&color=8da0cb&logo=github" height="20">](https://github.com/solana-kaizen/kaizen)
 [<img alt="crates.io" src="https://img.shields.io/crates/v/kaizen.svg?maxAge=2592000&style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/kaizen)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-kaizen-56c2a5?maxAge=2592000&style=for-the-badge&logo=rust" height="20">](https://docs.rs/kaizen)
