@@ -8,8 +8,7 @@ keywords = ["wasm","framework","transport","solana","bpf","contract"]
 categories = []
 exclude = ["/.*", "/test"]
 description = """
-Solana Program framework for developing Solana Programs 
-and async Rust client-side web applications 
+Solana OS Rust framework for industrial grade applications.
 """
 
 [lib]
