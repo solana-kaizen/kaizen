@@ -178,7 +178,10 @@ pub enum Variant {
     RpcError(Arc<workflow_rpc::client::error::Error>),
     #[cfg(not(target_os = "solana"))]
     JsValue(String),
+    #[cfg(not(target_os = "solana"))]
+    JsError(String),
 }
+
 
 impl Clone for Variant {
     fn clone(&self) -> Self {
@@ -197,6 +200,8 @@ impl Clone for Variant {
             Variant::RpcError(e) => Variant::RpcError(e.clone()),
             #[cfg(not(target_os = "solana"))]
             Variant::JsValue(e) => Variant::JsValue(e.clone()),
+            #[cfg(not(target_os = "solana"))]
+            Variant::JsError(e) => Variant::JsError(e.clone()),
         }
     }
 }
@@ -224,10 +229,13 @@ impl Variant {
             Variant::BorrowMutError(error) => {
                 format!("borrow mut error: {error:?}")
             }
-            // #[cfg(target_arch = "wasm32")]
             #[cfg(not(target_os = "solana"))]
             Variant::JsValue(js_value) => {
-                format!("{js_value:?}")
+                js_value.to_owned()
+            }
+            #[cfg(not(target_os = "solana"))]
+            Variant::JsError(js_error) => {
+                js_error.to_owned()
             }
             #[cfg(not(target_os = "solana"))]
             Variant::RpcError(err) => {
@@ -563,15 +571,44 @@ impl From<Error> for wasm_bindgen::JsValue {
     fn from(error: Error) -> wasm_bindgen::JsValue {
         match error.variant {
             Some(Variant::JsValue(js_value)) => wasm_bindgen::JsValue::from_str(&js_value),
-            _ => wasm_bindgen::JsValue::from(format!("{error:?}")),
+            Some(Variant::JsError(js_error)) => wasm_bindgen::JsValue::from_str(&js_error),
+            _ => wasm_bindgen::JsValue::from(format!("xxx {error:?}")),
         }
     }
 }
 
 #[cfg(not(target_os = "solana"))]
 impl From<wasm_bindgen::JsValue> for Error {
-    fn from(error: wasm_bindgen::JsValue) -> Error {
-        Error::new().with_variant(Variant::JsValue(format!("{error:?}")))
+    fn from(js_value: wasm_bindgen::JsValue) -> Error {
+        Error::new().with_variant(Variant::JsValue(
+            js_value
+                .as_string()
+                .unwrap_or_else(|| format!("{js_value:?}")),
+        ))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl From<Error> for wasm_bindgen::JsError {
+    fn from(error: Error) -> wasm_bindgen::JsError {
+        match error.variant {
+            Some(Variant::JsError(js_error)) => wasm_bindgen::JsError::new(&js_error),
+            Some(Variant::JsValue(js_value)) => wasm_bindgen::JsError::new(&js_value),
+            _ => wasm_bindgen::JsError::new(&format!("yyy {error:?}")),
+            // _ => wasm_bindgen::JsError::new(&error.to_string()),
+        }
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl From<wasm_bindgen::JsError> for Error {
+    fn from(error: wasm_bindgen::JsError) -> Error {
+        let js_value: wasm_bindgen::JsValue = error.into();
+        Error::new().with_variant(Variant::JsError(
+            js_value
+                .as_string()
+                .unwrap_or_else(|| format!("{js_value:?}")),
+        ))
     }
 }
 
@@ -631,6 +668,8 @@ impl From<Error> for ProgramError {
                 Variant::ProgramError(error) => error,
                 #[cfg(not(target_os = "solana"))]
                 Variant::JsValue(_error) => ProgramError::Custom(0),
+                #[cfg(not(target_os = "solana"))]
+                Variant::JsError(_error) => ProgramError::Custom(0),
                 #[cfg(not(target_os = "solana"))]
                 Variant::RpcError(_error) => ProgramError::Custom(ErrorCode::RpcError as u32),
                 #[cfg(not(any(target_arch = "wasm32", target_os = "solana")))]
