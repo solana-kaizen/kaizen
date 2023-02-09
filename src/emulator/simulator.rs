@@ -59,7 +59,7 @@ impl Simulator {
         program_id: Pubkey,
         authority: Option<Pubkey>,
     ) -> Result<Self> {
-        let lamports = crate::utils::u64sol_to_lamports(500_000_000);
+        let lamports = crate::utils::u64sol_to_lamports(500);
 
         let authority = match authority {
             Some(authority) => authority,
