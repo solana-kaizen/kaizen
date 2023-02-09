@@ -146,7 +146,7 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
 
             pub async fn execute(
                 instruction : solana_program::instruction::Instruction
-            ) -> Result<()> {
+            ) -> kaizen::result::Result<()> {
                 use kaizen::transport::Interface;
                 let transport = kaizen::transport::Transport::global()?;
                 transport.execute(&instruction).await?;
@@ -157,7 +157,7 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
             pub async fn execute_with_transport(
                 transport : &Arc<kaizen::transport::Transport>,
                 instruction : solana_program::instruction::Instruction
-            ) -> Result<()> {
+            ) -> kaizen::result::Result<()> {
                 use kaizen::transport::Interface;
                 transport.execute(&instruction).await?;
                 Ok(())
