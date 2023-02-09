@@ -22,8 +22,8 @@ mod tests {
             .with_sequence(0u64);
 
         let builder = InstructionBuilder::new_with_config_for_testing(&config)
-            .with_account_templates_with_seeds(&[(AddressDomain::Authority, b"proxy")])
-            .with_account_templates(1)
+            .with_generic_account_templates_with_seeds(&[(AddressDomain::Authority, b"proxy")])
+            .with_generic_account_templates(1)
             .seal()?;
 
         let accounts = builder.generic_template_accounts();

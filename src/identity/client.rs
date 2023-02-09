@@ -64,8 +64,8 @@ pub async fn create_identity(
 
     let builder = InstructionBuilder::new(program_id, interface_id, handler_id as u16)
         .with_authority(authority)
-        .with_account_templates_with_seeds(&[(AddressDomain::Authority, b"proxy")])
-        .with_account_templates(1 + instructions.get_collection_count())
+        .with_generic_account_templates_with_seeds(&[(AddressDomain::Authority, b"proxy")])
+        .with_generic_account_templates(1 + instructions.get_collection_count())
         .with_sequence(0u64)
         .with_instruction_data(&instruction_data)
         .seal()?;
@@ -91,8 +91,8 @@ pub async fn create_identity_for_unit_tests(
         .with_sequence(0u64);
 
     let builder = InstructionBuilder::new_with_config_for_testing(&config)
-        .with_account_templates_with_seeds(&[(AddressDomain::Authority, b"proxy")])
-        .with_account_templates(2)
+        .with_generic_account_templates_with_seeds(&[(AddressDomain::Authority, b"proxy")])
+        .with_generic_account_templates(2)
         .seal()?;
 
     let accounts = builder.generic_template_accounts();

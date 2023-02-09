@@ -498,7 +498,7 @@ impl InstructionBuilder {
         Ok(vec)
     }
 
-    pub fn with_account_templates(self: Arc<Self>, n: usize) -> Arc<Self> {
+    pub fn with_generic_account_templates(self: Arc<Self>, n: usize) -> Arc<Self> {
         self.with_inner(|mut inner| {
             for _ in 0..n {
                 inner.generic_template_account_descriptors.push((
@@ -512,7 +512,7 @@ impl InstructionBuilder {
     }
 
     // pub fn with_account_templates_with_custom_suffixes(self: Arc<Self>, suffixes : &[&str]) -> Arc<Self> {
-    pub fn with_account_templates_with_custom_suffixes(
+    pub fn with_generic_account_templates_with_custom_suffixes(
         self: Arc<Self>,
         suffixes: &[&[u8]],
     ) -> Arc<Self> {
@@ -530,7 +530,7 @@ impl InstructionBuilder {
 
     // pub fn with_account_templates_with_custom_domains_and_suffixes(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
     // pub fn with_account_templates_with_custom_seeds(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
-    pub fn with_account_templates_with_seeds(
+    pub fn with_generic_account_templates_with_seeds(
         self: Arc<Self>,
         suffixes: &[(AddressDomain, &[u8])],
     ) -> Arc<Self> {
@@ -546,7 +546,7 @@ impl InstructionBuilder {
         })
     }
 
-    pub fn with_account_templates_with_custom_suffixes_prefixed(
+    pub fn with_generic_account_templates_with_custom_suffixes_prefixed(
         self: Arc<Self>,
         prefix: &[u8],
         suffixes: &[&[u8]],
@@ -565,7 +565,7 @@ impl InstructionBuilder {
         })
     }
 
-    pub fn with_custom_account_templates_and_seeds(
+    pub fn with_generic_custom_account_templates_and_seeds(
         self: Arc<Self>,
         templates: &[(IsSigner, Access, AddressDomain, SeedSuffix)],
     ) -> Arc<Self> {
