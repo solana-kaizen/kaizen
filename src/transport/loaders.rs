@@ -187,4 +187,3 @@ pub fn purge_references(pubkeys: &[Pubkey]) -> Result<()> {
 pub fn purge_cache(pubkey: &Pubkey) -> Result<()> {
     purge_reference(pubkey)
 }
-
