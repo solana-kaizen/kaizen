@@ -265,12 +265,8 @@ cfg_if! {
         where M: CollectionMeta
         {
             pub fn get_pda_at(&self, program_id : &Pubkey, idx : u64) -> Result<(Pubkey, u8)> {
-
-                // log_trace!("find pda: {:?}",self.get_seed_at(idx));
-
                 let (address, bump) = Pubkey::find_program_address(
                     &self.get_seed_at(&idx,None),
-                    // &[&self.get_seed_at(idx)],
                     program_id
                 );
 
@@ -278,11 +274,11 @@ cfg_if! {
             }
 
             #[inline(always)]
-            pub fn get_pubkey_at(&self, program_id : &Pubkey, idx : usize) -> Result<Pubkey> {
-                Ok(self.get_pda_at(program_id, idx as u64)?.0)
+            pub fn get_pubkey_at(&self, program_id : &Pubkey, idx : u64) -> Result<Pubkey> {
+                Ok(self.get_pda_at(program_id, idx)?.0)
             }
 
-            pub async fn load_container_at<'this,T>(&self, program_id: &Pubkey, idx: usize)
+            pub async fn load_container_at<'this,T>(&self, program_id: &Pubkey, idx: u64)
             -> Result<Option<ContainerReference<'this,T>>>
             where T: kaizen::container::Container<'this,'this>
             {
@@ -290,7 +286,7 @@ cfg_if! {
                 self.load_container_at_with_transport::<T>(program_id, idx, &transport).await
             }
 
-            pub async fn load_container_at_with_transport<'this,T>(&self, program_id: &Pubkey, idx: usize, transport: &Arc<Transport>)
+            pub async fn load_container_at_with_transport<'this,T>(&self, program_id: &Pubkey, idx: u64, transport: &Arc<Transport>)
             -> Result<Option<ContainerReference<'this,T>>>
             where T: kaizen::container::Container<'this,'this>
             {
@@ -298,7 +294,7 @@ cfg_if! {
                 load_container_with_transport::<T>(transport,&container_pubkey).await
             }
 
-            pub async fn load_container_range<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>)
+            pub async fn load_container_range<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<u64>)
             -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
             where T: kaizen::container::Container<'this,'this>
             {
@@ -306,7 +302,7 @@ cfg_if! {
                 self.load_container_range_with_transport::<T>(program_id, range, &transport).await
             }
 
-            pub async fn load_container_range_with_transport<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<usize>, transport: &Arc<Transport>)
+            pub async fn load_container_range_with_transport<'this,T>(&self, program_id: &Pubkey, range: std::ops::Range<u64>, transport: &Arc<Transport>)
             -> Result<Vec<Result<Option<ContainerReference<'this,T>>>>>
             where T: kaizen::container::Container<'this,'this>
             {
