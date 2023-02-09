@@ -6,13 +6,13 @@ use workflow_log::*;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum AddressDomain {
-    /// No doomain
+    /// No domain - `[program_id,seed]` only
     None,
     /// auto-select identity if available, otherwise authority
     Default,
-    /// explicitly select authority
+    /// explicitly select authority: `[program_id,authority,seed]`
     Authority,
-    /// explicitly select identity
+    /// explicitly select identity: `[program_id,identity,seed]`
     Identity,
     // /// custom
     // Custom(&'seed [u8])
@@ -40,7 +40,7 @@ impl AddressDomain {
                 .pubkey
                 .to_bytes()
                 .to_vec(),
-            AddressDomain::Identity => authority
+            AddressDomain::Identity => identity
                 .ok_or(error!("Missing identity for address domain"))?
                 .pubkey
                 .to_bytes()
