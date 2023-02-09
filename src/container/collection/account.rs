@@ -11,6 +11,7 @@ pub type PdaCollection<'info, 'refs> =
 pub type PdaCollectionReference<'info> =
     PdaCollectionInterface<'info, PdaCollectionMetaInterface<'info>>;
 
+#[derive(Debug)]
 pub struct PdaCollectionInterface<'info, M> {
     pub domain: &'info [u8],
     meta: M,

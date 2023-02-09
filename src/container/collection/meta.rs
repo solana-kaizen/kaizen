@@ -122,6 +122,7 @@ impl<'info> CollectionMeta for PdaCollectionMetaInterface<'info> {
     }
 }
 
+#[derive(Debug)]
 pub struct PdaCollectionSegmentInterface<'info, 'refs> {
     segment: Rc<Segment<'info, 'refs>>,
     seed: &'static [u8],
