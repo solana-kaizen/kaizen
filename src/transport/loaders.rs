@@ -111,7 +111,7 @@ pub async fn reload_container_with_transport<'this, T>(
 where
     T: kaizen::container::Container<'this, 'this>,
 {
-    log_trace!("... reloading container {}", pubkey);
+    // log_trace!("... reloading container {}", pubkey);
     transport.purge(Some(pubkey))?;
     let account_data_reference = match transport.lookup(pubkey).await? {
         Some(account_data_reference) => account_data_reference,

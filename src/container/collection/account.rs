@@ -325,7 +325,7 @@ cfg_if! {
             fn creator(&self, program_id: &Pubkey, number_of_accounts : usize) -> Result<Arc<Self::Creator>> {
 
                 let mut list = Vec::new();
-                for idx in self.len() ..= self.len()+number_of_accounts {
+                for idx in self.len()..self.len()+number_of_accounts {
                     let (pubkey, bump) = self.get_pda_at(program_id, idx as u64)?;
                     list.push((pubkey,bump));
                 }
