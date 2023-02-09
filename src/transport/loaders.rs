@@ -2,6 +2,7 @@ use futures::future::join_all;
 use kaizen::container::Container;
 use kaizen::prelude::*;
 use kaizen::result::Result;
+use wasm_bindgen::prelude::*;
 
 pub async fn with_loaded_container<'this, C>(
     pubkey: Pubkey,
@@ -181,3 +182,9 @@ pub fn purge_references(pubkeys: &[Pubkey]) -> Result<()> {
     }
     Ok(())
 }
+
+#[wasm_bindgen]
+pub fn purge_cache(pubkey: &Pubkey) -> Result<()> {
+    purge_reference(pubkey)
+}
+
