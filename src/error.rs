@@ -54,6 +54,7 @@ pub enum ErrorCode {
     OsString,
     SystemTimeError,
     ReadOnlyAccess,
+    AccessDenied,
     EntryNotFound,
     AuthorityMustSign,
     InsufficientBalance,
@@ -718,6 +719,7 @@ macro_rules! program_error_code {
         kaizen::error::Error::new()
             .with_source(file!(), line!())
             .with_program_code($code as u32)
+            .into()
     };
 }
 pub use program_error_code;
