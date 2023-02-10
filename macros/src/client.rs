@@ -120,13 +120,14 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
     let out = quote! {
 
         #impl_client_ts {
+            #[cfg(not(target_os = "solana"))]
             fn handler_id(handler_fn: HandlerFn) -> usize {
-
                 #target_primitive_path::INTERFACE_HANDLERS.iter()
                 .position(|&hfn| hfn as HandlerFnCPtr == handler_fn as HandlerFnCPtr )
                 .expect("invalid primitive handler")
             }
 
+            #[cfg(not(target_os = "solana"))]
             fn execution_context_for(handler: HandlerFn) -> Arc<InstructionBuilder> {
                 let interface_id = crate::interface_id(#interface_dispatch_method);
                 let handler_id = Self::handler_id(handler);
@@ -142,8 +143,10 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
 
         #impl_wasm_ts {
 
+            #[cfg(not(target_os = "solana"))]
             pub fn bind() -> &'static str { #client_struct_name }
 
+            #[cfg(not(target_os = "solana"))]
             pub async fn execute(
                 instruction : solana_program::instruction::Instruction
             ) -> kaizen::result::Result<()> {
@@ -151,9 +154,9 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
                 let transport = kaizen::transport::Transport::global()?;
                 transport.execute(&instruction).await?;
                 Ok(())
-                // transport.execute(&instruction).await
             }
 
+            #[cfg(not(target_os = "solana"))]
             pub async fn execute_with_transport(
                 transport : &Arc<kaizen::transport::Transport>,
                 instruction : solana_program::instruction::Instruction
@@ -161,7 +164,6 @@ pub fn declare_client(input: TokenStream) -> TokenStream {
                 use kaizen::transport::Interface;
                 transport.execute(&instruction).await?;
                 Ok(())
-                // transport.execute(&instruction).await
             }
         }
     };

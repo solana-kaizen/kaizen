@@ -1,3 +1,7 @@
+//!
+//! Arbitrary pubkey collection (Array-based, opcode-restricted)
+//! 
+
 use super::meta::*;
 use cfg_if::cfg_if;
 use kaizen::container::Container;

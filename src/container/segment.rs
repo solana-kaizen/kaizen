@@ -1,3 +1,6 @@
+//!
+//! Container segment data structures.
+//! 
 use std::cmp::Ordering;
 // use std::cell::Ref;
 use std::fmt::Debug;

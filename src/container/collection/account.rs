@@ -1,3 +1,7 @@
+//!
+//! PDA collection based on segment-defined seed vector
+//! 
+
 use super::meta::*;
 use crate::container::Container;
 use crate::result::Result;

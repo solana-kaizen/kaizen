@@ -1,3 +1,6 @@
+//!
+//! Solana [`Transaction`] interface for transaction state tracking.
+//! 
 use ahash::HashSet;
 use kaizen::error::Error;
 use kaizen::prelude::*;
@@ -164,7 +167,7 @@ impl Transaction {
     }
 
     /// For *Create* operations it is assumed that the
-    /// resulting account is always at position [0]
+    /// resulting account is always at position `\[0\]`
     pub fn target_account(&self) -> Result<Pubkey> {
         let meta = self.meta.lock()?;
         if meta.accounts.is_empty() {

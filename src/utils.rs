@@ -1,3 +1,7 @@
+//!
+//! General-purpose in-program and client-side utilities
+//! 
+
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 
@@ -33,6 +37,7 @@ pub fn pubkey_from_slice(slice: &[u8]) -> crate::result::Result<Pubkey> {
     Ok(pubkey)
 }
 
+/// Generates a [`Pubkey`] filled with random bytes (used explicitly in unit tests)
 #[cfg(not(target_os = "solana"))]
 pub fn generate_random_pubkey() -> Pubkey {
     // Pubkey::new(&rand::random::<[u8; 32]>())

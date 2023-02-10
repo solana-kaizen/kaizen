@@ -1,3 +1,7 @@
+//!
+//! [`Instruction`] builder, used to dynamically generate Solana OS program instructions.
+//! 
+
 use crate::accounts::{Access, IsSigner, SeedBump, SeedSuffix};
 use crate::error;
 use crate::payload::Payload;
@@ -891,12 +895,13 @@ impl InstructionBuilder {
         instruction_data.extend(self.instruction_data().to_vec());
         let accounts = self.try_accounts()?;
 
+        log_info!("PROGRAM ID: {}", program_id);
         let instruction = solana_program::instruction::Instruction {
             program_id,
             data: instruction_data,
             accounts,
         };
-
+log_info!("INSTRUCTION: {:?}", instruction);
         Ok(instruction)
     }
 

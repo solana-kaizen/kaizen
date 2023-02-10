@@ -14,6 +14,8 @@ Solana OS Rust framework for industrial grade applications.
 <p align="center" style="margin:32px auto 32px auto;text-align:center;font-size:10px;color:#888;">
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Tsunami_by_hokusai_19th_century.jpg/2560px-Tsunami_by_hokusai_19th_century.jpg" style="display:block;height:320px;width:auto;margin: 0px auto 0px auto;"><br/><sup>THE GREAT WAVE OFF KANAGAWA &bull; KATSUSHIKA HOKUSAI &bull; JAPAN 1831</sup></p>
 
+‘Kaizen’ focuses on the refinement of the Solana application development infrastructure by identifying framework optimization opportunities in order to increase reliability and simplify Solana-based full-stack application development. 
+
 ## Overview
 
 Kaizen is a *security-and-reliability-centric* framework for developing of Solana Programs and *client-side web applications* using Rust. The primary goal behind this project is to eliminate IDLs and contain the program and client-side application within the same Rust codebase.

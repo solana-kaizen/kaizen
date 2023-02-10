@@ -1,3 +1,6 @@
+//!
+//! Kaizen WASM32 browser initialization API
+//! 
 use wasm_bindgen::prelude::*;
 use workflow_wasm::init::init_workflow;
 pub use workflow_wasm::init::{global, modules, workflow};

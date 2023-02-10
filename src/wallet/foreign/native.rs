@@ -1,4 +1,6 @@
-// use std::sync::Arc;
+//!
+//! Native solana wallet interface (Solana SDK wallet)
+//! 
 use async_trait::async_trait;
 use kaizen::result::Result;
 use solana_program::pubkey::Pubkey;

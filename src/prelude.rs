@@ -1,3 +1,7 @@
+//!
+//! Program and Application prelude containing general-purpose imports.
+//! 
+
 pub use cfg_if::cfg_if;
 pub use std::cell::RefCell;
 pub use std::rc::Rc;

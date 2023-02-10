@@ -1,3 +1,7 @@
+//!
+//! Error data structure used by the Kaizen framework (both in-program and client-side)
+//! 
+
 use cfg_if::cfg_if;
 
 cfg_if! {

@@ -1,3 +1,6 @@
+//!
+//! Solana network interface (WASM-browser)
+//! 
 #![allow(unused_unsafe)]
 use super::TransportMode;
 use crate::accounts::AccountData;

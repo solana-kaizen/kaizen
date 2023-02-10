@@ -1,3 +1,7 @@
+//!
+//! Traits use by kaizen macros to define client-side program interfaces.
+//! 
+
 use crate::builder::InstructionBuilder;
 use crate::context::HandlerFn;
 use std::sync::Arc;

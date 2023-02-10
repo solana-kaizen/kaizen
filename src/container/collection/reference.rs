@@ -1,3 +1,9 @@
+//!
+//! Proxied collection for an arbitrary set of pubkeys based on a segment-defined seed vector.
+//! 
+//! `Seed Vector -> Proxy Accounts -> Pubkey`
+//! 
+
 use cfg_if::cfg_if;
 // use crate::address::ProgramAddressData;
 use super::meta::*;

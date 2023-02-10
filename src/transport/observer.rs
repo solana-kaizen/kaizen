@@ -1,3 +1,7 @@
+//!
+//! Transaction processing observer traits for client-side application tracking.
+//! 
+
 use crate::error::Error;
 use crate::prelude::*;
 use crate::transport::transaction::Transaction;

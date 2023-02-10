@@ -1,3 +1,6 @@
+//!
+//! Identity interface testing
+//! 
 #[cfg(test)]
 mod tests {
     use crate::identity::program::*;

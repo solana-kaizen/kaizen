@@ -1,5 +1,7 @@
+//!
+//! In-memory account store (used primarily by the emulator for unit tests).
+//! 
 use crate::accounts::AccountDescriptor;
-
 use super::*;
 use ahash::AHashMap;
 use async_std::sync::RwLock;

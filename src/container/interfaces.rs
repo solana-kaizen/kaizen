@@ -1,7 +1,7 @@
-// use async_trait::async_trait;
-// use workflow_core::workflow_async_trait;
+//!
+//! Collection interface traits
+//! 
 use kaizen::prelude::*;
-// use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
 use kaizen::result::Result;
 
 #[workflow_async_trait]

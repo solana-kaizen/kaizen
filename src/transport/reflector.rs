@@ -1,3 +1,6 @@
+//!
+//! Client-side Transport activity tracker (for transactions, wallet and emulator updates).
+//! 
 use ahash::HashMap;
 use solana_program::pubkey::Pubkey;
 use std::sync::{Arc, Mutex};

@@ -1,3 +1,7 @@
+//!
+//! Account collections
+//! 
+
 mod meta;
 pub use meta::*;
 mod account;
@@ -6,7 +10,5 @@ mod reference;
 pub use reference::*;
 mod pubkey;
 pub use pubkey::*;
-// mod keystore;
-// pub use keystore::*;
 mod proxy;
 pub use proxy::*;

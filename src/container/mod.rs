@@ -1,5 +1,7 @@
-// pub mod container;
-// pub use container::*;
+//! 
+//! Account Containers (segment-based account data representation and management)
+//! 
+
 pub mod segment;
 pub use segment::*;
 pub mod array;
@@ -88,11 +90,11 @@ pub enum Containers {
     IdentityProxy,
     Identity,
     OrderedCollection,
-    PGPPubkey,
+    // PGPPubkey,
 
     IndexContainers = Ranges::Indexes as u32,
-    BPTreeIndex,
-    BPTreeValues,
+    // BPTreeIndex,
+    // BPTreeValues,
 }
 
 cfg_if! {

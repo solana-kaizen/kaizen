@@ -1,3 +1,6 @@
+//!
+//! Kaizen Emulator RPC server
+//! 
 #![allow(unused_imports)]
 use crate::accounts::AccountDataStore;
 use async_trait::async_trait;

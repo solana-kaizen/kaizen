@@ -1,3 +1,7 @@
+//!
+//! User (foreign) wallet interfaces (native & web3 adaptor-based interfaces).
+//! 
+
 use async_trait::async_trait;
 use cfg_if::cfg_if;
 use downcast::{downcast_sync, AnySync};

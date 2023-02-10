@@ -1,3 +1,7 @@
+//!
+//! Segment-based Borsh-serialized store (for pre-defined or arbitrary data types)
+//! 
+
 use crate::container::segment::Segment;
 use crate::result::Result;
 use borsh::{BorshDeserialize, BorshSerialize};

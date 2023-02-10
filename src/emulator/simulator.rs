@@ -1,3 +1,6 @@
+//!
+//! Base emulation environment.
+//! 
 use crate::accounts::AccountDescriptorList;
 use kaizen::accounts::{AccountData, AccountDataReference};
 use kaizen::builder::{InstructionBuilder, InstructionBuilderConfig};

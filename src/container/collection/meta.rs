@@ -1,3 +1,6 @@
+//!
+//! CollectionMeta traits used by collection interfaces.
+//! 
 use crate::result::Result;
 use kaizen::prelude::*;
 use kaizen_macros::Meta;
