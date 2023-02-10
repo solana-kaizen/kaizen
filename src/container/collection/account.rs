@@ -173,7 +173,7 @@ where
             }
         }
 
-        let next_index = self.meta.get_len() + 1;
+        let next_index = self.meta.get_len();
         // log_info!("pda collection creating index {} starting...",next_index);
         let tpl_seeds = self.get_seed_at(&next_index, Some(tpl_seed_suffix));
 
@@ -190,7 +190,7 @@ where
             false,
         )?;
 
-        self.meta.set_len(next_index);
+        self.meta.set_len(next_index+1);
         // log_info!("pda collection creating index {} ...done",next_index);
         let container = T::try_create(tpl_account_info)?;
         Ok(container)
