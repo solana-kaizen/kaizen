@@ -13,6 +13,7 @@ use crate::transport::{reflector, Reflector};
 use crate::transport::{Transaction, TransportConfig};
 use crate::utils::pubkey_from_slice;
 use crate::wallet::*;
+use crate::wasm::*;
 use async_std::sync::RwLock;
 use async_trait::async_trait;
 use js_sys::*;
@@ -28,7 +29,7 @@ use std::sync::{Arc, Mutex};
 use std::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
-use wasm_bindgen_futures::JsFuture;
+//use wasm_bindgen_futures::JsFuture;
 use workflow_log::*;
 use workflow_wasm::{init::global, utils};
 
@@ -104,7 +105,7 @@ pub struct Transport {
     cache: Arc<Cache>,
     pub config: Arc<RwLock<TransportConfig>>,
     pub custom_authority: Arc<Mutex<Option<Pubkey>>>,
-    connection: JsValue,
+    connection: Option<Connection>,
     pub lookup_handler: LookupHandler<Pubkey, Arc<AccountDataReference>>,
     pub reflector: Reflector,
 }
@@ -129,7 +130,7 @@ impl Transport {
         self.reflector.clone()
     }
 
-    pub fn connection(&self) -> std::result::Result<JsValue, JsValue> {
+    pub fn connection(&self) -> std::result::Result<Option<Connection>, JsValue> {
         Ok(self.connection.clone())
     }
 
@@ -256,7 +257,7 @@ impl Transport {
             .with_mock_accounts(program_id, authority)
             .await?;
         let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
-        Transport::try_new_with_args(TransportMode::Inproc, JsValue::NULL, Some(emulator), config)
+        Transport::try_new_with_args(TransportMode::Inproc, None, Some(emulator), config)
             .await
     }
 
@@ -272,7 +273,7 @@ impl Transport {
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
             Transport::try_new_with_args(
                 TransportMode::Inproc,
-                JsValue::NULL,
+                None,
                 Some(emulator),
                 config,
             )
@@ -283,7 +284,7 @@ impl Transport {
             let emulator: Arc<dyn EmulatorInterface> = emulator;
             Transport::try_new_with_args(
                 TransportMode::Emulator,
-                JsValue::NULL,
+                None,
                 Some(emulator),
                 config,
             )
@@ -295,27 +296,30 @@ impl Transport {
             args.set(0, JsValue::from(network));
             let url =
                 js_sys::Reflect::apply(&cluster_api_url_fn.into(), &JsValue::NULL, &args.into())?;
-            log_trace!("{network}: {:?}", url);
+            log_trace!("{network}: {:?}", url.as_string());
 
-            let args = Array::new_with_length(1);
-            args.set(0, url);
-            let ctor = js_sys::Reflect::get(&solana, &JsValue::from("Connection"))?;
+            // let args = Array::new_with_length(1);
+            // args.set(0, url);
+            // let ctor = js_sys::Reflect::get(&solana, &JsValue::from("Connection"))?;
             Transport::try_new_with_args(
                 TransportMode::Validator,
-                js_sys::Reflect::construct(&ctor.into(), &args)?,
+                // js_sys::Reflect::construct(&ctor.into(), &args)?,
+                Some(Connection::new(url.as_string().unwrap())),
                 None,
                 config,
             )
             .await
         } else if regex::Regex::new(r"^https?://").unwrap().is_match(network) {
-            let args = Array::new_with_length(1);
-            args.set(0, JsValue::from(network));
-            let ctor = js_sys::Reflect::get(&solana, &JsValue::from("Connection"))?;
-            log_trace!("ctor: {:?}", ctor);
+
+            // let args = Array::new_with_length(1);
+            // args.set(0, JsValue::from(network));
+            // let ctor = js_sys::Reflect::get(&solana, &JsValue::from("Connection"))?;
+            // log_trace!("ctor: {:?}", ctor);
 
             Transport::try_new_with_args(
                 TransportMode::Validator,
-                js_sys::Reflect::construct(&ctor.into(), &args)?,
+                // js_sys::Reflect::construct(&ctor.into(), &args)?,
+                Some(Connection::new(network.to_string())),
                 None,
                 config,
             )
@@ -330,7 +334,7 @@ impl Transport {
 
     pub async fn try_new_with_args(
         mode: TransportMode,
-        connection: JsValue,
+        connection: Option<Connection>,
         emulator: Option<Arc<dyn EmulatorInterface>>,
         config: TransportConfig,
     ) -> Result<Arc<Transport>> {
@@ -405,23 +409,9 @@ impl Transport {
                 }
             }
             TransportMode::Validator => {
-                let response = {
-                    let pk_jsv = self.pubkey_to_jsvalue(&pubkey).unwrap();
-                    let args = Array::new_with_length(1);
-                    args.set(0 as u32, pk_jsv);
-                    let connection = &self.connection()?;
-                    let get_account_info_fn = unsafe {
-                        js_sys::Reflect::get(connection, &JsValue::from("getAccountInfo"))?
-                    };
-                    let promise_jsv = unsafe {
-                        js_sys::Reflect::apply(
-                            &get_account_info_fn.into(),
-                            connection,
-                            &args.into(),
-                        )?
-                    };
-                    wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(promise_jsv)).await?
-                };
+                let response = self.connection()?.unwrap().get_account_info(&pubkey).await?;
+
+                log_trace!("get_account_info ({}) response: {:#?}", pubkey, response);
 
                 if response.is_null() {
                     // TODO review error handling & return None if success but no data
@@ -506,107 +496,31 @@ impl Transport {
                 Ok(())
             }
             TransportMode::Validator => {
-                let wallet_adapter = &self.wallet_adapter()?;
-                let accounts = &instruction.accounts;
-                let accounts_arg = js_sys::Array::new_with_length(accounts.len() as u32);
-                for idx in 0..accounts.len() {
-                    let account = &accounts[idx];
-                    let account_public_key_jsv = self.pubkey_to_jsvalue(&account.pubkey)?;
+                let wallet_adapter:WalletAdapter = self.wallet_adapter()?.into();
+                let connection = self.connection()?.unwrap();
 
-                    let cfg = js_sys::Object::new();
-                    unsafe {
-                        js_sys::Reflect::set(
-                            &cfg,
-                            &"isWritable".into(),
-                            &JsValue::from(account.is_writable),
-                        )?;
-                        js_sys::Reflect::set(
-                            &cfg,
-                            &"isSigner".into(),
-                            &JsValue::from(account.is_signer),
-                        )?;
-                        js_sys::Reflect::set(&cfg, &"pubkey".into(), &account_public_key_jsv)?;
-                    }
-                    accounts_arg.set(idx as u32, cfg.into());
-                }
-
-                let program_id = self.pubkey_to_jsvalue(&instruction.program_id)?;
-
-                let instr_data_u8arr = unsafe { js_sys::Uint8Array::view(&instruction.data) };
-                let instr_data_jsv: JsValue = instr_data_u8arr.into();
-
-                let ctor = unsafe {
-                    js_sys::Reflect::get(
-                        &Self::solana()?,
-                        &JsValue::from("TransactionInstruction"),
-                    )?
-                };
-                let cfg = js_sys::Object::new();
-                unsafe {
-                    js_sys::Reflect::set(&cfg, &"keys".into(), &accounts_arg)?;
-                    js_sys::Reflect::set(&cfg, &"programId".into(), &program_id)?;
-                    js_sys::Reflect::set(&cfg, &"data".into(), &instr_data_jsv)?;
-                }
-
-                let tx_ins_args = js_sys::Array::new_with_length(1);
-                tx_ins_args.set(0, JsValue::from(cfg));
-                let tx_instruction_jsv =
-                    unsafe { js_sys::Reflect::construct(&ctor.into(), &tx_ins_args)? };
-
-                let ctor = unsafe {
-                    js_sys::Reflect::get(&Self::solana()?, &JsValue::from("Transaction"))?
-                };
-                let tx_jsv = unsafe {
-                    js_sys::Reflect::construct(&ctor.into(), &js_sys::Array::new_with_length(0))?
-                };
-
-                let recent_block_hash = unsafe {
-                    let get_latest_block_hash_fn =
-                        js_sys::Reflect::get(&self.connection()?, &"getLatestBlockhash".into())?;
-                    let v = js_sys::Reflect::apply(
-                        &get_latest_block_hash_fn.into(),
-                        &self.connection()?,
-                        &js_sys::Array::new_with_length(0),
-                    )?;
-                    let prom = js_sys::Promise::from(v);
-                    let recent_block_hash_result = JsFuture::from(prom).await?;
-
-                    log_trace!("recent_block_hash_result: {:?}", recent_block_hash_result);
-                    js_sys::Reflect::get(&recent_block_hash_result, &"blockhash".into())?
-                };
-
+                let recent_block_hash = connection.get_latest_block_hash().await?.block_hash();
                 log_trace!("recent_block_hash: {:?}", recent_block_hash);
 
-                unsafe {
-                    let wallet_public_key =
-                        js_sys::Reflect::get(&wallet_adapter, &JsValue::from("publicKey"))?;
-                    js_sys::Reflect::set(
-                        &tx_jsv,
-                        &"feePayer".into(),
-                        &JsValue::from(wallet_public_key),
-                    )?;
-                    js_sys::Reflect::set(&tx_jsv, &"recentBlockhash".into(), &recent_block_hash)?;
-                }
+                let wallet_public_key = wallet_adapter.pubkey();
 
-                utils::apply_with_args1(&tx_jsv, "add", tx_instruction_jsv)?;
-                let promise_jsv =
-                    utils::apply_with_args1(&wallet_adapter, "signTransaction", tx_jsv.clone())?;
-                let promise = js_sys::Promise::from(promise_jsv);
-                let result = JsFuture::from(promise).await?;
+                let tx_jsv = crate::wasm::Transaction::new();
+                tx_jsv.set_fee_payer(JsValue::from(wallet_public_key));
+                tx_jsv.set_recent_block_hash(recent_block_hash);
+                tx_jsv.add(instruction.try_into()?);
+
+                let result = wallet_adapter.sign_transaction(&tx_jsv).await?;
                 log_trace!("signTransaction result {:?}", result);
-                let buffer_jsv = utils::apply_with_args0(&tx_jsv, "serialize")?;
 
-                let options = js_sys::Object::new();
-                unsafe {
-                    js_sys::Reflect::set(&options, &"skipPreflight".into(), &JsValue::from(true))?;
-                }
+                let result = connection.send_raw_transaction_with_options(
+                    tx_jsv.serialize(),
+                    SendRawTxOptions::new()
+                        .skip_preflight(false)
+                ).await?;
 
-                let result = utils::apply_with_args2(
-                    &self.connection()?,
-                    "sendRawTransaction",
-                    buffer_jsv,
-                    options.into(),
-                );
+                log_trace!("send_raw_transaction result: {:?}", result);
+                Ok(())
+                /*
                 match result {
                     Ok(_e) => {
                         return Ok(());
@@ -615,6 +529,7 @@ impl Transport {
                         return Err(err.into());
                     }
                 }
+                */
             }
         }
     }

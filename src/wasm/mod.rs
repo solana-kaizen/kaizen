@@ -2,6 +2,8 @@ use wasm_bindgen::prelude::*;
 use workflow_wasm::init::init_workflow;
 pub use workflow_wasm::init::{global, modules, workflow};
 pub use workflow_wasm::panic::*;
+mod solana_sys;
+pub use solana_sys::*;
 
 pub fn init_kaizen(
     workflow: &JsValue,
