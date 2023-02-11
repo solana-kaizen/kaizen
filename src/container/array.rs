@@ -1,3 +1,7 @@
+//!
+//! Segment-based Memory-mapped Array
+//! 
+
 use crate::container::segment::Segment;
 use crate::error::*;
 use crate::result::Result;

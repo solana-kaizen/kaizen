@@ -1,3 +1,7 @@
+//!
+//! File-store (used by the Emulator in multi-user testing)
+//! 
+
 use crate::accounts::AccountDataStore;
 use crate::accounts::AccountDescriptor;
 

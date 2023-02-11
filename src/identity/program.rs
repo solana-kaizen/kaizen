@@ -1,3 +1,6 @@
+//!
+//! Identity program-side handlers
+//! 
 use borsh::*;
 use kaizen::container::Containers;
 use kaizen::container::*;

@@ -1,3 +1,7 @@
+//!
+//! Solana OS client-side program registry (for client-side program invocation, primarily for unit testing)
+//! 
+
 #[cfg(not(target_os = "solana"))]
 pub mod registry {
     use ahash::AHashMap;

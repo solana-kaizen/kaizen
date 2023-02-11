@@ -1,3 +1,6 @@
+//!
+//! SPL Token data API (under development)
+//! 
 use std::str::FromStr;
 use crate::{trace, transport::Transport};
 use solana_program::pubkey::Pubkey;

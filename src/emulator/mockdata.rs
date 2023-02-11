@@ -1,4 +1,7 @@
-use crate::generate_random_pubkey;
+//!
+//! Mock data (mock authority and program_id) for testing.
+//! 
+use crate::utils::generate_random_pubkey;
 use solana_program::pubkey::Pubkey;
 
 #[derive(Clone, Debug)]

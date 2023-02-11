@@ -1,3 +1,7 @@
+//!
+//! Client-side and Emulator Account data representation
+//! 
+
 use solana_program::account_info::AccountInfo;
 
 #[derive(Debug, Copy, Clone)]
@@ -56,7 +60,7 @@ pub type SeedBump = u8;
 mod client {
 
     use crate::container::Container;
-    use crate::generate_random_pubkey;
+    use crate::utils::generate_random_pubkey;
 
     use super::*;
     use std::cell::UnsafeCell;

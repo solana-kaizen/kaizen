@@ -1,3 +1,7 @@
+//!
+//! Transport interface configuration
+//! 
+
 use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
 use std::time::Duration;

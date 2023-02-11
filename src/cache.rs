@@ -1,3 +1,7 @@
+//!
+//! Application-level in-memory account data cache backed by [`Moka Cache`](moka::sync::Cache).
+//! 
+
 use crate::accounts::AccountDataReference;
 use crate::result::Result;
 use cfg_if::cfg_if;

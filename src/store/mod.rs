@@ -1,3 +1,7 @@
+//!
+//! Account stores used by the Emulator and client-side application account caching mechanisms.
+//! 
+
 use async_trait::async_trait;
 use cfg_if::cfg_if;
 use kaizen::accounts::{AccountDataReference, AccountDescriptorList};

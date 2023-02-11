@@ -1,3 +1,7 @@
+//!
+//! Helper functions for program instruction generation.
+//! 
+
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 

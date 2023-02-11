@@ -1,3 +1,7 @@
+//!
+//! Rent collection utilities.
+//! 
+
 use solana_program::account_info::AccountInfo;
 
 #[derive(Debug, Copy, Clone)]
