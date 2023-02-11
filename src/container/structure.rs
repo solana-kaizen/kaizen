@@ -1,10 +1,10 @@
 //!
 //!  Segment-based Memory-mapped strongly-typed data (a single struct)
 //!
+use crate::container::segment::Segment;
 use crate::result::Result;
 use std::marker::PhantomData;
 use std::rc::Rc;
-use crate::container::segment::Segment;
 
 pub struct Struct<'info, 'refs, T> {
     pub segment: Rc<Segment<'info, 'refs>>,

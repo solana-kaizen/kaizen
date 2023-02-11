@@ -1,6 +1,6 @@
 //!
 //! Hasher for Pubkeys (uses first 8 bytes of Pubkey as a hash, directly)
-//! 
+//!
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;

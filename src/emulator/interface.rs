@@ -1,6 +1,6 @@
 //!
 //! Emulator interface trait
-//! 
+//!
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
 use downcast::{downcast_sync, AnySync};

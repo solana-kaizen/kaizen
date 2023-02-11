@@ -1,6 +1,6 @@
 //!
 //! Identity client-side helper functions
-//! 
+//!
 
 use borsh::*;
 use kaizen::prelude::*;

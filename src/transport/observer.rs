@@ -1,11 +1,12 @@
 //!
 //! Transaction processing observer traits for client-side application tracking.
-//! 
+//!
 
 use crate::error::Error;
 use crate::prelude::*;
 use crate::transport::transaction::Transaction;
 use async_trait::async_trait;
+use wasm_bindgen::prelude::*;
 
 /// # Observer
 ///
@@ -129,5 +130,175 @@ impl Observer for BasicObserver {
             err,
             transaction
         );
+    }
+}
+
+mod wasm {
+    use super::*;
+    use crate::result::Result;
+    use js_sys::Function;
+    use serde::Serialize;
+    pub use serde_wasm_bindgen::*;
+    use std::sync::{Arc, Mutex};
+
+    struct NotificationSink(Function);
+    unsafe impl Send for NotificationSink {}
+    impl From<NotificationSink> for Function {
+        fn from(f: NotificationSink) -> Self {
+            f.0
+        }
+    }
+
+    #[derive(Clone, Serialize)]
+    pub enum NotificationType {
+        ChainCreated,
+        ChainComplete,
+        ChainDiscarded,
+        TransactionCreated,
+        TransactionProcessing,
+        TransactionSuccess,
+        TransactionTimeout,
+        TransactionFailure,
+    }
+
+    #[derive(Clone, Serialize)]
+    pub struct TransactionNotification {
+        tx_chain: Arc<TransactionChain>,
+        transaction: Arc<Transaction>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        error: Option<String>,
+    }
+
+    impl TransactionNotification {
+        pub fn new(tx_chain: Arc<TransactionChain>, transaction: Arc<Transaction>) -> Self {
+            TransactionNotification {
+                tx_chain: tx_chain,
+                transaction: transaction,
+                error: None,
+            }
+        }
+        pub fn new_with_error(
+            tx_chain: Arc<TransactionChain>,
+            transaction: Arc<Transaction>,
+            error: kaizen::error::Error,
+        ) -> Self {
+            TransactionNotification {
+                tx_chain: tx_chain,
+                transaction: transaction,
+                error: Some(error.to_string()),
+            }
+        }
+    }
+
+    // impl<T> Notification<T>
+    // where T : Serialize {
+    //     pub fn new(op : NotificationType, data : T) -> Self {
+    //         Notification { op, data }
+    //     }
+    // }
+
+    #[wasm_bindgen]
+    pub struct TransactionObserver {
+        notification_callback: Arc<Mutex<Option<NotificationSink>>>,
+    }
+
+    #[wasm_bindgen]
+    impl TransactionObserver {
+        #[wasm_bindgen(constructor)]
+        pub fn new() -> Self {
+            TransactionObserver {
+                notification_callback: Arc::new(Mutex::new(None)),
+            }
+        }
+
+        pub async fn notify(&self, callback: JsValue) -> Result<()> {
+            if callback.is_function() {
+                let fn_callback: Function = callback.into();
+                self.notification_callback
+                    .lock()
+                    .unwrap()
+                    .replace(NotificationSink(fn_callback));
+            } else {
+                self.clear_notification_callback();
+            }
+            Ok(())
+        }
+
+        fn clear_notification_callback(&self) {
+            *self.notification_callback.lock().unwrap() = None;
+        }
+
+        fn post_notification<Op, T>(&self, op: Op, payload: T)
+        where
+            T: Serialize,
+            Op: Serialize,
+        {
+            if let Some(callback) = self.notification_callback.lock().unwrap().as_ref() {
+                let op = to_value(&op).unwrap();
+                let payload = to_value(&payload).unwrap();
+                if let Err(err) = callback.0.call2(&JsValue::undefined(), &op, &payload) {
+                    log_error!("Error while executing notification callback: {:?}", err);
+                }
+            }
+        }
+    }
+
+    #[async_trait]
+    impl Observer for TransactionObserver {
+        async fn tx_chain_created(&self, tx_chain: Arc<TransactionChain>) {
+            self.post_notification(NotificationType::ChainCreated, tx_chain);
+        }
+
+        async fn tx_chain_complete(&self, tx_chain: Arc<TransactionChain>) {
+            self.post_notification(NotificationType::ChainComplete, tx_chain);
+        }
+
+        async fn tx_chain_discarded(&self, tx_chain: Arc<TransactionChain>) {
+            self.post_notification(NotificationType::ChainDiscarded, tx_chain);
+        }
+
+        async fn tx_created(&self, tx_chain: Arc<TransactionChain>, transaction: Arc<Transaction>) {
+            self.post_notification(
+                NotificationType::TransactionCreated,
+                TransactionNotification::new(tx_chain, transaction),
+            );
+        }
+
+        async fn tx_processing(
+            &self,
+            tx_chain: Arc<TransactionChain>,
+            transaction: Arc<Transaction>,
+        ) {
+            self.post_notification(
+                NotificationType::TransactionProcessing,
+                TransactionNotification::new(tx_chain, transaction),
+            );
+        }
+
+        async fn tx_success(&self, tx_chain: Arc<TransactionChain>, transaction: Arc<Transaction>) {
+            self.post_notification(
+                NotificationType::TransactionSuccess,
+                TransactionNotification::new(tx_chain, transaction),
+            );
+        }
+
+        async fn tx_timeout(&self, tx_chain: Arc<TransactionChain>, transaction: Arc<Transaction>) {
+            self.post_notification(
+                NotificationType::TransactionTimeout,
+                TransactionNotification::new(tx_chain, transaction),
+            );
+        }
+
+        async fn tx_failure(
+            &self,
+            tx_chain: Arc<TransactionChain>,
+            transaction: Arc<Transaction>,
+            err: kaizen::error::Error,
+        ) {
+            self.post_notification(
+                NotificationType::TransactionFailure,
+                TransactionNotification::new_with_error(tx_chain, transaction, err),
+            );
+        }
     }
 }

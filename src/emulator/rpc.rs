@@ -1,6 +1,6 @@
 //!
 //! Emulator RPC data structures
-//! 
+//!
 use crate::accounts::AccountDataStore;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};

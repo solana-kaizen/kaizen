@@ -1,12 +1,13 @@
 //!
 //! Kaizen WASM32 browser initialization API
-//! 
+//!
 use wasm_bindgen::prelude::*;
 use workflow_wasm::init::init_workflow;
 pub use workflow_wasm::init::{global, modules, workflow};
 pub use workflow_wasm::panic::*;
-mod solana_sys;
-pub use solana_sys::*;
+// mod solana_sys;
+// pub use solana_sys::*;
+use solana_web3_sys::solana::init_solana_web3_sys;
 
 pub fn init_kaizen(
     workflow: &JsValue,
@@ -17,6 +18,9 @@ pub fn init_kaizen(
 
     let g = global()?;
     js_sys::Reflect::set(&g, &"solana".into(), solana)?;
+
+    init_solana_web3_sys(solana)?;
+
     Ok(())
 }
 

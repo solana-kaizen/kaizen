@@ -1,6 +1,6 @@
 //!
 //! Emulator interface functions for account creation.
-//! 
+//!
 
 use kaizen::accounts::*;
 use kaizen::address::ProgramAddressData;

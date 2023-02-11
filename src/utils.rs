@@ -1,6 +1,6 @@
 //!
 //! General-purpose in-program and client-side utilities
-//! 
+//!
 
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;

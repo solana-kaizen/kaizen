@@ -1,6 +1,6 @@
 //!
 //! Helper structures for PDA generation
-//! 
+//!
 
 use crate::error::*;
 use crate::result::Result;

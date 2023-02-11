@@ -13,7 +13,6 @@ Solana OS Rust framework for platform-neutral application development.
 
  */
 
-
 pub use cfg_if::cfg_if;
 
 extern crate self as kaizen;

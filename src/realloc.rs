@@ -1,6 +1,6 @@
 //!
 //! Account data resizing functions used when converting account templates into accounts.
-//! 
+//!
 
 #[allow(unused_imports)]
 use kaizen::error::*;

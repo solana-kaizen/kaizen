@@ -1,6 +1,6 @@
 //!
 //! Transaction queue management.
-//! 
+//!
 
 use ahash::HashMap;
 use ahash::HashSet;

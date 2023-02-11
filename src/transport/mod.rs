@@ -1,6 +1,6 @@
 //!
 //! Platform-neutral Solana network and authority interface (Solana SDK on native and Web3 APIs in WASM-browser)
-//! 
+//!
 
 mod lookup;
 use downcast::{downcast_sync, AnySync};

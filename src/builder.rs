@@ -1,6 +1,6 @@
 //!
 //! [`Instruction`] builder, used to dynamically generate Solana OS program instructions.
-//! 
+//!
 
 use crate::accounts::{Access, IsSigner, SeedBump, SeedSuffix};
 use crate::error;
@@ -901,7 +901,7 @@ impl InstructionBuilder {
             data: instruction_data,
             accounts,
         };
-log_info!("INSTRUCTION: {:?}", instruction);
+        log_info!("INSTRUCTION: {:?}", instruction);
         Ok(instruction)
     }
 

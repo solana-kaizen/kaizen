@@ -1,6 +1,6 @@
 //!
 //! Solana network interface (WASM-browser)
-//! 
+//!
 #![allow(unused_unsafe)]
 use super::TransportMode;
 use crate::accounts::AccountData;
@@ -16,7 +16,7 @@ use crate::transport::{reflector, Reflector};
 use crate::transport::{Transaction, TransportConfig};
 use crate::utils::pubkey_from_slice;
 use crate::wallet::*;
-use crate::wasm::*;
+// use crate::wasm::*;
 use async_std::sync::RwLock;
 use async_trait::async_trait;
 use js_sys::*;
@@ -33,6 +33,7 @@ use std::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 //use wasm_bindgen_futures::JsFuture;
+use solana_web3_sys::prelude::*;
 use workflow_log::*;
 use workflow_wasm::{init::global, utils};
 
@@ -260,8 +261,7 @@ impl Transport {
             .with_mock_accounts(program_id, authority)
             .await?;
         let emulator: Arc<dyn EmulatorInterface> = Arc::new(simulator);
-        Transport::try_new_with_args(TransportMode::Inproc, None, Some(emulator), config)
-            .await
+        Transport::try_new_with_args(TransportMode::Inproc, None, Some(emulator), config).await
     }
 
     pub async fn try_new(network: &str, config: TransportConfig) -> Result<Arc<Transport>> {
@@ -274,24 +274,13 @@ impl Transport {
 
         if network == "inproc" {
             let emulator: Arc<dyn EmulatorInterface> = Arc::new(Simulator::try_new_with_store()?);
-            Transport::try_new_with_args(
-                TransportMode::Inproc,
-                None,
-                Some(emulator),
-                config,
-            )
-            .await
+            Transport::try_new_with_args(TransportMode::Inproc, None, Some(emulator), config).await
         } else if regex::Regex::new(r"^rpcs?://").unwrap().is_match(network) {
             let emulator = Arc::new(EmulatorRpcClient::new(network)?);
             emulator.connect_as_task()?;
             let emulator: Arc<dyn EmulatorInterface> = emulator;
-            Transport::try_new_with_args(
-                TransportMode::Emulator,
-                None,
-                Some(emulator),
-                config,
-            )
-            .await
+            Transport::try_new_with_args(TransportMode::Emulator, None, Some(emulator), config)
+                .await
         } else if network == "mainnet-beta" || network == "testnet" || network == "devnet" {
             let cluster_api_url_fn =
                 js_sys::Reflect::get(&solana, &JsValue::from("clusterApiUrl"))?;
@@ -313,7 +302,6 @@ impl Transport {
             )
             .await
         } else if regex::Regex::new(r"^https?://").unwrap().is_match(network) {
-
             // let args = Array::new_with_length(1);
             // args.set(0, JsValue::from(network));
             // let ctor = js_sys::Reflect::get(&solana, &JsValue::from("Connection"))?;
@@ -412,7 +400,11 @@ impl Transport {
                 }
             }
             TransportMode::Validator => {
-                let response = self.connection()?.unwrap().get_account_info(&pubkey).await?;
+                let response = self
+                    .connection()?
+                    .unwrap()
+                    .get_account_info(&pubkey)
+                    .await?;
 
                 log_trace!("get_account_info ({}) response: {:#?}", pubkey, response);
 
@@ -499,7 +491,7 @@ impl Transport {
                 Ok(())
             }
             TransportMode::Validator => {
-                let wallet_adapter:WalletAdapter = self.wallet_adapter()?.into();
+                let wallet_adapter: WalletAdapter = self.wallet_adapter()?.into();
                 let connection = self.connection()?.unwrap();
 
                 let recent_block_hash = connection.get_latest_block_hash().await?.block_hash();
@@ -507,7 +499,7 @@ impl Transport {
 
                 let wallet_public_key = wallet_adapter.pubkey();
 
-                let tx_jsv = crate::wasm::Transaction::new();
+                let tx_jsv = solana_web3_sys::transaction::Transaction::new();
                 tx_jsv.set_fee_payer(JsValue::from(wallet_public_key));
                 tx_jsv.set_recent_block_hash(recent_block_hash);
                 tx_jsv.add(instruction.try_into()?);
@@ -515,11 +507,12 @@ impl Transport {
                 let result = wallet_adapter.sign_transaction(&tx_jsv).await?;
                 log_trace!("signTransaction result {:?}", result);
 
-                let result = connection.send_raw_transaction_with_options(
-                    tx_jsv.serialize(),
-                    SendRawTxOptions::new()
-                        .skip_preflight(false)
-                ).await?;
+                let result = connection
+                    .send_raw_transaction_with_options(
+                        tx_jsv.serialize(),
+                        SendRawTxOptions::new().skip_preflight(false),
+                    )
+                    .await?;
 
                 log_trace!("send_raw_transaction result: {:?}", result);
                 Ok(())

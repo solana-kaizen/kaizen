@@ -1,6 +1,6 @@
 //!
 //! Kaizen Emulator RPC client
-//! 
+//!
 
 use crate::accounts::AccountDescriptorList;
 use async_trait::async_trait;

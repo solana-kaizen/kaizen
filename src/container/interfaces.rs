@@ -1,6 +1,6 @@
 //!
 //! Collection interface traits
-//! 
+//!
 use kaizen::prelude::*;
 use kaizen::result::Result;
 

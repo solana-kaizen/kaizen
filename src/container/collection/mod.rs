@@ -1,6 +1,6 @@
 //!
 //! Account collections
-//! 
+//!
 
 mod meta;
 pub use meta::*;

@@ -1,6 +1,6 @@
 //!
 //! User account data structure (client-side [`Identity`] binding) for identity-based applications.
-//! 
+//!
 
 use kaizen::prelude::*;
 use kaizen::result::Result;

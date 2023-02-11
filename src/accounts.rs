@@ -1,6 +1,6 @@
 //!
 //! Client-side and Emulator Account data representation
-//! 
+//!
 
 use solana_program::account_info::AccountInfo;
 

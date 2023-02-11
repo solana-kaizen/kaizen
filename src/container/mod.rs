@@ -1,6 +1,6 @@
-//! 
+//!
 //! Account Containers (segment-based account data representation and management)
-//! 
+//!
 
 pub mod segment;
 pub use segment::*;
@@ -91,7 +91,6 @@ pub enum Containers {
     Identity,
     OrderedCollection,
     // PGPPubkey,
-
     IndexContainers = Ranges::Indexes as u32,
     // BPTreeIndex,
     // BPTreeValues,

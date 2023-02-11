@@ -1,7 +1,7 @@
 //!
 //! Platform-neutral [`Instant`] implementation (based on `u64`) that uses Solana [`Clock`](solana_program::clock::Clock)
 //! when in Solana program environment.
-//! 
+//!
 
 use borsh::*;
 use cfg_if::cfg_if;

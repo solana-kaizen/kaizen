@@ -1,6 +1,6 @@
 //!
 //! Segment-based raw UTF-8 String storage
-//! 
+//!
 
 use crate::container::segment::Segment;
 use crate::result::Result;

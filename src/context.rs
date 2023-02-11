@@ -1,6 +1,6 @@
 //!
 //! Solana OS program execution context (Kaizen deserialization of program instructions).
-//! 
+//!
 
 use cfg_if::cfg_if;
 use std::cell::RefCell;

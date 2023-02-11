@@ -1,6 +1,6 @@
 //!
 //! Web3 Wallet Adaptor WASM32-browser interface
-//! 
+//!
 
 use crate::error;
 use crate::prelude::log_trace;

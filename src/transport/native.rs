@@ -1,6 +1,6 @@
 //!
 //! Solana network interface (native)
-//! 
+//!
 use crate::accounts::AccountData;
 use crate::accounts::*;
 use crate::emulator::client::EmulatorRpcClient;

@@ -1,6 +1,6 @@
 //!
 //! Error data structure used by the Kaizen framework (both in-program and client-side)
-//! 
+//!
 
 use cfg_if::cfg_if;
 
@@ -162,6 +162,7 @@ pub enum ErrorCode {
     ChannelRecvError,
     DataType,
     TransactionAlreadyCompleted,
+    Web3js,
 
     ModuleErrorCodeStart = 0xefff,
     ProgramErrorCodeStart = 0xffff,
@@ -641,6 +642,15 @@ impl<T> From<async_std::channel::SendError<T>> for Error {
 impl From<ClientError> for Error {
     fn from(error: ClientError) -> Error {
         Error::new().with_variant(Variant::ClientError(Arc::new(error)))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl From<solana_web3_sys::error::Error> for Error {
+    fn from(error: solana_web3_sys::error::Error) -> Error {
+        Error::new()
+            .with_code(ErrorCode::Web3js)
+            .with_message(&error.to_string())
     }
 }
 

@@ -1,10 +1,10 @@
 //!
 //! Segment-base Memory-mapped variable-type data
-//! 
+//!
 
-use std::rc::Rc;
-use crate::result::Result;
 use crate::container::segment::Segment;
+use crate::result::Result;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Data<'info, 'refs> {
@@ -19,15 +19,11 @@ impl<'info, 'refs> Data<'info, 'refs> {
     pub fn try_create_from_segment(
         segment: Rc<Segment<'info, 'refs>>,
     ) -> Result<Data<'info, 'refs>> {
-        Ok(Data {
-            segment,
-        })
+        Ok(Data { segment })
     }
 
     pub fn try_load_from_segment(segment: Rc<Segment<'info, 'refs>>) -> Result<Data<'info, 'refs>> {
-        Ok(Data {
-            segment,
-        })
+        Ok(Data { segment })
     }
 
     pub fn as_slice<T>(&self) -> &[T]
@@ -43,7 +39,6 @@ impl<'info, 'refs> Data<'info, 'refs> {
     {
         self.segment.as_slice_mut()
     }
-
 }
 
 impl<'info, 'refs> AsRef<[u8]> for Data<'info, 'refs> {

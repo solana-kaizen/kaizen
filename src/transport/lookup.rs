@@ -1,6 +1,6 @@
 //!
 //! Account lookup synchronizer combining multiple pending async lookups for the same account into a single future.
-//! 
+//!
 
 use crate::result::Result;
 use ahash::AHashMap;

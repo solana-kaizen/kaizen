@@ -1,6 +1,6 @@
 //!
 //! Platform-neutral [`Date`] struct that carries date as the number of days since `0001-01` (proleptic Gregorian calendar) represented by `u32`.
-//! 
+//!
 
 use borsh::*;
 use serde::*;

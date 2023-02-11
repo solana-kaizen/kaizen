@@ -1,6 +1,6 @@
 //!
 //! Collection proxy accounts (for dereferencing arbitrary account sets from vector-based collections)
-//! 
+//!
 
 use kaizen::container::*;
 use kaizen::context::*;

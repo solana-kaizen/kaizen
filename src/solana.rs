@@ -1,6 +1,6 @@
 //!
 //! Solana program interface functions for account creation
-//! 
+//!
 
 use crate::address::ProgramAddressData;
 use crate::result::Result;

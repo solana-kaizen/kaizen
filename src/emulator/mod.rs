@@ -1,10 +1,10 @@
 //!
 //! Solana OS light-weight Emulator environment.
-//! 
+//!
 //! This emulation environment can be run in-program (for unit testing) or using
 //! an RPC server for multi-user interactivity testing. To run a multi-user server-backed
 //! environment, you need to build a custom server that imports your program environment.
-//! 
+//!
 //! Supported:
 //!     - Account creation
 //!     - Account resizing
@@ -13,11 +13,11 @@
 //!     - Program instruction processing (without any type of validation)
 //!     - Solana OS Program execution in native environment
 //!     - Solana OS Program execution in WASM32 environment
-//! 
+//!
 //! Not supported:
 //!     - SPL transfer (but possible via proxy functions)
 //!     - Any kind of signature verification
-//! 
+//!
 
 pub mod client;
 pub mod interface;

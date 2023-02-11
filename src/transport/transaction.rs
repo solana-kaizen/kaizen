@@ -1,6 +1,6 @@
 //!
 //! Solana [`Transaction`] interface for transaction state tracking.
-//! 
+//!
 use ahash::HashSet;
 use kaizen::error::Error;
 use kaizen::prelude::*;
@@ -35,6 +35,7 @@ impl ToString for TransactionStatus {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionMeta {
     /// Optional transaction signature during processing
+    /// #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<Signature>,
     /// Accounts affected by this transaction
     pub accounts: Vec<Pubkey>,
@@ -59,15 +60,36 @@ impl TransactionMeta {
 pub type TxCallback =
     Arc<dyn Fn(Arc<TransactionChain>, Arc<Transaction>) -> Result<()> + core::marker::Send + Sync>;
 
-#[derive(Clone)]
+// #[derive(Clone, Serialize, Deserialize)]
+// pub struct TransactionInfo {
+//     pub name: String,
+//     pub id: Id,
+//     pub meta: Arc<Mutex<TransactionMeta>>,
+// }
+
+// impl From<&Transaction> for TransactionInfo {
+//     fn from(tx: &Transaction) -> Self {
+//         TransactionInfo {
+//             name: tx.name.clone(),
+//             id: tx.id.clone(),
+//             meta: tx.meta.clone()
+//         }
+//     }
+// }
+
+#[derive(Clone, Serialize)]
 pub struct Transaction {
     pub name: String,
     pub id: Id,
+    #[serde(skip)]
     pub instruction: Option<Instruction>,
     pub status: Arc<Mutex<TransactionStatus>>,
     pub meta: Arc<Mutex<TransactionMeta>>,
+    #[serde(skip)]
     pub receiver: Receiver<TransactionResult>,
+    #[serde(skip)]
     pub sender: Sender<TransactionResult>,
+    #[serde(skip)]
     pub callback: Option<Arc<Mutex<TxCallback>>>,
 }
 
@@ -266,8 +288,23 @@ impl TransactionChainInner {
     }
 }
 
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct TransactionChainInfo {
+//     pub id: Id
+// }
+
+// impl From<&TransactionChain> for TransactionChainInfo {
+//     fn from(tx_chain: &TransactionChain) -> Self {
+//         TransactionChainInfo {
+//             id: tx_chain.id,
+//         }
+//     }
+// }
+
+#[derive(Serialize)]
 pub struct TransactionChain {
     pub id: Id,
+    #[serde(skip)]
     pub inner: Arc<Mutex<TransactionChainInner>>,
 }
 

@@ -1,6 +1,6 @@
 //!
 //! Account template sequence tracker for identity-based account chains.
-//! 
+//!
 
 use kaizen::identity::program::Identity;
 use kaizen::prelude::*;

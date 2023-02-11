@@ -1,6 +1,6 @@
 //!
 //! PDA collection based on segment-defined seed vector
-//! 
+//!
 
 use super::meta::*;
 use crate::container::Container;
@@ -194,7 +194,7 @@ where
             false,
         )?;
 
-        self.meta.set_len(next_index+1);
+        self.meta.set_len(next_index + 1);
         // log_info!("pda collection creating index {} ...done",next_index);
         let container = T::try_create(tpl_account_info)?;
         Ok(container)

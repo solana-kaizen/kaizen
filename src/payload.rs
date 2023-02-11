@@ -1,8 +1,8 @@
 //!
 //! Solana OS Program Instruction Payload header.
-//! 
+//!
 //! This header defines the data layout for [`Context`](crate::context::Context) deserialization.
-//! 
+//!
 
 use kaizen::result::Result;
 
