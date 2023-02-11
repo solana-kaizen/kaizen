@@ -515,7 +515,6 @@ impl InstructionBuilder {
         })
     }
 
-    // pub fn with_account_templates_with_custom_suffixes(self: Arc<Self>, suffixes : &[&str]) -> Arc<Self> {
     pub fn with_generic_account_templates_with_custom_suffixes(
         self: Arc<Self>,
         suffixes: &[&[u8]],
@@ -532,8 +531,6 @@ impl InstructionBuilder {
         })
     }
 
-    // pub fn with_account_templates_with_custom_domains_and_suffixes(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
-    // pub fn with_account_templates_with_custom_seeds(self: Arc<Self>, suffixes : &[(AddressDomain,&str)]) -> Arc<Self> {
     pub fn with_generic_account_templates_with_seeds(
         self: Arc<Self>,
         suffixes: &[(AddressDomain, &[u8])],
