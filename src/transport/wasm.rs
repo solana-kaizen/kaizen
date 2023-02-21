@@ -234,7 +234,7 @@ impl Transport {
                 let wallet_adapter = &self.wallet_adapter()?;
                 let public_key =
                     unsafe { js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))? };
-                let pubkey = pubkey_from_slice(&utils::try_get_vec_from_bn(&public_key)?)?;
+                let pubkey = pubkey_from_slice(&utils::try_get_vec_u8_from_bn(&public_key)?)?;
                 Ok(pubkey)
             }
 
@@ -242,7 +242,7 @@ impl Transport {
                 let wallet_adapter = &self.wallet_adapter()?;
                 let public_key =
                     unsafe { js_sys::Reflect::get(wallet_adapter, &JsValue::from("publicKey"))? };
-                let pubkey = pubkey_from_slice(&utils::try_get_vec_from_bn(&public_key)?)?;
+                let pubkey = pubkey_from_slice(&utils::try_get_vec_u8_from_bn(&public_key)?)?;
                 Ok(pubkey)
             }
         }
@@ -418,14 +418,14 @@ impl Transport {
                 // let owner = Pubkey::new_from_array(
                 //     <[u8; 32]>::try_from(
                 //         <&[u8]>::clone(
-                //             &utils::try_get_vec_from_bn_prop(&response, "owner")?.as_slice()
+                //             &utils::try_get_vec_u8_from_bn_prop(&response, "owner")?.as_slice()
                 //         )
                 //     )?
                 // );
                 let owner =
-                    pubkey_from_slice(&utils::try_get_vec_from_bn_prop(&response, "owner")?)?;
-                // let owner = Pubkey::new(&utils::try_get_vec_from_bn_prop(&response, "owner")?);
-                let data = utils::try_get_vec_from_prop(&response, "data")?;
+                    pubkey_from_slice(&utils::try_get_vec_u8_from_bn_prop(&response, "owner")?)?;
+                // let owner = Pubkey::new(&utils::try_get_vec_u8_from_bn_prop(&response, "owner")?);
+                let data = utils::try_get_vec_u8_from_prop(&response, "data")?;
                 let _executable = utils::try_get_bool_from_prop(&response, "executable")?;
 
                 let reference = Arc::new(AccountDataReference::new(

@@ -427,7 +427,7 @@ impl Error {
 
 #[cfg(target_arch = "wasm32")]
 pub fn parse_js_error(e: wasm_bindgen::JsValue, msg: Option<&str>) -> Error {
-    let mut err = match workflow_wasm::utils::try_get_string(&e, "message") {
+    let mut err = match workflow_wasm::utils::try_get_string_from_prop(&e, "message") {
         Ok(msg) => Error::new().with_message(&msg),
         Err(e) => {
             if let Some(msg) = msg {
