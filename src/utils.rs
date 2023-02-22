@@ -7,7 +7,10 @@ use solana_program::pubkey::Pubkey;
 
 pub fn shorten_pubkey(pubkey: &Pubkey) -> String {
     let key_str = pubkey.to_string();
-    let key_str = key_str.as_str();
+    shorten_pubkey_str(key_str.as_str())
+}
+
+pub fn shorten_pubkey_str(key_str: &str) -> String {
     let key_str = format!(
         "{}....{}",
         &key_str[0..4],
