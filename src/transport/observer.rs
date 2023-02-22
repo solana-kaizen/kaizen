@@ -134,6 +134,9 @@ impl Observer for BasicObserver {
 }
 
 mod wasm {
+    //!
+    //! WASM interface implementation of [`Observer`](super::Observer).
+    //! 
     use super::*;
     use crate::result::Result;
     use js_sys::{Function, Object};
@@ -144,6 +147,7 @@ mod wasm {
     use workflow_wasm::prelude::*;
 
     #[derive(Clone, Serialize)]
+    #[serde(rename_all = "kebab-case")]
     pub enum NotificationType {
         ChainCreated,
         ChainComplete,
@@ -157,8 +161,15 @@ mod wasm {
 
     #[derive(Clone, Serialize)]
     pub struct TransactionNotification {
+
+        /// Transaction chain info
+        #[serde(rename = "txChain")]
         tx_chain: Arc<TransactionChain>,
+
+        /// Transaction info
         transaction: Arc<Transaction>,
+
+        /// Error string (optional)
         #[serde(skip_serializing_if = "Option::is_none")]
         error: Option<String>,
     }
@@ -190,11 +201,6 @@ mod wasm {
     }
 
     impl TransactionObserverInner {
-        // pub fn new() -> Self {
-        //     TransactionObserverInner {
-        //         notification_callback: Arc::new(Mutex::new(None)),
-        //     }
-        // }
 
         pub async fn set_handler(&self, callback: JsValue) -> Result<()> {
             if callback.is_function() {
@@ -292,6 +298,24 @@ mod wasm {
         }
     }
 
+    /// [`TransactionObserver`] is an [`Observer`](super::Observer) implementation
+    /// meant to be used in WASM. TransactionObserver exposes two main functions:
+    /// 
+    /// - [`set_handler()`] (`setHandler()` in JavaScript)
+    /// - [`remove_handler()`] (`removeHandler()` in JavaScript)
+    /// 
+    /// When [`set_handler()`] is invoked, the observer instance auto-registers itself
+    /// with the global [`Transport`]. When [`remove_handler()`] is invoked, it 
+    /// unregisters itself from the global [`Transport`].
+    /// 
+    /// While registered, the supplied handler will receive [`TransactionNotification`]
+    /// events as a single object containing two fields:
+    /// 
+    /// `{ event : "...", data : "..." }`
+    /// 
+    /// The incoming `event` value contains kebab representation of the [`NotificationType`] 
+    /// enum. The `data` contains the [`TransactionNotification`] object.
+    /// 
     #[wasm_bindgen]
     #[derive(Default)]
     pub struct TransactionObserver {
