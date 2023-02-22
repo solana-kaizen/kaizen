@@ -138,8 +138,9 @@ mod wasm {
     use crate::result::Result;
     use js_sys::{Function, Object};
     use serde::Serialize;
-    pub use serde_wasm_bindgen::*;
+    use serde_wasm_bindgen::*;
     use std::sync::{Arc, Mutex};
+    use workflow_core::id::Id;
     use workflow_wasm::prelude::*;
 
     #[derive(Clone, Serialize)]
@@ -183,22 +184,18 @@ mod wasm {
         }
     }
 
-    #[wasm_bindgen]
     #[derive(Default)]
-    pub struct TransactionObserver {
+    pub struct TransactionObserverInner {
         notification_callback: Arc<Mutex<Option<sendable::Function>>>,
     }
 
-    #[wasm_bindgen]
-    impl TransactionObserver {
-        #[wasm_bindgen(constructor)]
-        pub fn new() -> Self {
-            TransactionObserver {
-                notification_callback: Arc::new(Mutex::new(None)),
-            }
-        }
+    impl TransactionObserverInner {
+        // pub fn new() -> Self {
+        //     TransactionObserverInner {
+        //         notification_callback: Arc::new(Mutex::new(None)),
+        //     }
+        // }
 
-        #[wasm_bindgen(js_name = "setHandler")]
         pub async fn set_handler(&self, callback: JsValue) -> Result<()> {
             if callback.is_function() {
                 let fn_callback: Function = callback.into();
@@ -212,7 +209,6 @@ mod wasm {
             Ok(())
         }
 
-        #[wasm_bindgen(js_name = "removeHandler")]
         pub fn remove_handler(&self) {
             *self.notification_callback.lock().unwrap() = None;
         }
@@ -238,7 +234,7 @@ mod wasm {
     }
 
     #[async_trait]
-    impl Observer for TransactionObserver {
+    impl Observer for TransactionObserverInner {
         async fn tx_chain_created(&self, tx_chain: Arc<TransactionChain>) {
             self.post_notification(NotificationType::ChainCreated, tx_chain);
         }
@@ -293,6 +289,62 @@ mod wasm {
                 NotificationType::TransactionFailure,
                 TransactionNotification::new_with_error(tx_chain, transaction, err),
             );
+        }
+    }
+
+    #[wasm_bindgen]
+    #[derive(Default)]
+    pub struct TransactionObserver {
+        observer_id: Id,
+        inner: Arc<TransactionObserverInner>,
+    }
+
+    #[wasm_bindgen]
+    impl TransactionObserver {
+        #[wasm_bindgen(constructor)]
+        pub fn new() -> Self {
+            TransactionObserver {
+                observer_id: Id::new(),
+                inner: Arc::new(TransactionObserverInner::default()),
+            }
+        }
+
+        #[wasm_bindgen(js_name = "setHandler")]
+        pub async fn set_handler(&self, callback: JsValue) -> Result<()> {
+            self.inner.set_handler(callback).await?;
+
+            let transport = Transport::global().unwrap_or_else(|err| {
+                panic!("TransactionObserver - missing global transport: {err}");
+            });
+
+            transport
+                .queue
+                .register_observer(&self.observer_id, self.inner.clone())
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "TransactionObserver - unable to register observer with transport: {err}"
+                    );
+                });
+
+            Ok(())
+        }
+
+        #[wasm_bindgen(js_name = "removeHandler")]
+        pub fn remove_handler(&self) {
+            let transport = Transport::global().unwrap_or_else(|err| {
+                panic!("TransactionObserver - missing global transport: {err}");
+            });
+
+            transport
+                .queue
+                .unregister_observer(&self.observer_id)
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "TransactionObserver - unable to unregister observer with transport: {err}"
+                    );
+                });
+
+            self.inner.remove_handler();
         }
     }
 }
