@@ -903,7 +903,8 @@ mod client {
                     *space as usize
                 }
 
-                pub fn init_data_len(data : &mut Vec<u8>, data_len : usize) {
+                // pub fn init_data_len(data : &mut Vec<u8>, data_len : usize) {
+                pub fn init_data_len(data : &mut [u8], data_len : usize) {
                     let data_len_ptr: &mut u32 = unsafe { std::mem::transmute(&mut data[0]) };
                     *data_len_ptr = data_len as u32;
                 }
