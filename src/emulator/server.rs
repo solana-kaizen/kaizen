@@ -59,7 +59,7 @@ impl Server {
     }
 
     pub fn interface(self: Arc<Server>) -> Interface<Arc<Server>, (), EmulatorOps> {
-        let mut interface = Interface::<Arc<Server>, (), EmulatorOps>::new(self.clone());
+        let mut interface = Interface::<Arc<Server>, (), EmulatorOps>::new(self);
 
         interface.method(
             EmulatorOps::Lookup,

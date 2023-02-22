@@ -61,7 +61,7 @@ mod wasm_bridge {
             let transport =
                 super::Transport::try_new(network.as_str(), super::TransportConfig::default())
                     .await
-                    .map_err(|e| JsValue::from(e))?;
+                    .map_err(JsValue::from)?;
             Ok(Transport { transport })
         }
         #[wasm_bindgen(js_name = "withWallet")]
@@ -81,7 +81,7 @@ mod wasm_bridge {
                 TransportConfig::default(),
             )
             .await
-            .map_err(|e| JsValue::from(e))?;
+            .map_err(JsValue::from)?;
 
             Ok(Transport { transport })
         }
@@ -119,11 +119,11 @@ unsafe impl Sync for Transport {}
 
 impl Transport {
     pub fn workflow() -> std::result::Result<JsValue, JsValue> {
-        Ok(workflow()?)
+        workflow()
     }
 
     pub fn solana() -> std::result::Result<JsValue, JsValue> {
-        Ok(solana()?)
+        solana()
     }
 
     pub fn mode(&self) -> TransportMode {
@@ -152,7 +152,7 @@ impl Transport {
             )
             .into());
         }
-        Ok(wallet.clone())
+        Ok(wallet)
     }
 
     pub fn set_custom_authority(&self, key: Option<Pubkey>) -> Result<()> {
@@ -161,10 +161,10 @@ impl Transport {
     }
 
     pub fn public_key_ctor() -> std::result::Result<JsValue, JsValue> {
-        Ok(js_sys::Reflect::get(
+        js_sys::Reflect::get(
             &Self::solana()?,
             &JsValue::from("PublicKey"),
-        )?)
+        )
     }
 
     #[inline(always)]
@@ -229,7 +229,7 @@ impl Transport {
 
             TransportMode::Emulator => {
                 if let Some(key) = self.custom_authority.lock()?.as_ref() {
-                    return Ok(key.clone());
+                    return Ok(*key);
                 }
                 let wallet_adapter = &self.wallet_adapter()?;
                 let public_key =
@@ -266,7 +266,7 @@ impl Transport {
 
     pub async fn try_new(network: &str, config: TransportConfig) -> Result<Arc<Transport>> {
         log_trace!("Creating transport (rust) for network {}", network);
-        if let Some(_) = unsafe { (&TRANSPORT).as_ref() } {
+        if unsafe { TRANSPORT.is_some() } {
             return Err(error!("Transport already initialized"));
         }
 
@@ -287,7 +287,7 @@ impl Transport {
             let args = Array::new_with_length(1);
             args.set(0, JsValue::from(network));
             let url =
-                js_sys::Reflect::apply(&cluster_api_url_fn.into(), &JsValue::NULL, &args.into())?;
+                js_sys::Reflect::apply(&cluster_api_url_fn.into(), &JsValue::NULL, &args)?;
             log_trace!("{network}: {:?}", url.as_string());
 
             // let args = Array::new_with_length(1);
@@ -318,8 +318,7 @@ impl Transport {
         } else {
             return Err(error!(
                 "Transport cluster must be mainnet-beta, devnet, testnet, simulation"
-            )
-            .into());
+            ));
         }
     }
 
@@ -360,18 +359,18 @@ impl Transport {
 
     pub fn global() -> Result<Arc<Transport>> {
         let transport = unsafe {
-            (&TRANSPORT)
+            TRANSPORT
                 .as_ref()
                 .expect("Transport is not initialized")
                 .clone()
         };
-        Ok(transport.clone())
+        Ok(transport)
     }
 
     #[inline(always)]
-    pub fn emulator<'transport>(
-        &'transport self,
-    ) -> Option<&'transport Arc<dyn EmulatorInterface>> {
+    pub fn emulator(
+        &self,
+    ) -> Option<&Arc<dyn EmulatorInterface>> {
         self.emulator.as_ref()
     }
 
@@ -403,7 +402,7 @@ impl Transport {
                 let response = self
                     .connection()?
                     .unwrap()
-                    .get_account_info(&pubkey)
+                    .get_account_info(pubkey)
                     .await?;
 
                 log_trace!("get_account_info ({}) response: {:#?}", pubkey, response);
@@ -430,7 +429,7 @@ impl Transport {
 
                 let reference = Arc::new(AccountDataReference::new(
                     AccountData::new_static_with_args(
-                        pubkey.clone(),
+                        *pubkey,
                         owner,
                         lamports,
                         &data,
@@ -447,7 +446,7 @@ impl Transport {
         let pubkey_bytes = pubkey.to_bytes();
         let u8arr = unsafe { js_sys::Uint8Array::view(&pubkey_bytes[..]) };
         let pkargs = Array::new_with_length(1);
-        pkargs.set(0 as u32, u8arr.into());
+        pkargs.set(0u32, u8arr.into());
         // TODO - cache ctor inside Transport
         let ctor = unsafe { js_sys::Reflect::get(&Self::solana()?, &JsValue::from("PublicKey"))? };
         let pk_jsv = unsafe { js_sys::Reflect::construct(&ctor.into(), &pkargs)? };
@@ -473,13 +472,13 @@ impl Transport {
                     .reflect(reflector::Event::EmulatorLogs(resp.logs));
                 self.reflector.reflect(reflector::Event::WalletRefresh(
                     "SOL".into(),
-                    authority.clone(),
+                    authority,
                 ));
                 match self.balance().await {
                     Ok(balance) => {
                         self.reflector.reflect(reflector::Event::WalletBalance(
                             "SOL".into(),
-                            authority.clone(),
+                            authority,
                             balance,
                         ));
                     }
@@ -500,7 +499,7 @@ impl Transport {
                 let wallet_public_key = wallet_adapter.pubkey();
 
                 let tx_jsv = solana_web3_sys::transaction::Transaction::new();
-                tx_jsv.set_fee_payer(JsValue::from(wallet_public_key));
+                tx_jsv.set_fee_payer(wallet_public_key);
                 tx_jsv.set_recent_block_hash(recent_block_hash);
                 tx_jsv.add(instruction.try_into()?);
 
@@ -549,11 +548,11 @@ impl super::Interface for Transport {
     }
 
     fn purge(&self, pubkey: Option<&Pubkey>) -> Result<()> {
-        Ok(self.cache.purge(pubkey)?)
+        self.cache.purge(pubkey)
     }
 
     async fn lookup(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        let reference = self.clone().lookup_local(pubkey).await?;
+        let reference = self.lookup_local(pubkey).await?;
         match reference {
             Some(reference) => Ok(Some(reference)),
             None => Ok(self.lookup_remote(pubkey).await?),
@@ -561,18 +560,18 @@ impl super::Interface for Transport {
     }
 
     async fn lookup_local(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        let pubkey = Arc::new(pubkey.clone());
+        let pubkey = Arc::new(*pubkey);
         Ok(self.cache.lookup(&pubkey)?)
     }
 
     async fn lookup_remote(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>> {
-        let lookup_handler = &self.clone().lookup_handler;
+        let lookup_handler = &self.lookup_handler;
         let request_type = lookup_handler.queue(pubkey).await;
         let result = match request_type {
             RequestType::New(receiver) => {
                 self.reflector
                     .reflect(reflector::Event::PendingLookups(lookup_handler.pending()));
-                let response = self.clone().lookup_remote_impl(pubkey).await;
+                let response = self.lookup_remote_impl(pubkey).await;
                 lookup_handler.complete(pubkey, response).await;
                 receiver.recv().await?
             }

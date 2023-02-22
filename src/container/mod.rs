@@ -302,24 +302,31 @@ cfg_if! {
 
 
                     let mut fn_names = Vec::new();
-                    let keys = js_sys::Reflect::own_keys(&pkg)?;
+                    let keys = js_sys::Reflect::own_keys(pkg)?;
                     let keys_vec = keys.to_vec();
-                    for idx in 0..keys_vec.len() {
-                        let name: String = keys_vec[idx].as_string().unwrap_or("".into());
+                    for key in keys_vec.iter() {
+                        let name: String = key.as_string().unwrap_or("".into());
                         if name.starts_with("container_declaration_register") {
                             // log_trace!("init_bindings() - found one: {}", name);
-                            fn_names.push(keys_vec[idx].clone());
+                            fn_names.push(key.clone());
                         }
                     }
+                    // for idx in 0..keys_vec.len() {
+                    //     let name: String = keys_vec[idx].as_string().unwrap_or("".into());
+                    //     if name.starts_with("container_declaration_register") {
+                    //         // log_trace!("init_bindings() - found one: {}", name);
+                    //         fn_names.push(keys_vec[idx].clone());
+                    //     }
+                    // }
 
-                    if fn_names.len() == 0 {
+                    if fn_names.is_empty() {
                         panic!("kaizen::container::registry::with_containers(): no registered containers found!");
                     }
 
                     for fn_name in fn_names.iter() {
-                        let fn_jsv = js_sys::Reflect::get(&pkg,fn_name)?;
+                        let fn_jsv = js_sys::Reflect::get(pkg,fn_name)?;
                         let args = Array::new();
-                        let _ret_jsv = js_sys::Reflect::apply(&fn_jsv.into(),&pkg,&args.into())?;
+                        let _ret_jsv = js_sys::Reflect::apply(&fn_jsv.into(),pkg,&args)?;
                     }
 
                     // let epfns = keys.filter(|v,idx,arr| {

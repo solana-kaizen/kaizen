@@ -89,16 +89,14 @@ pub fn account_info_realloc(
 ) -> Result<()> {
     let orig_len = account_info.data_len();
 
-    if is_alloc == false {
-        if new_len > orig_len && new_len - orig_len > MAX_PERMITTED_DATA_INCREASE {
-            #[cfg(target_os = "solana")]
-            return Err(error_code!(ErrorCode::MaxPermittedAccountDataIncrease));
-            #[cfg(not(target_os = "solana"))]
-            panic!(
-                "maximum permitted account data increase - orig len: {} new len: {}",
-                orig_len, new_len
-            );
-        }
+    if !is_alloc && (new_len > orig_len && new_len - orig_len > MAX_PERMITTED_DATA_INCREASE) {
+        #[cfg(target_os = "solana")]
+        return Err(error_code!(ErrorCode::MaxPermittedAccountDataIncrease));
+        #[cfg(not(target_os = "solana"))]
+        panic!(
+            "maximum permitted account data increase - orig len: {} new len: {}",
+            orig_len, new_len
+        );
     }
 
     unsafe {

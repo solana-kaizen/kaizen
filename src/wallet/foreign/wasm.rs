@@ -46,10 +46,10 @@ impl super::WalletInterface for Wallet {
             .expect("Wallet: unable to get Installed property from WalletReadyState.");
         let mut adapters_info = Vec::new();
         for (index, adapter) in adapters.iter().enumerate() {
-            let ready_state = utils::try_get_string_from_prop(&adapter, "readyState")?;
+            let ready_state = utils::try_get_string_from_prop(adapter, "readyState")?;
             adapters_info.push(super::Adapter {
-                icon: utils::try_get_string_from_prop(&adapter, "icon")?,
-                name: utils::try_get_string_from_prop(&adapter, "name")?,
+                icon: utils::try_get_string_from_prop(adapter, "icon")?,
+                name: utils::try_get_string_from_prop(adapter, "name")?,
                 index,
                 detected: ready_state.eq(&installed),
             });
@@ -62,7 +62,7 @@ impl super::WalletInterface for Wallet {
         let adapters = wasm_utils::adapters()?;
         let mut adapter_selection = None;
         for (index, a) in adapters.iter().enumerate() {
-            let name = utils::try_get_string_from_prop(&a, "name")?;
+            let name = utils::try_get_string_from_prop(a, "name")?;
             if let Some(adapter) = &adapter {
                 if adapter.index == index && adapter.name.eq(&name) {
                     adapter_selection = Some(a);

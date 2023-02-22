@@ -271,6 +271,12 @@ where
         unsafe { &mut *((data[(data_offset + idx * mem::size_of::<T>())..]).as_ptr() as *mut T) }
     }
 
+    /// 
+    /// # Safety
+    /// 
+    /// May cause segment data displacement. Must not retain or must re-acquire
+    /// any segment memory referencing data structures (references, slices or pointers).
+    /// 
     pub unsafe fn try_resize_for_items(&self, records: usize, zero_init: bool) -> Result<()> {
         log_trace!("try_resize_for_items records:{}", records);
         let capacity = self.get_capacity();
@@ -297,6 +303,12 @@ where
         Ok(())
     }
 
+    /// 
+    /// # Safety
+    /// 
+    /// May cause segment data displacement. Must not retain or must re-acquire
+    /// any segment memory referencing data structures (references, slices or pointers).
+    /// 
     pub unsafe fn try_insert(&self, record: &T) -> Result<()>
 // where T: 'info
     {
@@ -305,16 +317,25 @@ where
         Ok(())
     }
 
+    /// 
+    /// # Safety
+    /// 
+    /// May cause segment data displacement. Must not retain or must re-acquire
+    /// any segment memory referencing data structures (references, slices or pointers).
+    /// 
     pub unsafe fn try_insert_at(&self, idx: usize, record: &T) -> Result<()> {
         let dest = self.try_allocate_at(idx, false)?;
         *dest = *record;
         Ok(())
     }
 
-    // pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T> {
-    // pub unsafe fn try_allocate(&self, zero_init:bool) -> Result<&'refs mut T>
+    /// 
+    /// # Safety
+    /// 
+    /// May cause segment data displacement. Must not retain or must re-acquire
+    /// any segment memory referencing data structures (references, slices or pointers).
+    /// 
     pub unsafe fn try_allocate(&self, zero_init: bool) -> Result<&'refs mut T>
-// where T : 'info
     {
         self.try_allocate_at(self.len(), zero_init)
     }
@@ -323,6 +344,12 @@ where
         mem::size_of::<ArrayMeta>() + idx * mem::size_of::<T>()
     }
 
+    /// 
+    /// # Safety
+    /// 
+    /// May cause segment data displacement. Must not retain or must re-acquire
+    /// any segment memory referencing data structures (references, slices or pointers).
+    /// 
     pub unsafe fn try_allocate_at(&self, idx: usize, zero_init: bool) -> Result<&'refs mut T> {
         let records_before = self.len();
         let capacity = self.get_capacity();
@@ -386,6 +413,12 @@ where
         self.try_get_mut_at(idx)
     }
 
+    /// 
+    /// # Safety
+    /// 
+    /// May cause segment data displacement. Must not retain or must re-acquire
+    /// any segment memory referencing data structures (references, slices or pointers).
+    /// 
     pub unsafe fn try_remove_at(&self, idx: usize, realloc: bool) -> Result<()> {
         if idx >= self.len() {
             return Err(ErrorCode::MappedArrayBounds.into());
