@@ -42,10 +42,13 @@ where
     }
 
     #[inline]
-    pub fn load(&self) -> Result<T> {
+    pub fn load(&self) -> Result<Option<Box<T>>> {
         let mut src = self.segment.as_slice::<u8>();
+        if src.is_empty() {
+            return Ok(None);
+        }
         let v = BorshDeserialize::deserialize(&mut src)?;
-        Ok(v)
+        Ok(Some(Box::new(v)))
     }
 
     #[inline]
