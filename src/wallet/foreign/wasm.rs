@@ -4,8 +4,8 @@
 
 use crate::error;
 use crate::prelude::log_trace;
-use crate::transport::Transport;
 use crate::transport::Interface;
+use crate::transport::Transport;
 use async_trait::async_trait;
 use js_sys;
 use kaizen::error::{js_error, parse_js_error};

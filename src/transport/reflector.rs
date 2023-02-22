@@ -1,21 +1,20 @@
 //!
 //! Client-side Transport activity tracker (for transactions, wallet and emulator updates).
 //!
-use crate::result::Result;
 use crate::error::Error;
+use crate::result::Result;
 use ahash::HashMap;
 use futures::{select, FutureExt};
-use js_sys::{Object, Function};
+use js_sys::{Function, Object};
 use solana_program::pubkey::Pubkey;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
-use workflow_core::channel::{unbounded, Receiver, Sender, DuplexChannel};
+use workflow_core::channel::{unbounded, DuplexChannel, Receiver, Sender};
 use workflow_core::id::Id;
 use workflow_core::task::*;
 use workflow_log::log_error;
 use workflow_wasm::prelude::*;
-
 
 use super::Transport;
 
@@ -31,7 +30,7 @@ pub enum Event {
 
 impl TryFrom<&Event> for JsValue {
     type Error = Error;
-    fn try_from(event: &Event) -> std::result::Result<JsValue,Self::Error> {
+    fn try_from(event: &Event) -> std::result::Result<JsValue, Self::Error> {
         let object = Object::new();
         match event {
             Event::PendingLookups(count) => {
@@ -115,11 +114,10 @@ impl Reflector {
     }
 }
 
-
 #[wasm_bindgen]
 pub struct ReflectorClient {
     callback: Arc<Mutex<Option<sendable::Function>>>,
-    task_running : AtomicBool,
+    task_running: AtomicBool,
     task_ctl: DuplexChannel,
 }
 
@@ -133,11 +131,10 @@ impl Default for ReflectorClient {
 impl ReflectorClient {
     #[wasm_bindgen(constructor)]
     pub fn new() -> ReflectorClient {
-
         ReflectorClient {
             callback: Arc::new(Mutex::new(None)),
             task_running: AtomicBool::new(false),
-            task_ctl : DuplexChannel::oneshot()
+            task_ctl: DuplexChannel::oneshot(),
         }
     }
 
@@ -157,7 +154,7 @@ impl ReflectorClient {
         Ok(())
     }
 
-    /// `removeHandler` must be called when releasing ReflectorClient 
+    /// `removeHandler` must be called when releasing ReflectorClient
     /// to stop the background event processing task
     #[wasm_bindgen(js_name = "removeHandler")]
     pub fn remove_handler(&self) -> Result<()> {
@@ -212,7 +209,10 @@ impl ReflectorClient {
     pub async fn stop_notification_task(&self) -> Result<()> {
         if self.task_running.load(Ordering::SeqCst) {
             self.task_running.store(false, Ordering::SeqCst);
-            self.task_ctl.signal(()).await.map_err(|err| JsError::new(&err.to_string()))?;
+            self.task_ctl
+                .signal(())
+                .await
+                .map_err(|err| JsError::new(&err.to_string()))?;
         }
         Ok(())
     }

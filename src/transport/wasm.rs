@@ -161,10 +161,7 @@ impl Transport {
     }
 
     pub fn public_key_ctor() -> std::result::Result<JsValue, JsValue> {
-        js_sys::Reflect::get(
-            &Self::solana()?,
-            &JsValue::from("PublicKey"),
-        )
+        js_sys::Reflect::get(&Self::solana()?, &JsValue::from("PublicKey"))
     }
 
     #[inline(always)]
@@ -286,8 +283,7 @@ impl Transport {
                 js_sys::Reflect::get(&solana, &JsValue::from("clusterApiUrl"))?;
             let args = Array::new_with_length(1);
             args.set(0, JsValue::from(network));
-            let url =
-                js_sys::Reflect::apply(&cluster_api_url_fn.into(), &JsValue::NULL, &args)?;
+            let url = js_sys::Reflect::apply(&cluster_api_url_fn.into(), &JsValue::NULL, &args)?;
             log_trace!("{network}: {:?}", url.as_string());
 
             // let args = Array::new_with_length(1);
@@ -368,9 +364,7 @@ impl Transport {
     }
 
     #[inline(always)]
-    pub fn emulator(
-        &self,
-    ) -> Option<&Arc<dyn EmulatorInterface>> {
+    pub fn emulator(&self) -> Option<&Arc<dyn EmulatorInterface>> {
         self.emulator.as_ref()
     }
 
@@ -399,11 +393,7 @@ impl Transport {
                 }
             }
             TransportMode::Validator => {
-                let response = self
-                    .connection()?
-                    .unwrap()
-                    .get_account_info(pubkey)
-                    .await?;
+                let response = self.connection()?.unwrap().get_account_info(pubkey).await?;
 
                 log_trace!("get_account_info ({}) response: {:#?}", pubkey, response);
 
@@ -428,13 +418,7 @@ impl Transport {
                 let _executable = utils::try_get_bool_from_prop(&response, "executable")?;
 
                 let reference = Arc::new(AccountDataReference::new(
-                    AccountData::new_static_with_args(
-                        *pubkey,
-                        owner,
-                        lamports,
-                        &data,
-                        rent_epoch,
-                    ),
+                    AccountData::new_static_with_args(*pubkey, owner, lamports, &data, rent_epoch),
                 ));
                 self.cache.store(&reference)?;
                 Ok(Some(reference))
@@ -470,10 +454,8 @@ impl Transport {
 
                 self.reflector
                     .reflect(reflector::Event::EmulatorLogs(resp.logs));
-                self.reflector.reflect(reflector::Event::WalletRefresh(
-                    "SOL".into(),
-                    authority,
-                ));
+                self.reflector
+                    .reflect(reflector::Event::WalletRefresh("SOL".into(), authority));
                 match self.balance().await {
                     Ok(balance) => {
                         self.reflector.reflect(reflector::Event::WalletBalance(

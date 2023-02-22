@@ -224,8 +224,12 @@ mod wasm {
         {
             if let Some(callback) = self.notification_callback.lock().unwrap().as_ref() {
                 let object = Object::new();
-                object.set("event",&to_value(&op).unwrap()).expect("TransactionObserver::post_notification() event serialization failure");
-                object.set("data",&to_value(&payload).unwrap()).expect("TransactionObserver::post_notification() event serialization failure");
+                object
+                    .set("event", &to_value(&op).unwrap())
+                    .expect("TransactionObserver::post_notification() event serialization failure");
+                object
+                    .set("data", &to_value(&payload).unwrap())
+                    .expect("TransactionObserver::post_notification() event serialization failure");
                 if let Err(err) = callback.0.call1(&JsValue::undefined(), &object) {
                     log_error!("Error while executing notification callback: {:?}", err);
                 }
