@@ -115,13 +115,13 @@ impl Reflector {
 }
 
 ///
-/// [`ReflectorClient`] is an object meant to be use in WASM environment to 
+/// [`ReflectorClient`] is an object meant to be use in WASM environment to
 /// process [`Transport`] events. [`ReflectorClient`] auto-registers with the
 /// global [`Transport`] and on the event processing task start and unregisters
 /// when the event processing stop.  
-/// 
-/// 
-/// 
+///
+///
+///
 #[wasm_bindgen]
 pub struct ReflectorClient {
     callback: Arc<Mutex<Option<sendable::Function>>>,
