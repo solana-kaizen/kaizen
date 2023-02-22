@@ -37,18 +37,6 @@ pub fn pubkey_from_slice(slice: &[u8]) -> crate::result::Result<Pubkey> {
     Ok(pubkey)
 }
 
-/// Generates a [`Pubkey`] filled with random bytes (used explicitly in unit tests)
-#[cfg(not(target_os = "solana"))]
-pub fn generate_random_pubkey() -> Pubkey {
-    // Pubkey::new(&rand::random::<[u8; 32]>())
-    Pubkey::new_from_array(rand::random::<[u8; 32]>())
-}
-
-#[cfg(target_os = "solana")]
-pub fn generate_random_pubkey() -> Pubkey {
-    Pubkey::new_unique()
-}
-
 #[inline(always)]
 pub fn fill_buffer_u8(buffer: &mut [u8], v: u8) {
     for ptr in buffer.iter_mut() {

@@ -65,7 +65,7 @@ cfg_if::cfg_if! {
             InstructionBuilder,
             InstructionBuilderConfig,
         };
-        pub use kaizen::utils::generate_random_pubkey;
+        pub use kaizen::pubkey::*;
         pub use kaizen::accounts::{AccountData,AccountDataReference};
         pub use kaizen::transport::*;
 

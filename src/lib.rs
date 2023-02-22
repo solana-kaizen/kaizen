@@ -45,6 +45,7 @@ pub mod utils;
 cfg_if! {
     if #[cfg(not(target_os = "solana"))] {
         pub mod wasm;
+        pub mod pubkey;
         pub mod builder;
         pub mod sequencer;
         pub mod client;

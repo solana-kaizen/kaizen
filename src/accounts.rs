@@ -60,7 +60,7 @@ pub type SeedBump = u8;
 mod client {
 
     use crate::container::Container;
-    use crate::utils::generate_random_pubkey;
+    use crate::pubkey::generate_random_pubkey;
 
     use super::*;
     use std::cell::UnsafeCell;
