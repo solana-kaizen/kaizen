@@ -40,6 +40,8 @@ pub mod result;
 pub mod time;
 pub mod utils;
 
+pub use solana_program::wasm_bindgen;
+
 // pub use utils::generate_random_pubkey;
 
 cfg_if! {
