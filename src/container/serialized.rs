@@ -60,6 +60,10 @@ where
         self.segment.as_slice_mut().copy_from_slice(vec);
         Ok(())
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.segment.get_data_len() == 0
+    }
 }
 
 pub struct SerializedVariant<'info, 'refs> {
