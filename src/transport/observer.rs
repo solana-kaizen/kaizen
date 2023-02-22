@@ -136,18 +136,11 @@ impl Observer for BasicObserver {
 mod wasm {
     use super::*;
     use crate::result::Result;
-    use js_sys::Function;
+    use js_sys::{Function, Object};
     use serde::Serialize;
     pub use serde_wasm_bindgen::*;
     use std::sync::{Arc, Mutex};
-
-    struct NotificationSink(Function);
-    unsafe impl Send for NotificationSink {}
-    impl From<NotificationSink> for Function {
-        fn from(f: NotificationSink) -> Self {
-            f.0
-        }
-    }
+    use workflow_wasm::prelude::*;
 
     #[derive(Clone, Serialize)]
     pub enum NotificationType {
@@ -172,8 +165,8 @@ mod wasm {
     impl TransactionNotification {
         pub fn new(tx_chain: Arc<TransactionChain>, transaction: Arc<Transaction>) -> Self {
             TransactionNotification {
-                tx_chain: tx_chain,
-                transaction: transaction,
+                tx_chain,
+                transaction,
                 error: None,
             }
         }
@@ -183,23 +176,17 @@ mod wasm {
             error: kaizen::error::Error,
         ) -> Self {
             TransactionNotification {
-                tx_chain: tx_chain,
-                transaction: transaction,
+                tx_chain,
+                transaction,
                 error: Some(error.to_string()),
             }
         }
     }
 
-    // impl<T> Notification<T>
-    // where T : Serialize {
-    //     pub fn new(op : NotificationType, data : T) -> Self {
-    //         Notification { op, data }
-    //     }
-    // }
-
     #[wasm_bindgen]
+    #[derive(Default)]
     pub struct TransactionObserver {
-        notification_callback: Arc<Mutex<Option<NotificationSink>>>,
+        notification_callback: Arc<Mutex<Option<sendable::Function>>>,
     }
 
     #[wasm_bindgen]
@@ -211,20 +198,22 @@ mod wasm {
             }
         }
 
-        pub async fn notify(&self, callback: JsValue) -> Result<()> {
+        #[wasm_bindgen(js_name = "setHandler")]
+        pub async fn set_handler(&self, callback: JsValue) -> Result<()> {
             if callback.is_function() {
                 let fn_callback: Function = callback.into();
                 self.notification_callback
                     .lock()
                     .unwrap()
-                    .replace(NotificationSink(fn_callback));
+                    .replace(sendable::Function(fn_callback));
             } else {
-                self.clear_notification_callback();
+                self.remove_handler();
             }
             Ok(())
         }
 
-        fn clear_notification_callback(&self) {
+        #[wasm_bindgen(js_name = "removeHandler")]
+        pub fn remove_handler(&self) {
             *self.notification_callback.lock().unwrap() = None;
         }
 
@@ -234,9 +223,10 @@ mod wasm {
             Op: Serialize,
         {
             if let Some(callback) = self.notification_callback.lock().unwrap().as_ref() {
-                let op = to_value(&op).unwrap();
-                let payload = to_value(&payload).unwrap();
-                if let Err(err) = callback.0.call2(&JsValue::undefined(), &op, &payload) {
+                let object = Object::new();
+                object.set("event",&to_value(&op).unwrap()).expect("TransactionObserver::post_notification() event serialization failure");
+                object.set("data",&to_value(&payload).unwrap()).expect("TransactionObserver::post_notification() event serialization failure");
+                if let Err(err) = callback.0.call1(&JsValue::undefined(), &object) {
                     log_error!("Error while executing notification callback: {:?}", err);
                 }
             }
