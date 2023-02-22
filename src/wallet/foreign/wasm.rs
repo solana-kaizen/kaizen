@@ -5,6 +5,7 @@
 use crate::error;
 use crate::prelude::log_trace;
 use crate::transport::Transport;
+use crate::transport::Interface;
 use async_trait::async_trait;
 use js_sys;
 use kaizen::error::{js_error, parse_js_error};
@@ -32,7 +33,9 @@ impl super::WalletInterface for Wallet {
     fn pubkey(&self) -> Result<Pubkey> {
         // Ok(self.keypair.pubkey())
         // temporary stub
-        Ok(Pubkey::default())
+        //Ok(Pubkey::default())
+        let pubkey = Transport::global()?.get_authority_pubkey()?;
+        Ok(pubkey)
     }
 
     async fn get_adapter_list(&self) -> Result<Option<Vec<super::Adapter>>> {
