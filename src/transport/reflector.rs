@@ -117,10 +117,8 @@ impl Reflector {
 ///
 /// [`ReflectorClient`] is an object meant to be use in WASM environment to
 /// process [`Transport`] events. [`ReflectorClient`] auto-registers with the
-/// global [`Transport`] and on the event processing task start and unregisters
-/// when the event processing stop.  
-///
-///
+/// global [`Transport`] when event processing task starts and unregisters
+/// when the event processing stops.  
 ///
 #[wasm_bindgen]
 pub struct ReflectorClient {
