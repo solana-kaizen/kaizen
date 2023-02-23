@@ -235,6 +235,10 @@ impl TransactionList {
         Ok(pubkey)
     }
 
+    pub fn ids(&self) -> Result<Vec<Id>> {
+        Ok(self.transactions.iter().map(|tx|tx.id).collect())
+    }
+
     pub fn push(&mut self, tx: Transaction) {
         self.transactions.push(tx);
     }
