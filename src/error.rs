@@ -38,6 +38,10 @@ use workflow_log::log_trace;
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum ErrorCode {
+
+    ModuleErrorCodeStart = 0xefff,
+    FrameworkErrorCodeStart = 0xffff,
+
     NotImplemented,
     ErrorMessage,
     RootAccess,
@@ -164,8 +168,6 @@ pub enum ErrorCode {
     TransactionAlreadyCompleted,
     Web3js,
 
-    ModuleErrorCodeStart = 0xefff,
-    ProgramErrorCodeStart = 0xffff,
 }
 
 #[derive(Debug)]
@@ -730,10 +732,11 @@ pub use error_code;
 #[macro_export]
 macro_rules! program_error_code {
     ($code:expr) => {
-        kaizen::error::Error::new()
-            .with_source(file!(), line!())
-            .with_program_code($code as u32)
-            .into()
+        // Into::<solana_program::program_error::ProgramError>::into(
+            kaizen::error::Error::new()
+                .with_source(file!(), line!())
+                .with_program_code($code as u32)
+                .into()
     };
 }
 pub use program_error_code;

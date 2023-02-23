@@ -9,6 +9,7 @@ use kaizen::result::Result;
 use kaizen::transport::observer::Observer;
 use kaizen::transport::transaction::Transaction;
 use kaizen::transport::transaction::TransactionChain;
+use kaizen::error::ErrorCode;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::Mutex;

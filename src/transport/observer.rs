@@ -196,7 +196,7 @@ mod wasm {
 
     #[derive(Default)]
     pub struct TransactionObserverInner {
-        notification_callback: Arc<Mutex<Option<sendable::Function>>>,
+        notification_callback: Arc<Mutex<Option<Sendable<Function>>>>,
     }
 
     impl TransactionObserverInner {
@@ -206,7 +206,7 @@ mod wasm {
                 self.notification_callback
                     .lock()
                     .unwrap()
-                    .replace(sendable::Function(fn_callback));
+                    .replace(fn_callback.into());
             } else {
                 self.remove_handler();
             }

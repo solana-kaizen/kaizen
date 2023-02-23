@@ -124,7 +124,7 @@ impl Reflector {
 ///
 #[wasm_bindgen]
 pub struct ReflectorClient {
-    callback: Arc<Mutex<Option<sendable::Function>>>,
+    callback: Arc<Mutex<Option<Sendable<Function>>>>,
     task_running: AtomicBool,
     task_ctl: DuplexChannel,
 }
@@ -153,7 +153,7 @@ impl ReflectorClient {
             self.callback
                 .lock()
                 .unwrap()
-                .replace(sendable::Function(fn_callback));
+                .replace(fn_callback.into());
 
             // self.start_notification_task()?;
         } else {
