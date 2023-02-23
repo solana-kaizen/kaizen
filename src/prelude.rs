@@ -41,7 +41,7 @@ pub use workflow_log;
 pub use workflow_log::{log_debug, log_error, log_info, log_trace, log_warning};
 
 // pub use kaizen::error::ErrorCode;
-pub use kaizen::{error_code,program_error_code};
+pub use kaizen::{error_code, program_error_code};
 
 // #[cfg(not(target_os = "solana"))]
 // pub use crate::tokens::{get_tokens, get_tokens_info, get_tokens_info_array, TokenInfo};

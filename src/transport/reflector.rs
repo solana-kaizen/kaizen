@@ -148,10 +148,7 @@ impl ReflectorClient {
     pub fn set_handler(&self, callback: JsValue) -> Result<()> {
         if callback.is_function() {
             let fn_callback: Function = callback.into();
-            self.callback
-                .lock()
-                .unwrap()
-                .replace(fn_callback.into());
+            self.callback.lock().unwrap().replace(fn_callback.into());
 
             // self.start_notification_task()?;
         } else {
