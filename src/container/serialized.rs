@@ -17,7 +17,7 @@ where
 
 impl<'info, 'refs, T> Serialized<'info, 'refs, T>
 where
-    T: Default + BorshSerialize + BorshDeserialize,
+    T: BorshSerialize + BorshDeserialize,
 {
     pub fn data_len_min() -> usize {
         0
@@ -52,10 +52,13 @@ where
     }
 
     #[inline]
-    pub fn load_or_default(&self) -> Result<Box<T>> {
+    pub fn load_or_default<D>(&self) -> Result<Box<D>>
+    where
+        D: Default + BorshDeserialize,
+    {
         let mut src = self.segment.as_slice::<u8>();
         if src.is_empty() {
-            return Ok(Box::new(T::default()));
+            return Ok(Box::new(D::default()));
         } else {
             Ok(Box::new(BorshDeserialize::deserialize(&mut src)?))
         }
