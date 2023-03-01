@@ -49,6 +49,10 @@ pub use observer::*;
 mod wasm;
 #[cfg(target_arch = "wasm32")]
 pub use wasm::*;
+//#[cfg(target_arch = "wasm32")]
+//pub mod api;
+//#[cfg(target_arch = "wasm32")]
+//pub mod filter;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native;

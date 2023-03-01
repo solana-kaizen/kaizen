@@ -25,8 +25,10 @@ use kaizen::{
     wasm::{solana, workflow},
 };
 // use rand::*;
+//use super::api::RpcProgramAccountsConfig;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
+//use solana_rpc_client_api::RpcProgramAccountsConfig;
 use std::convert::From;
 use std::sync::{Arc, Mutex};
 use std::*;
@@ -99,6 +101,30 @@ mod wasm_bridge {
                 Ok(JsValue::from(balance))
             })
         }
+
+        #[wasm_bindgen(js_name = "getProgramAccounts")]
+        pub async fn get_program_accounts_with_config(
+            &self,
+            pubkey: &Pubkey,
+            config: JsValue,
+        ) -> Result<JsValue> {
+            log_trace!("getProgramAccounts: pubkey: {pubkey:?}");
+            log_trace!("getProgramAccounts: config: {config:?}");
+            let config: GetProgramAccountsConfig = config.try_into().unwrap();
+            let list = self
+                .transport
+                .get_program_accounts_with_config(pubkey, config)
+                .await?;
+            let array = Array::new();
+            for item in list {
+                let item_array = Array::new();
+                item_array.push(&self.transport.pubkey_to_jsvalue(&item.0)?);
+                item_array.push(&item.1);
+                array.push(&item_array.into());
+            }
+
+            Ok(array.into())
+        }
     }
 }
 pub struct Transport {
@@ -158,6 +184,73 @@ impl Transport {
     pub fn set_custom_authority(&self, key: Option<Pubkey>) -> Result<()> {
         (*self.custom_authority.lock()?) = key;
         Ok(())
+    }
+
+    /// Returns all accounts owned by the provided program pubkey.
+    ///
+    /// # RPC Reference
+    ///
+    /// This method is built on the [`getProgramAccounts`] RPC method.
+    ///
+    /// [`getProgramAccounts`]: https://docs.solana.com/developing/clients/jsonrpc-api#getprogramaccounts
+    //
+    // # Examples
+    //
+    // ```
+    // # use solana_rpc_client_api::{
+    // #     client_error::Error,
+    // #     config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
+    // #     filter::{MemcmpEncodedBytes, RpcFilterType, Memcmp},
+    // # };
+    // # use solana_rpc_client::rpc_client::RpcClient;
+    // # use solana_sdk::{
+    // #     signature::Signer,
+    // #     signer::keypair::Keypair,
+    // #     commitment_config::CommitmentConfig,
+    // # };
+    // # use solana_account_decoder::{UiDataSliceConfig, UiAccountEncoding};
+    // # let rpc_client = RpcClient::new_mock("succeeds".to_string());
+    // # let alice = Keypair::new();
+    // # let base64_bytes = "\
+    // #     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+    // #     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+    // #     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    // let memcmp = RpcFilterType::Memcmp(Memcmp::new(
+    //     0,                                                    // offset
+    //     MemcmpEncodedBytes::Base64(base64_bytes.to_string()), // encoded bytes
+    // ));
+    // let config = RpcProgramAccountsConfig {
+    //     filters: Some(vec![
+    //         RpcFilterType::DataSize(128),
+    //         memcmp,
+    //     ]),
+    //     account_config: RpcAccountInfoConfig {
+    //         encoding: Some(UiAccountEncoding::Base64),
+    //         data_slice: Some(UiDataSliceConfig {
+    //             offset: 0,
+    //             length: 5,
+    //         }),
+    //         commitment: Some(CommitmentConfig::processed()),
+    //         min_context_slot: Some(1234),
+    //     },
+    //     with_context: Some(false),
+    // };
+    // let accounts = rpc_client.get_program_accounts_with_config(
+    //     &alice.pubkey(),
+    //     config,
+    // )?;
+    // # Ok::<(), Error>(())
+    // ```
+    pub async fn get_program_accounts_with_config(
+        &self,
+        pubkey: &Pubkey,
+        config: GetProgramAccountsConfig,
+    ) -> Result<Vec<(Pubkey, ProgramAccount)>> {
+        Ok(self
+            .connection()?
+            .unwrap()
+            .get_program_accounts_with_config(pubkey, config)
+            .await?)
     }
 
     pub fn public_key_ctor() -> std::result::Result<JsValue, JsValue> {
