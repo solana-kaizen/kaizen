@@ -5,14 +5,13 @@ use workflow_log::log_trace;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        use solana_web3_sys::prelude::*;
         use js_sys::{Array, Object, Reflect};
+        use solana_web3_sys::prelude::*;
         use wasm_bindgen::prelude::*;
     }else{
         pub use {
             solana_account_decoder::{
-                UiAccountEncoding as RpcAccountEncoding,
-                UiDataSliceConfig as RpcDataSliceConfig
+                UiAccountEncoding as RpcAccountEncoding, UiDataSliceConfig as RpcDataSliceConfig,
             },
             solana_client::{
                 rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
