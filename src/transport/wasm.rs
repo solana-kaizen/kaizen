@@ -206,54 +206,22 @@ impl Transport {
     /// This method is built on the [`getProgramAccounts`] RPC method.
     ///
     /// [`getProgramAccounts`]: https://docs.solana.com/developing/clients/jsonrpc-api#getprogramaccounts
-    //
-    // # Examples
-    //
-    // ```
-    // # use solana_rpc_client_api::{
-    // #     client_error::Error,
-    // #     config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-    // #     filter::{MemcmpEncodedBytes, RpcFilterType, Memcmp},
-    // # };
-    // # use solana_rpc_client::rpc_client::RpcClient;
-    // # use solana_sdk::{
-    // #     signature::Signer,
-    // #     signer::keypair::Keypair,
-    // #     commitment_config::CommitmentConfig,
-    // # };
-    // # use solana_account_decoder::{UiDataSliceConfig, UiAccountEncoding};
-    // # let rpc_client = RpcClient::new_mock("succeeds".to_string());
-    // # let alice = Keypair::new();
-    // # let base64_bytes = "\
-    // #     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-    // #     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
-    // #     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-    // let memcmp = RpcFilterType::Memcmp(Memcmp::new(
-    //     0,                                                    // offset
-    //     MemcmpEncodedBytes::Base64(base64_bytes.to_string()), // encoded bytes
-    // ));
-    // let config = RpcProgramAccountsConfig {
-    //     filters: Some(vec![
-    //         RpcFilterType::DataSize(128),
-    //         memcmp,
-    //     ]),
-    //     account_config: RpcAccountInfoConfig {
-    //         encoding: Some(UiAccountEncoding::Base64),
-    //         data_slice: Some(UiDataSliceConfig {
-    //             offset: 0,
-    //             length: 5,
-    //         }),
-    //         commitment: Some(CommitmentConfig::processed()),
-    //         min_context_slot: Some(1234),
-    //     },
-    //     with_context: Some(false),
-    // };
-    // let accounts = rpc_client.get_program_accounts_with_config(
-    //     &alice.pubkey(),
-    //     config,
-    // )?;
-    // # Ok::<(), Error>(())
-    // ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let config = GetProgramAccountsConfig::new()
+    ///    .add_filters(vec![
+    ///        AccountFilter::MemcmpEncodedBase58(8, pubkey.to_string()),
+    ///        AccountFilter::MemcmpEncodeBase58(40, vec![1]),
+    ///    ])?
+    ///    .encoding(AccountEncoding::Base64)?;
+    /// 
+    /// let transport = Transport::global()?;
+    /// let accounts = transport
+    ///    .get_program_accounts_with_config(&crate::program_id(), config)
+    ///    .await?;
+    /// ```
     pub async fn get_program_accounts_with_config(
         &self,
         pubkey: &Pubkey,
