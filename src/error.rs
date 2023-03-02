@@ -431,9 +431,9 @@ pub fn parse_js_error(e: wasm_bindgen::JsValue, msg: Option<&str>) -> Error {
         Ok(msg) => Error::new().with_message(&msg),
         Err(e) => {
             if let Some(msg) = msg {
-                Error::new().with_message(&format!("{}, Error:{:?}", msg, e))
+                Error::new().with_message(&format!("{msg}, Error:{e:?}"))
             } else {
-                Error::new().with_message(&format!("Error:{:?}", e))
+                Error::new().with_message(&format!("Error:{e:?}"))
             }
         }
     };
@@ -441,7 +441,7 @@ pub fn parse_js_error(e: wasm_bindgen::JsValue, msg: Option<&str>) -> Error {
         Ok(error_obj) => {
             match js_sys::Reflect::get(&error_obj, &wasm_bindgen::JsValue::from("code")) {
                 Ok(code) => {
-                    err = err.with_variant(Variant::JsValue(format!("{:?}", code)));
+                    err = err.with_variant(Variant::JsValue(format!("{code:?}")));
                 }
                 Err(_e) => {
                     //skip code search error

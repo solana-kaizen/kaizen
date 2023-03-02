@@ -58,7 +58,7 @@ where
     {
         let mut src = self.segment.as_slice::<u8>();
         if src.is_empty() {
-            return Ok(Box::new(D::default()));
+            Ok(Box::default())
         } else {
             Ok(Box::new(BorshDeserialize::deserialize(&mut src)?))
         }

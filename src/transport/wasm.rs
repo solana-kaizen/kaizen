@@ -26,8 +26,10 @@ use kaizen::{
 };
 // use rand::*;
 //use super::api::RpcProgramAccountsConfig;
+use crate::transport::api::*;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
+use solana_sdk::account::Account;
 //use solana_rpc_client_api::RpcProgramAccountsConfig;
 use std::convert::From;
 use std::sync::{Arc, Mutex};
@@ -35,7 +37,7 @@ use std::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 //use wasm_bindgen_futures::JsFuture;
-use solana_web3_sys::prelude::*;
+//use solana_web3_sys::prelude::*;
 use workflow_log::*;
 use workflow_wasm::{init::global, utils};
 
@@ -118,8 +120,8 @@ mod wasm_bridge {
             let array = Array::new();
             for item in list {
                 let item_array = Array::new();
-                item_array.push(&self.transport.pubkey_to_jsvalue(&item.0)?);
-                item_array.push(&item.1);
+                item_array.push(&PublicKey::try_from(&item.0)?.into());
+                item_array.push(&ProgramAccount::try_from(item.1)?.into());
                 array.push(&item_array.into());
             }
 
@@ -245,7 +247,8 @@ impl Transport {
         &self,
         pubkey: &Pubkey,
         config: GetProgramAccountsConfig,
-    ) -> Result<Vec<(Pubkey, ProgramAccount)>> {
+    ) -> Result<Vec<(Pubkey, Account)>> {
+        //log_trace!("config: {config:#?}");
         Ok(self
             .connection()?
             .unwrap()

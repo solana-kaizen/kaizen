@@ -93,10 +93,7 @@ pub fn account_info_realloc(
         #[cfg(target_os = "solana")]
         return Err(error_code!(ErrorCode::MaxPermittedAccountDataIncrease));
         #[cfg(not(target_os = "solana"))]
-        panic!(
-            "maximum permitted account data increase - orig len: {} new len: {}",
-            orig_len, new_len
-        );
+        panic!("maximum permitted account data increase - orig len: {orig_len} new len: {new_len}");
     }
 
     unsafe {
