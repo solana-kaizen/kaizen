@@ -8,18 +8,17 @@ use crate::emulator::interface::EmulatorInterface;
 use crate::emulator::Simulator;
 use crate::error::*;
 use crate::result::Result;
+use crate::transport::api::*;
 use crate::transport::lookup::{LookupHandler, RequestType};
 use crate::transport::queue::TransactionQueue;
 use crate::transport::TransportConfig;
 use crate::transport::TransportMode;
 use crate::transport::{reflector, Reflector};
-//use crate::transport::api::*;
 use crate::wallet::*;
 use async_std::path::Path;
 use async_std::sync::RwLock;
 use async_trait::async_trait;
 use kaizen::cache::Cache;
-use solana_client::rpc_config::RpcProgramAccountsConfig;
 use solana_program::account_info::IntoAccountInfo;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
@@ -231,14 +230,14 @@ impl Transport {
     pub async fn get_program_accounts_with_config(
         &self,
         pubkey: &Pubkey,
-        config: RpcProgramAccountsConfig,
+        config: GetProgramAccountsConfig,
     ) -> Result<Vec<(Pubkey, Account)>> {
         let rpc_client = self
             .rpc_client
             .as_ref()
             .expect("Transport: Missing RPC client");
         //log_trace!("config: {:?}", config);
-        let result = rpc_client.get_program_accounts_with_config(pubkey, config)?;
+        let result = rpc_client.get_program_accounts_with_config(pubkey, config.try_into()?)?;
         Ok(result)
     }
 

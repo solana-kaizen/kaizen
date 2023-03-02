@@ -37,7 +37,7 @@ use std::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 //use wasm_bindgen_futures::JsFuture;
-//use solana_web3_sys::prelude::*;
+use solana_web3_sys::prelude::*;
 use workflow_log::*;
 use workflow_wasm::{init::global, utils};
 
@@ -112,11 +112,22 @@ mod wasm_bridge {
         ) -> Result<JsValue> {
             log_trace!("getProgramAccounts: pubkey: {pubkey:?}");
             log_trace!("getProgramAccounts: config: {config:?}");
-            let config: GetProgramAccountsConfig = config.try_into().unwrap();
+            let config: RpcProgramAccountsConfig = match config.try_into() {
+                Ok(config) => config,
+                Err(err) => {
+                    return Err(
+                        format!("Unable to convert JsValue to Config object: {err:?}").into(),
+                    );
+                }
+            };
+
             let list = self
                 .transport
+                .connection()?
+                .unwrap()
                 .get_program_accounts_with_config(pubkey, config)
                 .await?;
+
             let array = Array::new();
             for item in list {
                 let item_array = Array::new();
@@ -252,7 +263,7 @@ impl Transport {
         Ok(self
             .connection()?
             .unwrap()
-            .get_program_accounts_with_config(pubkey, config)
+            .get_program_accounts_with_config(pubkey, config.try_into()?)
             .await?)
     }
 
