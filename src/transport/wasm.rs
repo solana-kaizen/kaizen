@@ -3,7 +3,7 @@
 //!
 #![allow(unused_unsafe)]
 use super::TransportMode;
-use crate::accounts::AccountData;
+//use crate::accounts::AccountData;
 use crate::accounts::AccountDataReference;
 use crate::emulator::client::EmulatorRpcClient;
 use crate::emulator::interface::EmulatorInterface;
@@ -468,15 +468,20 @@ impl Transport {
                 }
             }
             TransportMode::Validator => {
-                let response = self.connection()?.unwrap().get_account_info(pubkey).await?;
+                let account = self.connection()?.unwrap().get_account_info(pubkey).await?;
 
-                log_trace!("get_account_info ({}) response: {:#?}", pubkey, response);
+                //log_trace!("get_account_info ({}) response: {:#?}", pubkey, account);
 
-                if response.is_null() {
-                    // TODO review error handling & return None if success but no data
-                    return Err(error!("Error fetching account data for {}", pubkey));
-                }
+                let reference = Arc::new(AccountDataReference::from((*pubkey, account)));
+                self.cache.store(&reference)?;
+                Ok(Some(reference))
 
+                //if response.is_null() {
+                // TODO review error handling & return None if success but no data
+                //   return Err(error!("Error fetching account data for {}", pubkey));
+                //}
+
+                /*
                 let rent_epoch = utils::try_get_u64_from_prop(&response, "rentEpoch")?;
                 let lamports = utils::try_get_u64_from_prop(&response, "lamports")?;
                 // let owner = Pubkey::new_from_array(
@@ -497,6 +502,7 @@ impl Transport {
                 ));
                 self.cache.store(&reference)?;
                 Ok(Some(reference))
+                */
             }
         }
     }

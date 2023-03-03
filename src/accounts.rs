@@ -388,6 +388,12 @@ mod client {
         }
     }
 
+    impl From<(Pubkey, solana_sdk::account::Account)> for AccountDataReference {
+        fn from(info: (Pubkey, solana_sdk::account::Account)) -> Self {
+            Self::new(info.into())
+        }
+    }
+
     #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub struct AccountDataStore {
         pub data_type: AccountType,
@@ -488,6 +494,18 @@ mod client {
                 rent_epoch: account_data.rent_epoch,
                 executable: account_data.executable,
             }
+        }
+    }
+
+    impl From<(Pubkey, solana_sdk::account::Account)> for AccountData {
+        fn from(info: (Pubkey, solana_sdk::account::Account)) -> Self {
+            Self::new_static_with_args(
+                info.0,
+                info.1.owner,
+                info.1.lamports,
+                &info.1.data,
+                info.1.rent_epoch,
+            )
         }
     }
 
