@@ -1,7 +1,7 @@
 use crate::result::Result;
 use cfg_if::cfg_if;
 use solana_sdk::{clock::Slot, commitment_config::CommitmentConfig};
-use workflow_log::log_trace;
+//use workflow_log::log_trace;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -72,7 +72,7 @@ impl GetProgramAccountsConfig {
     }
 
     pub fn add_filters(mut self, filters: Vec<AccountFilter>) -> Result<Self> {
-        log_trace!("filters: {filters:?}");
+        //log_trace!("filters: {filters:?}");
         self.filters = Some(filters);
         Ok(self)
     }
