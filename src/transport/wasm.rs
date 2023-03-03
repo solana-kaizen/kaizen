@@ -216,7 +216,7 @@ impl Transport {
     ///        AccountFilter::MemcmpEncodeBase58(40, vec![1]),
     ///    ])?
     ///    .encoding(AccountEncoding::Base64)?;
-    /// 
+    ///
     /// let transport = Transport::global()?;
     /// let accounts = transport
     ///    .get_program_accounts_with_config(&crate::program_id(), config)
