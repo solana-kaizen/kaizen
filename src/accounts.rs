@@ -479,6 +479,18 @@ mod client {
         }
     }
 
+    impl From<&AccountData> for solana_sdk::account::Account {
+        fn from(account_data: &AccountData) -> Self {
+            Self {
+                owner: account_data.owner,
+                lamports: account_data.lamports,
+                data: account_data.data().to_vec(),
+                rent_epoch: account_data.rent_epoch,
+                executable: account_data.executable,
+            }
+        }
+    }
+
     impl From<&AccountDataStore> for AccountData {
         fn from(account_data_store: &AccountDataStore) -> Self {
             let data_len = account_data_store.data.len();
