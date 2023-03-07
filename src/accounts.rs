@@ -74,6 +74,7 @@ mod client {
     };
     // use async_std::sync::RwLock;
     use borsh::{BorshDeserialize, BorshSerialize};
+    use js_sys::BigInt;
     use owning_ref::OwningHandle;
     use serde::{Deserialize, Serialize};
     //use std::time::Instant;
@@ -86,6 +87,7 @@ mod client {
     use solana_program::clock::Epoch;
     use solana_program::pubkey::Pubkey;
     use solana_program::rent::Rent;
+    use wasm_bindgen::prelude::*;
     use workflow_log::*;
 
     cfg_if! {
@@ -975,6 +977,80 @@ mod client {
 
         pub fn into_account_info(&mut self) -> AccountInfo {
             (&self.key, &mut self.account_data).into_account_info()
+        }
+    }
+
+    #[derive(Default)]
+    #[wasm_bindgen]
+    pub struct AccountReference {
+        key: Pubkey,
+        owner: Pubkey,
+        lamports: u64,
+        data: Vec<u8>,
+        rent_epoch: Epoch,
+        executable: bool,
+        is_signer: bool,
+        is_writable: bool,
+    }
+
+    #[wasm_bindgen]
+    impl AccountReference {
+        pub fn new() -> Self {
+            Self::default()
+        }
+        pub fn key(&self) -> Pubkey {
+            self.key
+        }
+        pub fn owner(&self) -> Pubkey {
+            self.owner
+        }
+        pub fn lamports(&self) -> BigInt {
+            BigInt::from(self.lamports)
+        }
+        pub fn data(&self) -> Vec<u8> {
+            self.data.clone()
+        }
+        pub fn rent_epoch(&self) -> BigInt {
+            BigInt::from(self.rent_epoch)
+        }
+        pub fn executable(&self) -> bool {
+            self.executable
+        }
+        pub fn is_signer(&self) -> bool {
+            self.is_signer
+        }
+        pub fn is_writable(&self) -> bool {
+            self.is_writable
+        }
+    }
+
+    impl From<&AccountData> for AccountReference {
+        fn from(account_data: &AccountData) -> Self {
+            Self {
+                key: account_data.key,
+                owner: account_data.owner,
+                lamports: account_data.lamports,
+                data: account_data.data().into(),
+                rent_epoch: account_data.rent_epoch,
+                executable: account_data.executable,
+                is_signer: account_data.is_signer,
+                is_writable: account_data.is_writable,
+            }
+        }
+    }
+
+    impl From<(Pubkey, solana_sdk::account::Account, bool, bool)> for AccountReference {
+        fn from(info: (Pubkey, solana_sdk::account::Account, bool, bool)) -> Self {
+            Self {
+                key: info.0,
+                owner: info.1.owner,
+                lamports: info.1.lamports,
+                data: info.1.data,
+                rent_epoch: info.1.rent_epoch,
+                executable: info.1.executable,
+                is_signer: info.2,
+                is_writable: info.3,
+            }
         }
     }
 }
