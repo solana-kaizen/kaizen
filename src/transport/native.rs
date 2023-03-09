@@ -27,6 +27,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::time::SystemTime;
 use std::*;
+use workflow_core::id::Id;
 use workflow_log::log_error;
 use workflow_log::log_trace;
 
@@ -381,6 +382,10 @@ impl super::Interface for Transport {
 
     async fn post(&self, tx: Arc<super::transaction::Transaction>) -> Result<()> {
         self.queue.enqueue(tx).await?;
+        Ok(())
+    }
+    async fn discard_chain(&self, id: &Id) -> Result<()> {
+        self.queue.discard_chain(id).await?;
         Ok(())
     }
 

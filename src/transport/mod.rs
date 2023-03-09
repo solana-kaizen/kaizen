@@ -9,6 +9,7 @@ use kaizen::result::Result;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use std::sync::Arc;
+use workflow_core::id::Id;
 use workflow_core::workflow_async_trait;
 
 #[workflow_async_trait]
@@ -20,6 +21,7 @@ pub trait Interface: AnySync {
     async fn lookup_local(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn lookup_remote(&self, pubkey: &Pubkey) -> Result<Option<Arc<AccountDataReference>>>;
     async fn post(&self, tx: Arc<Transaction>) -> Result<()>;
+    async fn discard_chain(&self, id: &Id) -> Result<()>;
     async fn post_multiple(&self, tx: Vec<Arc<Transaction>>) -> Result<()>;
 
     fn purge(&self, pubkey: Option<&Pubkey>) -> Result<()>;

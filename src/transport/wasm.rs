@@ -16,6 +16,7 @@ use crate::transport::{reflector, Reflector};
 use crate::transport::{Transaction, TransportConfig};
 use crate::utils::pubkey_from_slice;
 use crate::wallet::*;
+use workflow_core::id::Id;
 // use crate::wasm::*;
 use async_std::sync::RwLock;
 use async_trait::async_trait;
@@ -604,6 +605,9 @@ impl super::Interface for Transport {
     }
     async fn post_multiple(&self, txs: Vec<Arc<Transaction>>) -> Result<()> {
         self.queue.enqueue_multiple(txs).await
+    }
+    async fn discard_chain(&self, id: &Id) -> Result<()> {
+        self.queue.discard_chain(id).await
     }
 
     async fn execute(&self, instruction: &Instruction) -> Result<()> {

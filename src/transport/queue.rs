@@ -244,9 +244,8 @@ impl TransactionQueue {
                             for observer in queue.observers().unwrap().iter() {
                                 observer.tx_chain_complete(tx_chain.clone()).await;
                             }
-
-                            queue.tx_chains.lock().unwrap().remove(&tx_chain.id);
                         }
+                        //self.tx_chain_processing.lock()?.remove(&tx_chain.id);
                     }
                     Err(err) => {
                         // on failure, transaction is re-inserted into the chain as first item
