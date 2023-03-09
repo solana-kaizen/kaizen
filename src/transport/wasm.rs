@@ -368,7 +368,10 @@ impl Transport {
             Transport::try_new_with_args(
                 TransportMode::Validator,
                 // js_sys::Reflect::construct(&ctor.into(), &args)?,
-                Some(Connection::new(url.as_string().unwrap())),
+                Some(Connection::new_with_commitment(
+                    url.as_string().unwrap(),
+                    "confirmed".into(),
+                )),
                 None,
                 config,
             )
@@ -382,7 +385,10 @@ impl Transport {
             Transport::try_new_with_args(
                 TransportMode::Validator,
                 // js_sys::Reflect::construct(&ctor.into(), &args)?,
-                Some(Connection::new(network.to_string())),
+                Some(Connection::new_with_commitment(
+                    network.to_string(),
+                    "confirmed".into(),
+                )),
                 None,
                 config,
             )

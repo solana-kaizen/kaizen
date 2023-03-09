@@ -245,7 +245,6 @@ impl TransactionQueue {
                                 observer.tx_chain_complete(tx_chain.clone()).await;
                             }
                         }
-                        //self.tx_chain_processing.lock()?.remove(&tx_chain.id);
                     }
                     Err(err) => {
                         // on failure, transaction is re-inserted into the chain as first item
@@ -300,6 +299,10 @@ impl TransactionQueue {
 
                         tx_chain.set_as_complete(&tx).await?;
                         tx.sender.send(Ok(())).await?;
+
+                        for key in tx.accounts()?.iter() {
+                            transport.purge(Some(key))?;
+                        }
 
                         for observer in observers.iter() {
                             observer.tx_success(tx_chain.clone(), tx.clone()).await;
