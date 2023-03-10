@@ -12,10 +12,10 @@ pub struct Wallet {
     keypair: Keypair,
 }
 
-impl Clone for Wallet{
+impl Clone for Wallet {
     fn clone(&self) -> Self {
-        Self{
-            keypair: Keypair::from_bytes(&self.keypair.to_bytes()).unwrap()
+        Self {
+            keypair: Keypair::from_bytes(&self.keypair.to_bytes()).unwrap(),
         }
     }
 }
