@@ -12,6 +12,14 @@ pub struct Wallet {
     keypair: Keypair,
 }
 
+impl Clone for Wallet{
+    fn clone(&self) -> Self {
+        Self{
+            keypair: Keypair::from_bytes(&self.keypair.to_bytes()).unwrap()
+        }
+    }
+}
+
 impl Wallet {
     pub fn try_new() -> Result<Wallet> {
         let home = home::home_dir().expect("Wallet: unable to get home directory");

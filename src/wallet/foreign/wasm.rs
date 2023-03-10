@@ -14,6 +14,7 @@ use solana_program::pubkey::Pubkey;
 use wasm_bindgen_futures::JsFuture;
 use workflow_wasm::utils;
 
+#[derive(Clone)]
 pub struct Wallet {}
 
 impl Wallet {
@@ -27,13 +28,10 @@ impl Wallet {
 #[async_trait(?Send)]
 impl super::WalletInterface for Wallet {
     fn is_connected(&self) -> bool {
-        true
+        self.pubkey().is_ok()
     }
 
     fn pubkey(&self) -> Result<Pubkey> {
-        // Ok(self.keypair.pubkey())
-        // temporary stub
-        //Ok(Pubkey::default())
         let pubkey = Transport::global()?.get_authority_pubkey()?;
         Ok(pubkey)
     }
