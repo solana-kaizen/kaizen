@@ -59,7 +59,8 @@ solana-sdk = { version = "1.15.1", features = ['full'] }
 #serde_derive = "1.0.103"
 bs58= "0.4.0"
 base64 = "0.13.0"
-solana-web3-sys = { path = "../solana-web3-sys", default-features = false }
+# solana-web3-sys = { path = "../solana-web3-sys", default-features = false }
+solana-web3-sys = { version = "0.1.0", default-features = false }
 thiserror = "1.0.38"
 wasm-bindgen = "0.2.84"
 wasm-bindgen-futures = "0.4.34"
