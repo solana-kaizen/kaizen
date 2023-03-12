@@ -7,7 +7,8 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-workflow-macro-tools = { path = "../../workflow-rs/macro-tools" }
+# workflow-macro-tools = { path = "../../workflow-rs/macro-tools" }
+workflow-macro-tools = {version = "0.3.12"}
 syn = {version="1.0.91",features=["full","fold","extra-traits"]}
 quote = "1.0.8"
 proc-macro2 = { version = "1.0.37" }
