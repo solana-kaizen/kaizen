@@ -64,8 +64,6 @@ solana-web3-sys = { path = "../solana-web3-sys", default-features = false }
 thiserror = "1.0.38"
 wasm-bindgen = "0.2.84"
 wasm-bindgen-futures = "0.4.34"
-
-solana-web3-sys = { version = "0.1.0", default-features = false }
 workflow-panic-hook = "0.3.12"
 workflow-rpc = "0.3.12"
 workflow-wasm = "0.3.12"
