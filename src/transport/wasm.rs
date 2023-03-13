@@ -567,23 +567,32 @@ impl Transport {
                 log_trace!("recent_block_hash: {:?}", recent_block_hash);
 
                 let wallet_public_key = wallet_adapter.pubkey();
+                log_trace!("wallet_public_key: {:?}", wallet_public_key);
 
                 let tx_jsv = solana_web3_sys::transaction::Transaction::new();
                 tx_jsv.set_fee_payer(wallet_public_key);
                 tx_jsv.set_recent_block_hash(recent_block_hash);
                 tx_jsv.add(instruction.try_into()?);
 
-                let result = wallet_adapter.sign_transaction(&tx_jsv).await?;
-                log_trace!("signTransaction result {:?}", result);
+                log_trace!("tx_jsv###: {tx_jsv:?}, instruction:{instruction:?}");
 
-                let result = connection
-                    .send_raw_transaction_with_options(
-                        tx_jsv.serialize(),
-                        SendRawTxOptions::new().skip_preflight(false),
-                    )
-                    .await?;
+                let result = wallet_adapter.sign_and_send_transaction(tx_jsv).await;
+                log_trace!("sign_and_send_transaction result: {:?}", result);
 
-                log_trace!("send_raw_transaction result: {:?}", result);
+                // let result = wallet_adapter.sign_transaction(&tx_jsv).await?;
+                // log_trace!("signTransaction result {:?}", result);
+
+                // let config = SerializeConfig::new();
+                // config.set_require_all_signatures(false);
+                // config.set_verify_signatures(false);
+                // let result = connection
+                //     .send_raw_transaction_with_options(
+                //         tx_jsv.serialize(config),
+                //         SendRawTxOptions::new().skip_preflight(false),
+                //     )
+                //     .await?;
+
+                // log_trace!("send_raw_transaction result: {:?}", result);
                 Ok(())
                 /*
                 match result {
