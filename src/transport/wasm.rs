@@ -105,6 +105,52 @@ mod wasm_bridge {
             })
         }
 
+        /*
+        #[wasm_bindgen(js_name = "testTx")]
+        pub async fn test_tx(&self)->Result<JsValue>{
+            let transport = &self.transport;
+            use std::str::FromStr;
+
+            let wallet_adapter: WalletAdapter = transport.wallet_adapter()?.into();
+            //return Ok(wallet_adapter.into());
+            let connection = transport.connection()?.unwrap();
+
+            let recent_block_hash = connection.get_latest_block_hash().await?.block_hash();
+            log_trace!("recent_block_hash: {:?}", recent_block_hash);
+
+            let wallet_public_key = wallet_adapter.pubkey();
+            log_trace!("wallet_public_key: {:?}", wallet_public_key);
+
+            let instruction = Instruction{
+                program_id: Pubkey::from_str("5UAQGzYRWKEgdbpZCqoUjKDKiWpNbHeataWknRpvswEH").unwrap(),
+                accounts: vec![
+                    solana_program::instruction::AccountMeta { 
+                        pubkey: Pubkey::from_str("J92gL9eTqSLMGZQzr2yw2Jh2Wbsk1UEtJEnsMNY2HS9D").unwrap(), 
+                        is_signer: true,
+                        is_writable: true
+                    },
+                    solana_program::instruction::AccountMeta { 
+                        pubkey: Pubkey::from_str("YA7NvczboDEtoBUUqFQzhX1NLtDf6qKEYQFiLqrNubm").unwrap(),
+                        is_signer: false,
+                        is_writable: true
+                    }
+                ],
+                data: vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 17, 0, 2, 0, 1, 0, 0, 0, 1, 1, 0, 0, 250, 137, 185, 186, 2, 0, 0]
+            };
+
+            let ins  = TransactionInstruction::try_from(&instruction).unwrap();
+            log_trace!("wallet_public_key: {:?}", wallet_public_key);
+
+            let tx_jsv = solana_web3_sys::transaction::Transaction::new();
+            tx_jsv.set_fee_payer(wallet_public_key);
+            tx_jsv.set_recent_block_hash(recent_block_hash);
+            tx_jsv.add(ins);
+            let result = wallet_adapter.send_transaction(tx_jsv.clone(), connection).await;
+            log_trace!("sign_and_send_transaction result: {:?}", result);
+            Ok(tx_jsv.into())
+        }
+        */
+
         #[wasm_bindgen(js_name = "getProgramAccounts")]
         pub async fn get_program_accounts_with_config(
             &self,
@@ -576,8 +622,8 @@ impl Transport {
 
                 log_trace!("tx_jsv###: {tx_jsv:?}, instruction:{instruction:?}");
 
-                let result = wallet_adapter.sign_and_send_transaction(tx_jsv).await;
-                log_trace!("sign_and_send_transaction result: {:?}", result);
+                let result = wallet_adapter.send_transaction(tx_jsv, connection).await?;
+                log_trace!("send_transaction result: {:?}", result);
 
                 // let result = wallet_adapter.sign_transaction(&tx_jsv).await?;
                 // log_trace!("signTransaction result {:?}", result);
