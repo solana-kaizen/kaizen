@@ -124,12 +124,12 @@ mod wasm_bridge {
             let instruction = Instruction{
                 program_id: Pubkey::from_str("5UAQGzYRWKEgdbpZCqoUjKDKiWpNbHeataWknRpvswEH").unwrap(),
                 accounts: vec![
-                    solana_program::instruction::AccountMeta { 
-                        pubkey: Pubkey::from_str("J92gL9eTqSLMGZQzr2yw2Jh2Wbsk1UEtJEnsMNY2HS9D").unwrap(), 
+                    solana_program::instruction::AccountMeta {
+                        pubkey: Pubkey::from_str("J92gL9eTqSLMGZQzr2yw2Jh2Wbsk1UEtJEnsMNY2HS9D").unwrap(),
                         is_signer: true,
                         is_writable: true
                     },
-                    solana_program::instruction::AccountMeta { 
+                    solana_program::instruction::AccountMeta {
                         pubkey: Pubkey::from_str("YA7NvczboDEtoBUUqFQzhX1NLtDf6qKEYQFiLqrNubm").unwrap(),
                         is_signer: false,
                         is_writable: true
